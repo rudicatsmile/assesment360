@@ -1,0 +1,122 @@
+openapi: 3.0.3
+info:
+  title: KepsekEval Admin Users API
+  version: 1.0.0
+  description: Dokumentasi endpoint CRUD manajemen pengguna untuk admin.
+servers:
+  - url: http://127.0.0.1:8000
+paths:
+  /admin/users/data:
+    get:
+      summary: List pengguna (pagination, search, filter)
+      tags: [Admin Users]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: role
+          schema: { type: string, enum: [admin, guru, tata_usaha, orang_tua] }
+        - in: query
+          name: status
+          schema: { type: string, enum: [active, inactive] }
+        - in: query
+          name: per_page
+          schema: { type: integer, default: 10, minimum: 5, maximum: 50 }
+      responses:
+        "200":
+          description: OK
+  /admin/users:
+    post:
+      summary: Tambah pengguna baru
+      tags: [Admin Users]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        "201":
+          description: Created
+        "422":
+          description: Validation error
+  /admin/users/{id}:
+    get:
+      summary: Detail pengguna
+      tags: [Admin Users]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+    patch:
+      summary: Update pengguna
+      tags: [Admin Users]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        "200":
+          description: Updated
+        "422":
+          description: Validation error
+    delete:
+      summary: Soft delete pengguna
+      tags: [Admin Users]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Deleted (soft delete)
+        "422":
+          description: Business rule error
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: laravel_session
+  schemas:
+    UserCreateRequest:
+      type: object
+      required: [name, email, password, role, is_active]
+      properties:
+        name: { type: string, example: "Nama Lengkap" }
+        email: { type: string, format: email, example: "user@example.com" }
+        password: { type: string, minLength: 8, example: "password123" }
+        role: { type: string, enum: [admin, guru, tata_usaha, orang_tua] }
+        is_active: { type: boolean, example: true }
+    UserUpdateRequest:
+      type: object
+      required: [name, email, role, is_active]
+      properties:
+        name: { type: string, example: "Nama Update" }
+        email: { type: string, format: email, example: "user-update@example.com" }
+        password: { type: string, minLength: 8, nullable: true }
+        role: { type: string, enum: [admin, guru, tata_usaha, orang_tua] }
+        is_active: { type: boolean, example: false }

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+        (() => {
+            const theme = localStorage.getItem('kepsakeval-theme');
+            if (theme === 'dark') document.documentElement.classList.add('dark');
+            if (theme === 'light') document.documentElement.classList.remove('dark');
+        })();
+    </script>
+    <title>{{ config('app.name', 'KepsekEval') }} - Penilai</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @fluxAppearance
+    @livewireStyles
+</head>
+<body class="min-h-screen bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    @php
+        $role = auth()->user()?->role;
+        $dashboardRoute = match ($role) {
+            'guru' => route('fill.dashboard.teacher'),
+            'tata_usaha' => route('fill.dashboard.staff'),
+            'orang_tua' => route('fill.dashboard.parent'),
+            default => route('fill.questionnaires.index'),
+        };
+    @endphp
+
+    <div class="mx-auto max-w-5xl p-4 md:p-6">
+        <x-session-toast />
+
+        <header
+            class="mb-6 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+            x-data="{ dark: document.documentElement.classList.contains('dark') }"
+        >
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <p class="text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Dashboard Penilai</p>
+                    <h1 class="text-lg font-semibold">KepsekEval</h1>
+                </div>
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    <a href="{{ route('fill.questionnaires.index') }}" wire:navigate>
+                        <flux:button variant="ghost" icon="clipboard-document-list">Kuisioner Saya</flux:button>
+                    </a>
+                    <a href="{{ $dashboardRoute }}" wire:navigate>
+                        <flux:button variant="ghost" icon="clock">Riwayat Pengisian</flux:button>
+                    </a>
+                    <a href="{{ route('profile') }}" wire:navigate>
+                        <flux:button variant="ghost" icon="user-circle">Profil</flux:button>
+                    </a>
+                    <flux:button
+                        variant="outline"
+                        icon="moon"
+                        x-on:click="
+                            dark = !dark;
+                            document.documentElement.classList.toggle('dark', dark);
+                            localStorage.setItem('kepsakeval-theme', dark ? 'dark' : 'light');
+                        "
+                    >
+                        Dark
+                    </flux:button>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <flux:button type="submit" variant="danger" icon="arrow-right-start-on-rectangle">Logout</flux:button>
+                    </form>
+                </div>
+            </div>
+        </header>
+
+        {{ $slot }}
+
+        <footer class="mt-8 border-t border-zinc-200 pt-4 text-center text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+            KepsekEval - SDN Contoh Nusantara
+        </footer>
+    </div>
+
+    @fluxScripts
+    @livewireScripts
+</body>
+</html>
