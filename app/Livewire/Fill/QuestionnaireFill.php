@@ -38,6 +38,9 @@ class QuestionnaireFill extends Component
 
     public ?string $lastDraftSavedAt = null;
 
+    /** @var array<int, bool> */
+    public array $dirtyQuestionIds = [];
+
     private QuestionnaireScorer $scorer;
 
     public function mount(Questionnaire $questionnaire): void
@@ -46,7 +49,7 @@ class QuestionnaireFill extends Component
         $this->questionnaire = $questionnaire;
         $user = Auth::user();
 
-        if (! $user) {
+        if (!$user) {
             throw new AccessDeniedHttpException('Anda harus login untuk mengakses halaman ini.');
         }
 
@@ -59,7 +62,7 @@ class QuestionnaireFill extends Component
             ->where('target_group', $user->role)
             ->exists();
 
-        if (! $isTargeted) {
+        if (!$isTargeted) {
             throw new AccessDeniedHttpException('Kuisioner ini tidak ditujukan untuk role Anda.');
         }
 
@@ -108,7 +111,7 @@ class QuestionnaireFill extends Component
         foreach ($this->questions as $question) {
             $existing = $draftAnswers->get($question->id);
 
-            if (! $existing) {
+            if (!$existing) {
                 continue;
             }
 
@@ -125,7 +128,9 @@ class QuestionnaireFill extends Component
             return;
         }
 
+        $this->markCurrentQuestionDirty();
         $this->currentIndex = max(0, $this->currentIndex - 1);
+        $this->dispatch('queue-autosave');
     }
 
     public function nextQuestion(): void
@@ -134,8 +139,9 @@ class QuestionnaireFill extends Component
             return;
         }
 
-        $this->validateCurrentQuestion();
+        $this->markCurrentQuestionDirty();
         $this->currentIndex = min($this->lastQuestionIndex(), $this->currentIndex + 1);
+        $this->dispatch('queue-autosave');
     }
 
     public function updatedAnswers(mixed $value, string $key): void
@@ -144,23 +150,13 @@ class QuestionnaireFill extends Component
             return;
         }
 
-        $this->validateCurrentQuestion();
         $questionId = (int) explode('.', $key)[0];
-        $this->saveDraftForQuestion($questionId);
-        $this->dispatch('autosave-status', message: 'Jawaban tersimpan', type: 'user');
+        $this->dirtyQuestionIds[$questionId] = true;
     }
 
     public function autosaveHeartbeat(): void
     {
-        if ($this->showThankYou) {
-            return;
-        }
-
-        foreach ($this->questions as $question) {
-            $this->saveDraftForQuestion((int) $question->id);
-        }
-
-        $this->dispatch('autosave-status', message: 'Autosave berkala berhasil', type: 'heartbeat');
+        // Tetap disediakan untuk kompatibilitas, tetapi autosave utama sekarang dilakukan saat navigasi.
     }
 
     public function goToQuestion(int $index): void
@@ -169,8 +165,9 @@ class QuestionnaireFill extends Component
             return;
         }
 
-        $this->validateCurrentQuestion();
+        $this->markCurrentQuestionDirty();
         $this->currentIndex = max(0, min($this->lastQuestionIndex(), $index));
+        $this->dispatch('queue-autosave');
     }
 
     public function openSubmitConfirmation(): void
@@ -179,11 +176,10 @@ class QuestionnaireFill extends Component
             return;
         }
 
-        foreach ($this->questions as $question) {
-            $this->saveDraftForQuestion((int) $question->id);
-        }
+        $this->persistDraftForQuestions($this->questions->pluck('id')->map(fn($id): int => (int) $id)->all());
+        $this->dirtyQuestionIds = [];
 
-        if (! $this->validateAllRequiredQuestions()) {
+        if (!$this->validateAllRequiredQuestions()) {
             return;
         }
 
@@ -201,7 +197,7 @@ class QuestionnaireFill extends Component
             return;
         }
 
-        if (! $this->validateAllRequiredQuestions()) {
+        if (!$this->validateAllRequiredQuestions()) {
             return;
         }
 
@@ -225,16 +221,21 @@ class QuestionnaireFill extends Component
                     continue;
                 }
 
-                Answer::query()->updateOrCreate(
+                $timestamp = now();
+                Answer::query()->upsert(
                     [
-                        'response_id' => $this->response->id,
-                        'question_id' => $question->id,
+                        [
+                            'response_id' => $this->response->id,
+                            'question_id' => $question->id,
+                            'answer_option_id' => $optionId,
+                            'essay_answer' => $essayValue,
+                            'calculated_score' => $this->scorer->calculateScoreForAnswer($question, $optionId),
+                            'created_at' => $timestamp,
+                            'updated_at' => $timestamp,
+                        ]
                     ],
-                    [
-                        'answer_option_id' => $optionId,
-                        'essay_answer' => $essayValue,
-                        'calculated_score' => $this->scorer->calculateScoreForAnswer($question, $optionId),
-                    ]
+                    ['response_id', 'question_id'],
+                    ['answer_option_id', 'essay_answer', 'calculated_score', 'updated_at']
                 );
             }
         });
@@ -272,7 +273,7 @@ class QuestionnaireFill extends Component
     public function getRequiredQuestionCountProperty(): int
     {
         return $this->questions
-            ->filter(fn ($question): bool => $question->is_required || $question->type === 'combined')
+            ->filter(fn($question): bool => $question->is_required || $question->type === 'combined')
             ->count();
     }
 
@@ -280,7 +281,7 @@ class QuestionnaireFill extends Component
     {
         return $this->questions
             ->filter(function ($question): bool {
-                if (! $question->is_required && $question->type !== 'combined') {
+                if (!$question->is_required && $question->type !== 'combined') {
                     return true;
                 }
 
@@ -301,33 +302,33 @@ class QuestionnaireFill extends Component
     {
         $question = $this->currentQuestion;
 
-        if (! $question) {
+        if (!$question) {
             return;
         }
 
         $rules = [];
         $messages = [];
-        $prefix = 'answers.'.$question->id;
+        $prefix = 'answers.' . $question->id;
 
         if ($question->type === 'single_choice') {
-            $rules[$prefix.'.answer_option_id'] = $question->is_required
+            $rules[$prefix . '.answer_option_id'] = $question->is_required
                 ? ['required', 'integer']
                 : ['nullable', 'integer'];
-            $messages[$prefix.'.answer_option_id.required'] = 'Pilih salah satu opsi jawaban.';
+            $messages[$prefix . '.answer_option_id.required'] = 'Pilih salah satu opsi jawaban.';
         }
 
         if ($question->type === 'essay') {
-            $rules[$prefix.'.essay_answer'] = $question->is_required
+            $rules[$prefix . '.essay_answer'] = $question->is_required
                 ? ['required', 'string', 'min:3', 'max:2000']
                 : ['nullable', 'string', 'max:2000'];
-            $messages[$prefix.'.essay_answer.required'] = 'Jawaban esai wajib diisi.';
+            $messages[$prefix . '.essay_answer.required'] = 'Jawaban esai wajib diisi.';
         }
 
         if ($question->type === 'combined') {
-            $rules[$prefix.'.answer_option_id'] = ['required', 'integer'];
-            $rules[$prefix.'.essay_answer'] = ['required', 'string', 'min:3', 'max:2000'];
-            $messages[$prefix.'.answer_option_id.required'] = 'Pilih salah satu opsi jawaban.';
-            $messages[$prefix.'.essay_answer.required'] = 'Alasan/esai wajib diisi untuk tipe combined.';
+            $rules[$prefix . '.answer_option_id'] = ['required', 'integer'];
+            $rules[$prefix . '.essay_answer'] = ['required', 'string', 'min:3', 'max:2000'];
+            $messages[$prefix . '.answer_option_id.required'] = 'Pilih salah satu opsi jawaban.';
+            $messages[$prefix . '.essay_answer.required'] = 'Alasan/esai wajib diisi untuk tipe combined.';
         }
 
         if ($rules !== []) {
@@ -346,23 +347,23 @@ class QuestionnaireFill extends Component
         $messages = [];
 
         foreach ($this->questions as $question) {
-            $prefix = 'answers.'.$question->id;
+            $prefix = 'answers.' . $question->id;
 
             if ($question->type === 'single_choice' && $question->is_required) {
-                $rules[$prefix.'.answer_option_id'] = ['required', 'integer'];
-                $messages[$prefix.'.answer_option_id.required'] = 'Pilih salah satu opsi jawaban.';
+                $rules[$prefix . '.answer_option_id'] = ['required', 'integer'];
+                $messages[$prefix . '.answer_option_id.required'] = 'Pilih salah satu opsi jawaban.';
             }
 
             if ($question->type === 'essay' && $question->is_required) {
-                $rules[$prefix.'.essay_answer'] = ['required', 'string', 'min:3', 'max:2000'];
-                $messages[$prefix.'.essay_answer.required'] = 'Jawaban esai wajib diisi.';
+                $rules[$prefix . '.essay_answer'] = ['required', 'string', 'min:3', 'max:2000'];
+                $messages[$prefix . '.essay_answer.required'] = 'Jawaban esai wajib diisi.';
             }
 
             if ($question->type === 'combined') {
-                $rules[$prefix.'.answer_option_id'] = ['required', 'integer'];
-                $rules[$prefix.'.essay_answer'] = ['required', 'string', 'min:3', 'max:2000'];
-                $messages[$prefix.'.answer_option_id.required'] = 'Pilih salah satu opsi jawaban.';
-                $messages[$prefix.'.essay_answer.required'] = 'Alasan/esai wajib diisi untuk tipe combined.';
+                $rules[$prefix . '.answer_option_id'] = ['required', 'integer'];
+                $rules[$prefix . '.essay_answer'] = ['required', 'string', 'min:3', 'max:2000'];
+                $messages[$prefix . '.answer_option_id.required'] = 'Pilih salah satu opsi jawaban.';
+                $messages[$prefix . '.essay_answer.required'] = 'Alasan/esai wajib diisi untuk tipe combined.';
             }
         }
 
@@ -378,7 +379,7 @@ class QuestionnaireFill extends Component
             $questionId = $this->extractQuestionIdFromErrorKey($firstErrorKey);
 
             if ($questionId !== null) {
-                $index = $this->questions->search(fn ($question): bool => (int) $question->id === $questionId);
+                $index = $this->questions->search(fn($question): bool => (int) $question->id === $questionId);
                 if (is_int($index)) {
                     $this->currentIndex = $index;
                 }
@@ -390,7 +391,7 @@ class QuestionnaireFill extends Component
 
     private function extractQuestionIdFromErrorKey(?string $errorKey): ?int
     {
-        if (! $errorKey) {
+        if (!$errorKey) {
             return null;
         }
 
@@ -403,41 +404,63 @@ class QuestionnaireFill extends Component
         return is_numeric($parts[1]) ? (int) $parts[1] : null;
     }
 
-    private function saveDraftForQuestion(int $questionId): void
+    /**
+     * @param array<int, int> $questionIds
+     */
+    private function persistDraftForQuestions(array $questionIds): void
     {
-        $question = $this->questions->firstWhere('id', $questionId);
-
-        if (! $question) {
+        if ($questionIds === []) {
             return;
         }
 
-        $state = $this->answers[$questionId] ?? ['answer_option_id' => null, 'essay_answer' => ''];
-        $optionId = $this->normalizeOptionId($question, Arr::get($state, 'answer_option_id'));
-        $essayAnswer = trim((string) Arr::get($state, 'essay_answer', ''));
-        $essayValue = $essayAnswer !== '' ? $essayAnswer : null;
+        $timestamp = now();
+        $upsertRows = [];
+        $deleteQuestionIds = [];
 
-        if ($optionId === null && $essayValue === null) {
-            Answer::query()
-                ->where('response_id', $this->response->id)
-                ->where('question_id', $questionId)
-                ->delete();
+        foreach ($questionIds as $questionId) {
+            $question = $this->questions->firstWhere('id', $questionId);
 
-            $this->lastDraftSavedAt = now()->format('H:i:s');
+            if (!$question) {
+                continue;
+            }
 
-            return;
-        }
+            $state = $this->answers[$questionId] ?? ['answer_option_id' => null, 'essay_answer' => ''];
+            $optionId = $this->normalizeOptionId($question, Arr::get($state, 'answer_option_id'));
+            $essayAnswer = trim((string) Arr::get($state, 'essay_answer', ''));
+            $essayValue = $essayAnswer !== '' ? $essayAnswer : null;
 
-        Answer::query()->updateOrCreate(
-            [
+            if ($optionId === null && $essayValue === null) {
+                $deleteQuestionIds[] = (int) $questionId;
+                continue;
+            }
+
+            $upsertRows[] = [
                 'response_id' => $this->response->id,
-                'question_id' => $questionId,
-            ],
-            [
+                'question_id' => (int) $questionId,
                 'answer_option_id' => $optionId,
                 'essay_answer' => $essayValue,
                 'calculated_score' => null,
-            ]
-        );
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ];
+        }
+
+        DB::transaction(function () use ($upsertRows, $deleteQuestionIds): void {
+            if ($upsertRows !== []) {
+                Answer::query()->upsert(
+                    $upsertRows,
+                    ['response_id', 'question_id'],
+                    ['answer_option_id', 'essay_answer', 'calculated_score', 'updated_at']
+                );
+            }
+
+            if ($deleteQuestionIds !== []) {
+                Answer::query()
+                    ->where('response_id', $this->response->id)
+                    ->whereIn('question_id', $deleteQuestionIds)
+                    ->delete();
+            }
+        });
 
         $this->response->update([
             'status' => 'draft',
@@ -447,14 +470,25 @@ class QuestionnaireFill extends Component
         $this->lastDraftSavedAt = now()->format('H:i:s');
     }
 
+    private function markCurrentQuestionDirty(): void
+    {
+        $current = $this->currentQuestion;
+
+        if (!$current) {
+            return;
+        }
+
+        $this->dirtyQuestionIds[(int) $current->id] = true;
+    }
+
     private function normalizeOptionId(\App\Models\Question $question, mixed $optionId): ?int
     {
-        if (! is_numeric($optionId)) {
+        if (!is_numeric($optionId)) {
             return null;
         }
 
         $normalized = (int) $optionId;
-        $exists = $question->answerOptions->contains(fn ($option): bool => (int) $option->id === $normalized);
+        $exists = $question->answerOptions->contains(fn($option): bool => (int) $option->id === $normalized);
 
         return $exists ? $normalized : null;
     }

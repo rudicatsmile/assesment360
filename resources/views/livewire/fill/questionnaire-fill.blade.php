@@ -7,7 +7,7 @@
         showToast = true;
         setTimeout(() => showToast = false, 1800);
     "
-    wire:poll.30s="autosaveHeartbeat"
+    @queue-autosave.window="setTimeout(() => { $wire.autosaveHeartbeat() }, 60)"
 >
     @if ($showThankYou)
         <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
@@ -51,7 +51,20 @@
     </div>
 
     @if ($currentQuestion)
-        <div class="rounded-xl border border-zinc-200 bg-white p-5">
+        <div
+            wire:key="question-card-{{ $currentQuestion->id }}-{{ $currentIndex }}"
+            class="relative rounded-xl border border-zinc-200 bg-white p-5"
+            wire:loading.class="opacity-70"
+            wire:target="nextQuestion,previousQuestion,goToQuestion"
+        >
+            <div
+                wire:loading.flex
+                wire:target="nextQuestion,previousQuestion,goToQuestion"
+                class="absolute inset-0 z-20 items-center justify-center rounded-xl bg-white/70 text-sm font-medium text-zinc-700 backdrop-blur-[1px]"
+            >
+                Memuat pertanyaan...
+            </div>
+
             <div class="mb-4 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Pertanyaan {{ $currentIndex + 1 }} / {{ $totalQuestions }}
             </div>
@@ -84,7 +97,7 @@
             @if ($currentQuestion->type === 'essay')
                 <div class="mt-4 space-y-2">
                     <textarea
-                        wire:model.live.debounce.300ms="answers.{{ $currentQuestion->id }}.essay_answer"
+                        wire:model.live.debounce.250ms="answers.{{ $currentQuestion->id }}.essay_answer"
                         rows="5"
                         maxlength="2000"
                         class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
@@ -122,7 +135,7 @@
                     @if (($answers[$currentQuestion->id]['answer_option_id'] ?? null) !== null)
                         <div class="space-y-2">
                             <textarea
-                                wire:model.live.debounce.300ms="answers.{{ $currentQuestion->id }}.essay_answer"
+                                wire:model.live.debounce.250ms="answers.{{ $currentQuestion->id }}.essay_answer"
                                 rows="4"
                                 maxlength="2000"
                                 class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
@@ -147,6 +160,8 @@
                     icon="arrow-left"
                     wire:click="previousQuestion"
                     :disabled="$currentIndex === 0"
+                    wire:loading.attr="disabled"
+                    wire:target="nextQuestion,previousQuestion,goToQuestion"
                 >
                     Sebelumnya
                 </flux:button>
@@ -160,6 +175,8 @@
                         icon="arrow-right"
                         wire:click="nextQuestion"
                         :disabled="$currentIndex >= $totalQuestions - 1"
+                        wire:loading.attr="disabled"
+                        wire:target="nextQuestion,previousQuestion,goToQuestion"
                     >
                         Berikutnya
                     </flux:button>
@@ -180,6 +197,8 @@
                     size="xs"
                     :variant="$i === $currentIndex ? 'primary' : 'outline'"
                     wire:click="goToQuestion({{ $i }})"
+                    wire:loading.attr="disabled"
+                    wire:target="nextQuestion,previousQuestion,goToQuestion"
                 >
                     {{ $i + 1 }}
                 </flux:button>
