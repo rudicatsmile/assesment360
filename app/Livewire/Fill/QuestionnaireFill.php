@@ -41,11 +41,8 @@ class QuestionnaireFill extends Component
     /** @var array<int, bool> */
     public array $dirtyQuestionIds = [];
 
-    private QuestionnaireScorer $scorer;
-
     public function mount(Questionnaire $questionnaire): void
     {
-        $this->scorer = app(QuestionnaireScorer::class);
         $this->questionnaire = $questionnaire;
         $user = Auth::user();
 
@@ -229,7 +226,7 @@ class QuestionnaireFill extends Component
                             'question_id' => $question->id,
                             'answer_option_id' => $optionId,
                             'essay_answer' => $essayValue,
-                            'calculated_score' => $this->scorer->calculateScoreForAnswer($question, $optionId),
+                            'calculated_score' => $this->scorer()->calculateScoreForAnswer($question, $optionId),
                             'created_at' => $timestamp,
                             'updated_at' => $timestamp,
                         ]
@@ -491,6 +488,11 @@ class QuestionnaireFill extends Component
         $exists = $question->answerOptions->contains(fn($option): bool => (int) $option->id === $normalized);
 
         return $exists ? $normalized : null;
+    }
+
+    private function scorer(): QuestionnaireScorer
+    {
+        return app(QuestionnaireScorer::class);
     }
 
     public function render()
