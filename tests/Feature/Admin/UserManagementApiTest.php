@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Departement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -13,6 +14,7 @@ class UserManagementApiTest extends TestCase
     public function test_admin_can_create_user_via_api(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
+        $department = Departement::query()->create(['name' => 'Akademik', 'urut' => 1]);
         $this->actingAs($admin);
 
         $response = $this->postJson(route('admin.users.store'), [
@@ -20,6 +22,7 @@ class UserManagementApiTest extends TestCase
             'email' => 'userbaru@example.test',
             'password' => 'password123',
             'role' => 'guru',
+            'department_id' => $department->id,
             'is_active' => true,
         ]);
 
@@ -30,12 +33,14 @@ class UserManagementApiTest extends TestCase
         $this->assertDatabaseHas('users', [
             'email' => 'userbaru@example.test',
             'role' => 'guru',
+            'department_id' => $department->id,
         ]);
     }
 
     public function test_admin_can_update_user_and_password_is_optional(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
+        $department = Departement::query()->create(['name' => 'Administrasi', 'urut' => 1]);
         $target = User::factory()->create(['role' => 'guru', 'is_active' => true]);
         $this->actingAs($admin);
 
@@ -43,6 +48,7 @@ class UserManagementApiTest extends TestCase
             'name' => 'Nama Update',
             'email' => 'updated@example.test',
             'role' => 'tata_usaha',
+            'department_id' => $department->id,
             'is_active' => false,
         ]);
 
@@ -55,6 +61,7 @@ class UserManagementApiTest extends TestCase
             'id' => $target->id,
             'email' => 'updated@example.test',
             'role' => 'tata_usaha',
+            'department_id' => $department->id,
             'is_active' => false,
         ]);
     }
@@ -84,15 +91,20 @@ class UserManagementApiTest extends TestCase
     public function test_admin_can_filter_and_search_users(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        User::factory()->create(['name' => 'Alice Guru', 'email' => 'alice.guru@example.test', 'role' => 'guru', 'is_active' => true]);
-        User::factory()->create(['name' => 'Bob TU', 'email' => 'bob.tu@example.test', 'role' => 'tata_usaha', 'is_active' => false]);
+        $departmentA = Departement::query()->create(['name' => 'Akademik', 'urut' => 1]);
+        $departmentB = Departement::query()->create(['name' => 'Administrasi', 'urut' => 2]);
+        User::factory()->create(['name' => 'Alice Guru', 'email' => 'alice.guru@example.test', 'role' => 'guru', 'department_id' => $departmentA->id, 'is_active' => true]);
+        User::factory()->create(['name' => 'Bob TU', 'email' => 'bob.tu@example.test', 'role' => 'tata_usaha', 'department_id' => $departmentB->id, 'is_active' => false]);
 
         $this->actingAs($admin);
 
         $response = $this->getJson(route('admin.users.data', [
             'search' => 'alice',
             'role' => 'guru',
+            'department_id' => $departmentA->id,
             'status' => 'active',
+            'sort_by' => 'department',
+            'sort_direction' => 'asc',
         ]));
 
         $response
@@ -103,6 +115,8 @@ class UserManagementApiTest extends TestCase
     public function test_admin_full_crud_flow_integration(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
+        $departmentA = Departement::query()->create(['name' => 'Kurikulum', 'urut' => 1]);
+        $departmentB = Departement::query()->create(['name' => 'Kesiswaan', 'urut' => 2]);
         $this->actingAs($admin);
 
         $create = $this->postJson(route('admin.users.store'), [
@@ -110,6 +124,7 @@ class UserManagementApiTest extends TestCase
             'email' => 'flow.user@example.test',
             'password' => 'password123',
             'role' => 'guru',
+            'department_id' => $departmentA->id,
             'is_active' => true,
         ])->assertCreated();
 
@@ -119,6 +134,7 @@ class UserManagementApiTest extends TestCase
             'name' => 'Flow User Updated',
             'email' => 'flow.user.updated@example.test',
             'role' => 'orang_tua',
+            'department_id' => $departmentB->id,
             'is_active' => false,
             'password' => 'newpassword123',
         ])->assertOk();

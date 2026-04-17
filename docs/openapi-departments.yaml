@@ -1,0 +1,116 @@
+openapi: 3.0.3
+info:
+  title: KepsekEval Departments API
+  version: 1.0.0
+  description: API CRUD master data departement untuk admin.
+servers:
+  - url: http://127.0.0.1:8000
+paths:
+  /admin/departments/data:
+    get:
+      summary: List departement (search, pagination, sorting)
+      tags: [Departments]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: sort_by
+          schema: { type: string, enum: [id, name, urut, created_at] }
+        - in: query
+          name: sort_direction
+          schema: { type: string, enum: [asc, desc] }
+        - in: query
+          name: per_page
+          schema: { type: integer, minimum: 5, maximum: 50 }
+      responses:
+        "200":
+          description: OK
+  /admin/departments:
+    post:
+      summary: Create departement
+      tags: [Departments]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartementRequest'
+      responses:
+        "201":
+          description: Created
+  /admin/departments/{id}:
+    get:
+      summary: Show departement
+      tags: [Departments]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+    patch:
+      summary: Update departement
+      tags: [Departments]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartementRequest'
+      responses:
+        "200":
+          description: Updated
+    delete:
+      summary: Delete departement
+      tags: [Departments]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Deleted
+        "422":
+          description: Still used by users
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: laravel_session
+  schemas:
+    DepartementRequest:
+      type: object
+      required: [name, urut]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          example: Akademik
+        urut:
+          type: integer
+          minimum: 0
+          example: 1
+        description:
+          type: string
+          nullable: true
+          example: Unit untuk urusan akademik

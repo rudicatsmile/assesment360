@@ -30,6 +30,7 @@ class UpdateUserRequest extends FormRequest
             ],
             'password' => ['nullable', 'string', 'min:8', 'max:100'],
             'role' => ['required', Rule::in(['admin', 'guru', 'tata_usaha', 'orang_tua'])],
+            'department_id' => ['nullable', 'integer', 'exists:departements,id'],
             'is_active' => ['required', 'boolean'],
         ];
     }
@@ -39,6 +40,7 @@ class UpdateUserRequest extends FormRequest
         $this->merge([
             'name' => trim((string) $this->input('name')),
             'email' => strtolower(trim((string) $this->input('email'))),
+            'department_id' => $this->input('department_id') !== '' ? (int) $this->input('department_id') : null,
         ]);
     }
 }

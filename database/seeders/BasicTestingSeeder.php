@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\AnswerOption;
+use App\Models\Departement;
 use App\Models\Question;
 use App\Models\Questionnaire;
 use App\Models\User;
@@ -12,11 +13,21 @@ class BasicTestingSeeder extends Seeder
 {
     public function run(): void
     {
+        $depAcademic = Departement::query()->updateOrCreate(
+            ['name' => 'Akademik'],
+            ['urut' => 1, 'description' => 'Urusan akademik']
+        );
+        $depAdministration = Departement::query()->updateOrCreate(
+            ['name' => 'Administrasi'],
+            ['urut' => 2, 'description' => 'Urusan administrasi']
+        );
+
         $admin = User::query()->updateOrCreate(
             ['email' => 'admin.basic@kepsekeval.test'],
             [
                 'name' => 'Admin Basic',
                 'role' => 'admin',
+                'department_id' => $depAdministration->id,
                 'password' => 'password',
                 'email_verified_at' => now(),
             ]
@@ -24,15 +35,15 @@ class BasicTestingSeeder extends Seeder
 
         User::query()->updateOrCreate(
             ['email' => 'guru.basic@kepsekeval.test'],
-            ['name' => 'Guru Basic', 'role' => 'guru', 'password' => 'password', 'email_verified_at' => now()]
+            ['name' => 'Guru Basic', 'role' => 'guru', 'department_id' => $depAcademic->id, 'password' => 'password', 'email_verified_at' => now()]
         );
         User::query()->updateOrCreate(
             ['email' => 'tu.basic@kepsekeval.test'],
-            ['name' => 'TU Basic', 'role' => 'tata_usaha', 'password' => 'password', 'email_verified_at' => now()]
+            ['name' => 'TU Basic', 'role' => 'tata_usaha', 'department_id' => $depAdministration->id, 'password' => 'password', 'email_verified_at' => now()]
         );
         User::query()->updateOrCreate(
             ['email' => 'ortu.basic@kepsekeval.test'],
-            ['name' => 'Orang Tua Basic', 'role' => 'orang_tua', 'password' => 'password', 'email_verified_at' => now()]
+            ['name' => 'Orang Tua Basic', 'role' => 'orang_tua', 'department_id' => $depAcademic->id, 'password' => 'password', 'email_verified_at' => now()]
         );
 
         $questionnaire = Questionnaire::query()->updateOrCreate(

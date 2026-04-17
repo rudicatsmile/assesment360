@@ -44,6 +44,17 @@
                     @error('role') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
                 </label>
 
+                <label class="space-y-1 text-sm">
+                    <span class="font-medium text-zinc-700">Department</span>
+                    <select wire:model.live="department_id" class="w-full rounded-lg border border-zinc-300 px-3 py-2">
+                        <option value="">Tanpa Department</option>
+                        @foreach ($departments as $department)
+                            <option value="{{ $department->id }}">{{ $department->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('department_id') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                </label>
+
                 <label class="space-y-1 text-sm md:col-span-2">
                     <span class="font-medium text-zinc-700">Status Aktif</span>
                     <select wire:model.live="is_active" class="w-full rounded-lg border border-zinc-300 px-3 py-2">
@@ -61,7 +72,7 @@
         </div>
     @endif
 
-    <div class="grid gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm md:grid-cols-4">
+    <div class="grid gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm md:grid-cols-5">
         <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nama/email..." class="rounded-lg border border-zinc-300 px-3 py-2 text-sm">
         <select wire:model.live="roleFilter" class="rounded-lg border border-zinc-300 px-3 py-2 text-sm">
             <option value="">Semua role</option>
@@ -75,6 +86,12 @@
             <option value="active">Aktif</option>
             <option value="inactive">Nonaktif</option>
         </select>
+        <select wire:model.live="departmentFilter" class="rounded-lg border border-zinc-300 px-3 py-2 text-sm">
+            <option value="">Semua department</option>
+            @foreach ($departments as $department)
+                <option value="{{ $department->id }}">{{ $department->name }}</option>
+            @endforeach
+        </select>
         <select wire:model.live="perPage" class="rounded-lg border border-zinc-300 px-3 py-2 text-sm">
             <option value="10">10 / halaman</option>
             <option value="20">20 / halaman</option>
@@ -87,12 +104,12 @@
             <table class="min-w-full divide-y divide-zinc-200 text-sm">
                 <thead class="bg-zinc-50 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
                     <tr>
-                        <th class="px-4 py-3">ID</th>
-                        <th class="px-4 py-3">Nama</th>
-                        <th class="px-4 py-3">Email</th>
-                        <th class="px-4 py-3">Role</th>
-                        <th class="px-4 py-3">Status</th>
-                        <th class="px-4 py-3">Bergabung</th>
+                        <th class="px-4 py-3"><button type="button" wire:click="sortUsers('id')" class="inline-flex items-center gap-1">ID <span class="text-[10px] text-zinc-500">{{ $sortBy === 'id' ? ($sortDirection === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+                        <th class="px-4 py-3"><button type="button" wire:click="sortUsers('name')" class="inline-flex items-center gap-1">Nama <span class="text-[10px] text-zinc-500">{{ $sortBy === 'name' ? ($sortDirection === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+                        <th class="px-4 py-3"><button type="button" wire:click="sortUsers('email')" class="inline-flex items-center gap-1">Email <span class="text-[10px] text-zinc-500">{{ $sortBy === 'email' ? ($sortDirection === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+                        <th class="px-4 py-3"><button type="button" wire:click="sortUsers('role')" class="inline-flex items-center gap-1">Role <span class="text-[10px] text-zinc-500">{{ $sortBy === 'role' ? ($sortDirection === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+                        <th class="px-4 py-3"><button type="button" wire:click="sortUsers('department')" class="inline-flex items-center gap-1">Department <span class="text-[10px] text-zinc-500">{{ $sortBy === 'department' ? ($sortDirection === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+                        <th class="px-4 py-3"><button type="button" wire:click="sortUsers('is_active')" class="inline-flex items-center gap-1">Status <span class="text-[10px] text-zinc-500">{{ $sortBy === 'is_active' ? ($sortDirection === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
                         <th class="px-4 py-3 text-right">Aksi</th>
                     </tr>
                 </thead>
@@ -103,12 +120,12 @@
                             <td class="px-4 py-3 text-zinc-900">{{ $user->name }}</td>
                             <td class="px-4 py-3 text-zinc-700">{{ $user->email }}</td>
                             <td class="px-4 py-3 text-zinc-700">{{ $user->role }}</td>
+                            <td class="px-4 py-3 text-zinc-700">{{ $user->departmentRef?->name ?: '-' }}</td>
                             <td class="px-4 py-3">
                                 <span class="rounded-full px-2 py-1 text-xs font-medium {{ $user->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-200 text-zinc-700' }}">
                                     {{ $user->is_active ? 'Aktif' : 'Nonaktif' }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-zinc-500">{{ $user->created_at?->format('d M Y') }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex justify-end gap-2">
                                     <flux:button size="xs" variant="outline" wire:click="startEdit({{ $user->id }})">Edit</flux:button>

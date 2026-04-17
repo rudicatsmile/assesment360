@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\QuestionnaireExportController;
+use App\Http\Controllers\Admin\DepartmentManagementController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Livewire\Admin\AdminDashboard;
@@ -8,6 +9,7 @@ use App\Livewire\Admin\QuestionnaireAnalytics;
 use App\Livewire\Admin\QuestionnaireForm;
 use App\Livewire\Admin\QuestionnaireList;
 use App\Livewire\Admin\QuestionManager;
+use App\Livewire\Admin\DepartmentDirectory;
 use App\Livewire\Admin\UserDirectory;
 use App\Livewire\Fill\AvailableQuestionnaires;
 use App\Livewire\Fill\ParentDashboard;
@@ -63,6 +65,25 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     });
 
     Route::get('/users', UserDirectory::class)->name('users.index');
+    Route::get('/departments', DepartmentDirectory::class)->name('departments.index');
+    Route::prefix('departments')->name('departments.')->group(function (): void {
+        Route::get('/data', [DepartmentManagementController::class, 'index'])
+            ->middleware('throttle:120,1')
+            ->name('data');
+        Route::get('/{departement}', [DepartmentManagementController::class, 'show'])
+            ->middleware('throttle:120,1')
+            ->name('show');
+        Route::post('/', [DepartmentManagementController::class, 'store'])
+            ->middleware('throttle:30,1')
+            ->name('store');
+        Route::match(['put', 'patch'], '/{departement}', [DepartmentManagementController::class, 'update'])
+            ->middleware('throttle:30,1')
+            ->name('update');
+        Route::delete('/{departement}', [DepartmentManagementController::class, 'destroy'])
+            ->middleware('throttle:30,1')
+            ->name('destroy');
+    });
+
     Route::prefix('users')->name('users.')->group(function (): void {
         Route::get('/data', [UserManagementController::class, 'index'])
             ->middleware('throttle:120,1')

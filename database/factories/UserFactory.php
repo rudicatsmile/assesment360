@@ -28,6 +28,8 @@ class UserFactory extends Factory
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'role' => fake()->randomElement(['admin', 'guru', 'tata_usaha', 'orang_tua']),
+            'department' => fake()->optional()->randomElement(['Akademik', 'Kesiswaan', 'Kurikulum', 'Administrasi']),
+            'department_id' => null,
             'is_active' => true,
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
@@ -40,7 +42,7 @@ class UserFactory extends Factory
      */
     public function unverified(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'email_verified_at' => null,
         ]);
     }

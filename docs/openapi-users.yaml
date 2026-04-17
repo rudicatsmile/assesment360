@@ -20,6 +20,9 @@ paths:
           name: role
           schema: { type: string, enum: [admin, guru, tata_usaha, orang_tua] }
         - in: query
+          name: department_id
+          schema: { type: integer }
+        - in: query
           name: status
           schema: { type: string, enum: [active, inactive] }
         - in: query
@@ -39,7 +42,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserCreateRequest'
+              $ref: "#/components/schemas/UserCreateRequest"
       responses:
         "201":
           description: Created
@@ -74,7 +77,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserUpdateRequest'
+              $ref: "#/components/schemas/UserUpdateRequest"
       responses:
         "200":
           description: Updated
@@ -110,13 +113,16 @@ components:
         email: { type: string, format: email, example: "user@example.com" }
         password: { type: string, minLength: 8, example: "password123" }
         role: { type: string, enum: [admin, guru, tata_usaha, orang_tua] }
+        department_id: { type: integer, nullable: true, example: 1 }
         is_active: { type: boolean, example: true }
     UserUpdateRequest:
       type: object
       required: [name, email, role, is_active]
       properties:
         name: { type: string, example: "Nama Update" }
-        email: { type: string, format: email, example: "user-update@example.com" }
+        email:
+          { type: string, format: email, example: "user-update@example.com" }
         password: { type: string, minLength: 8, nullable: true }
         role: { type: string, enum: [admin, guru, tata_usaha, orang_tua] }
+        department_id: { type: integer, nullable: true, example: 2 }
         is_active: { type: boolean, example: false }

@@ -35,6 +35,7 @@ class StoreUserRequest extends FormRequest
             'email' => ['required', 'email:rfc,dns', 'max:255', 'unique:users,email'],
             'password' => $passwordRule,
             'role' => ['required', Rule::in(['admin', 'guru', 'tata_usaha', 'orang_tua'])],
+            'department_id' => ['nullable', 'integer', 'exists:departements,id'],
             'is_active' => ['required', 'boolean'],
         ];
     }
@@ -44,6 +45,7 @@ class StoreUserRequest extends FormRequest
         $this->merge([
             'name' => trim((string) $this->input('name')),
             'email' => strtolower(trim((string) $this->input('email'))),
+            'department_id' => $this->input('department_id') !== '' ? (int) $this->input('department_id') : null,
         ]);
     }
 }

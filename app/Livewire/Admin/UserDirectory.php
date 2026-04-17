@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\Departement;
 use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Hash;
@@ -23,6 +24,8 @@ class UserDirectory extends Component
 
     public string $statusFilter = '';
 
+    public ?string $departmentFilter = '';
+
     public int $perPage = 10;
 
     public bool $showForm = false;
@@ -37,7 +40,13 @@ class UserDirectory extends Component
 
     public string $role = 'guru';
 
+    public ?string $department_id = '';
+
     public bool $is_active = true;
+
+    public string $sortBy = 'created_at';
+
+    public string $sortDirection = 'desc';
 
     public function mount(): void
     {
@@ -59,6 +68,11 @@ class UserDirectory extends Component
         $this->resetPage();
     }
 
+    public function updatingDepartmentFilter(): void
+    {
+        $this->resetPage();
+    }
+
     public function startCreate(): void
     {
         $this->resetForm();
@@ -73,6 +87,7 @@ class UserDirectory extends Component
         $this->name = $user->name;
         $this->email = $user->email;
         $this->role = $user->role;
+        $this->department_id = $user->department_id ? (string) $user->department_id : '';
         $this->is_active = (bool) $user->is_active;
         $this->password = '';
         $this->showForm = true;
@@ -88,15 +103,18 @@ class UserDirectory extends Component
     {
         $this->name = trim($this->name);
         $this->email = strtolower(trim($this->email));
+        $this->department_id = $this->department_id !== '' ? (string) ((int) $this->department_id) : null;
         $validated = $this->validate($this->rules(), $this->messages());
 
         if ($this->editingUserId) {
             $user = User::query()->findOrFail($this->editingUserId);
-            $before = $user->only(['name', 'email', 'role', 'is_active']);
+            $before = $user->only(['name', 'email', 'role', 'department_id', 'is_active']);
 
             $user->name = $validated['name'];
             $user->email = $validated['email'];
             $user->role = $validated['role'];
+            $user->department_id = $validated['department_id'] !== null ? (int) $validated['department_id'] : null;
+            $user->department = $this->resolveDepartmentName($validated['department_id']);
             $user->is_active = (bool) $validated['is_active'];
 
             if (!empty($validated['password'])) {
@@ -109,7 +127,7 @@ class UserDirectory extends Component
                 'actor_id' => auth()->id(),
                 'target_user_id' => $user->id,
                 'before' => $before,
-                'after' => $user->only(['name', 'email', 'role', 'is_active']),
+                'after' => $user->only(['name', 'email', 'role', 'department_id', 'is_active']),
             ]);
 
             session()->flash('success', 'Pengguna berhasil diperbarui.');
@@ -119,6 +137,8 @@ class UserDirectory extends Component
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
                 'role' => $validated['role'],
+                'department_id' => $validated['department_id'] !== null ? (int) $validated['department_id'] : null,
+                'department' => $this->resolveDepartmentName($validated['department_id']),
                 'is_active' => (bool) $validated['is_active'],
                 'email_verified_at' => now(),
             ]);
@@ -176,6 +196,7 @@ class UserDirectory extends Component
             ],
             'password' => $passwordRule,
             'role' => ['required', Rule::in(['admin', 'guru', 'tata_usaha', 'orang_tua'])],
+            'department_id' => ['nullable', 'integer', 'exists:departements,id'],
             'is_active' => ['required', 'boolean'],
         ];
     }
@@ -199,8 +220,36 @@ class UserDirectory extends Component
         $this->email = '';
         $this->password = '';
         $this->role = 'guru';
+        $this->department_id = '';
         $this->is_active = true;
         $this->resetErrorBag();
+    }
+
+    private function resolveDepartmentName(?string $departmentId): ?string
+    {
+        if (!$departmentId) {
+            return null;
+        }
+
+        return Departement::query()
+            ->where('id', (int) $departmentId)
+            ->value('name');
+    }
+
+    public function sortUsers(string $field): void
+    {
+        $allowed = ['id', 'name', 'email', 'role', 'department', 'is_active', 'created_at'];
+
+        if (!in_array($field, $allowed, true)) {
+            return;
+        }
+
+        if ($this->sortBy === $field) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortBy = $field;
+            $this->sortDirection = 'asc';
+        }
     }
 
     public function render()
@@ -211,10 +260,14 @@ class UserDirectory extends Component
                 $search = trim($this->search);
                 $query->where(function ($nested) use ($search): void {
                     $nested->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhereHas('departmentRef', fn($q) => $q->where('name', 'like', "%{$search}%"));
                 });
             })
             ->when($this->roleFilter !== '', fn($query) => $query->where('role', $this->roleFilter))
+            ->when($this->departmentFilter !== '', function ($query): void {
+                $query->where('department_id', (int) $this->departmentFilter);
+            })
             ->when($this->statusFilter !== '', function ($query): void {
                 if ($this->statusFilter === 'active') {
                     $query->where('is_active', true);
@@ -222,11 +275,26 @@ class UserDirectory extends Component
                     $query->where('is_active', false);
                 }
             })
-            ->latest()
+            ->when($this->sortBy === 'department', function ($query): void {
+                $query->orderBy(
+                    Departement::query()
+                        ->select('name')
+                        ->whereColumn('departements.id', 'users.department_id')
+                        ->limit(1),
+                    $this->sortDirection
+                );
+            }, fn($query) => $query->orderBy($this->sortBy, $this->sortDirection))
+            ->with('departmentRef:id,name')
             ->paginate($this->perPage);
+
+        $departments = Departement::query()
+            ->orderBy('urut')
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         return view('livewire.admin.user-directory', [
             'users' => $users,
+            'departments' => $departments,
         ]);
     }
 }

@@ -42,11 +42,18 @@
                         Analytics
                     </flux:button>
                 </a>
-                <a href="{{ route('admin.users.index') }}" wire:navigate class="block">
-                    <flux:button variant="ghost" icon="users" class="w-full justify-start">
-                        Users
-                    </flux:button>
-                </a>
+                @if (auth()->user()?->role === 'admin')
+                    <a href="{{ route('admin.departments.index') }}" wire:navigate class="block">
+                        <flux:button variant="ghost" icon="building-office" class="w-full justify-start">
+                            Departments
+                        </flux:button>
+                    </a>
+                    <a href="{{ route('admin.users.index') }}" wire:navigate class="block">
+                        <flux:button variant="ghost" icon="users" class="w-full justify-start">
+                            Users
+                        </flux:button>
+                    </a>
+                @endif
             </nav>
 
             <div class="mt-6 space-y-2">

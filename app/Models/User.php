@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -17,6 +18,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'department',
+        'department_id',
         'is_active',
     ];
 
@@ -39,5 +42,10 @@ class User extends Authenticatable
     public function createdQuestionnaires(): HasMany
     {
         return $this->hasMany(Questionnaire::class, 'created_by');
+    }
+
+    public function departmentRef(): BelongsTo
+    {
+        return $this->belongsTo(Departement::class, 'department_id');
     }
 }
