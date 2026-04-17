@@ -33,6 +33,7 @@ class StoreUserRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'min:3', 'max:150'],
             'email' => ['required', 'email:rfc,dns', 'max:255', 'unique:users,email'],
+            'phone_number' => ['nullable', 'string', 'max:25', 'regex:/^[0-9+\-\s()]+$/'],
             'password' => $passwordRule,
             'role' => ['required', Rule::in(['admin', 'guru', 'tata_usaha', 'orang_tua'])],
             'department_id' => ['nullable', 'integer', 'exists:departements,id'],
@@ -45,6 +46,7 @@ class StoreUserRequest extends FormRequest
         $this->merge([
             'name' => trim((string) $this->input('name')),
             'email' => strtolower(trim((string) $this->input('email'))),
+            'phone_number' => trim((string) $this->input('phone_number')),
             'department_id' => $this->input('department_id') !== '' ? (int) $this->input('department_id') : null,
         ]);
     }

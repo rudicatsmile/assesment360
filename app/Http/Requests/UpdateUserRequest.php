@@ -28,6 +28,7 @@ class UpdateUserRequest extends FormRequest
                 'max:255',
                 Rule::unique('users', 'email')->ignore($user?->id),
             ],
+            'phone_number' => ['nullable', 'string', 'max:25', 'regex:/^[0-9+\-\s()]+$/'],
             'password' => ['nullable', 'string', 'min:8', 'max:100'],
             'role' => ['required', Rule::in(['admin', 'guru', 'tata_usaha', 'orang_tua'])],
             'department_id' => ['nullable', 'integer', 'exists:departements,id'],
@@ -40,6 +41,7 @@ class UpdateUserRequest extends FormRequest
         $this->merge([
             'name' => trim((string) $this->input('name')),
             'email' => strtolower(trim((string) $this->input('email'))),
+            'phone_number' => trim((string) $this->input('phone_number')),
             'department_id' => $this->input('department_id') !== '' ? (int) $this->input('department_id') : null,
         ]);
     }

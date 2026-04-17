@@ -27,6 +27,7 @@ class UserFactory extends Factory
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
+            'phone_number' => fake()->optional()->numerify('08##########'),
             'role' => fake()->randomElement(['admin', 'guru', 'tata_usaha', 'orang_tua']),
             'department' => fake()->optional()->randomElement(['Akademik', 'Kesiswaan', 'Kurikulum', 'Administrasi']),
             'department_id' => null,

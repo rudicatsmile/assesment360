@@ -28,6 +28,12 @@
                 </label>
 
                 <label class="space-y-1 text-sm">
+                    <span class="font-medium text-zinc-700">Nomor Telepon</span>
+                    <input type="text" wire:model.live.debounce.300ms="phone_number" class="w-full rounded-lg border border-zinc-300 px-3 py-2" placeholder="08xxxxxxxxxx">
+                    @error('phone_number') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                </label>
+
+                <label class="space-y-1 text-sm">
                     <span class="font-medium text-zinc-700">Password {{ $editingUserId ? '(opsional)' : '' }}</span>
                     <input type="password" wire:model.live.debounce.300ms="password" class="w-full rounded-lg border border-zinc-300 px-3 py-2">
                     @error('password') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
@@ -72,7 +78,7 @@
         </div>
     @endif
 
-    <div class="grid gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm md:grid-cols-5">
+    <div class="grid gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm md:grid-cols-6">
         <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nama/email..." class="rounded-lg border border-zinc-300 px-3 py-2 text-sm">
         <select wire:model.live="roleFilter" class="rounded-lg border border-zinc-300 px-3 py-2 text-sm">
             <option value="">Semua role</option>
@@ -92,6 +98,7 @@
                 <option value="{{ $department->id }}">{{ $department->name }}</option>
             @endforeach
         </select>
+        <input type="text" wire:model.live.debounce.300ms="phoneFilter" placeholder="Filter no. telepon..." class="rounded-lg border border-zinc-300 px-3 py-2 text-sm">
         <select wire:model.live="perPage" class="rounded-lg border border-zinc-300 px-3 py-2 text-sm">
             <option value="10">10 / halaman</option>
             <option value="20">20 / halaman</option>
@@ -106,7 +113,12 @@
                     <tr>
                         <th class="px-4 py-3"><button type="button" wire:click="sortUsers('id')" class="inline-flex items-center gap-1">ID <span class="text-[10px] text-zinc-500">{{ $sortBy === 'id' ? ($sortDirection === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
                         <th class="px-4 py-3"><button type="button" wire:click="sortUsers('name')" class="inline-flex items-center gap-1">Nama <span class="text-[10px] text-zinc-500">{{ $sortBy === 'name' ? ($sortDirection === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
-                        <th class="px-4 py-3"><button type="button" wire:click="sortUsers('email')" class="inline-flex items-center gap-1">Email <span class="text-[10px] text-zinc-500">{{ $sortBy === 'email' ? ($sortDirection === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+                        <th class="px-4 py-3">
+                            <div class="inline-flex items-center gap-2">
+                                <button type="button" wire:click="sortUsers('email')" class="inline-flex items-center gap-1">Kontak <span class="text-[10px] text-zinc-500">{{ $sortBy === 'email' ? ($sortDirection === 'asc' ? '▲' : '▼') : '↕' }}</span></button>
+                                <button type="button" wire:click="sortUsers('phone_number')" class="inline-flex items-center gap-1 text-zinc-500">No. HP <span class="text-[10px] text-zinc-500">{{ $sortBy === 'phone_number' ? ($sortDirection === 'asc' ? '▲' : '▼') : '↕' }}</span></button>
+                            </div>
+                        </th>
                         <th class="px-4 py-3"><button type="button" wire:click="sortUsers('role')" class="inline-flex items-center gap-1">Role <span class="text-[10px] text-zinc-500">{{ $sortBy === 'role' ? ($sortDirection === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
                         <th class="px-4 py-3"><button type="button" wire:click="sortUsers('department')" class="inline-flex items-center gap-1">Department <span class="text-[10px] text-zinc-500">{{ $sortBy === 'department' ? ($sortDirection === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
                         <th class="px-4 py-3"><button type="button" wire:click="sortUsers('is_active')" class="inline-flex items-center gap-1">Status <span class="text-[10px] text-zinc-500">{{ $sortBy === 'is_active' ? ($sortDirection === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
@@ -118,7 +130,12 @@
                         <tr>
                             <td class="px-4 py-3 text-zinc-500">{{ $user->id }}</td>
                             <td class="px-4 py-3 text-zinc-900">{{ $user->name }}</td>
-                            <td class="px-4 py-3 text-zinc-700">{{ $user->email }}</td>
+                            <td class="px-4 py-3 text-zinc-700">
+                                <div class="flex min-w-[220px] flex-col">
+                                    <span class="truncate">{{ $user->email }}</span>
+                                    <span class="text-xs text-zinc-500">{{ $user->phone_number ?: '-' }}</span>
+                                </div>
+                            </td>
                             <td class="px-4 py-3 text-zinc-700">{{ $user->role }}</td>
                             <td class="px-4 py-3 text-zinc-700">{{ $user->departmentRef?->name ?: '-' }}</td>
                             <td class="px-4 py-3">
@@ -142,7 +159,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-6 text-center text-zinc-500">Belum ada data pengguna.</td>
+                            <td colspan="8" class="px-4 py-6 text-center text-zinc-500">Belum ada data pengguna.</td>
                         </tr>
                     @endforelse
                 </tbody>

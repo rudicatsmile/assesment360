@@ -22,10 +22,11 @@ class UserManagementController extends Controller
         $role = (string) $request->query('role', '');
         $departmentId = (int) $request->query('department_id', 0);
         $status = (string) $request->query('status', '');
+        $phone = trim((string) $request->query('phone', ''));
         $sortBy = (string) $request->query('sort_by', 'created_at');
         $sortDirection = strtolower((string) $request->query('sort_direction', 'desc')) === 'asc' ? 'asc' : 'desc';
         $perPage = max(5, min((int) $request->query('per_page', 10), 50));
-        $allowedSort = ['id', 'name', 'email', 'role', 'department', 'is_active', 'created_at'];
+        $allowedSort = ['id', 'name', 'email', 'phone_number', 'role', 'department', 'is_active', 'created_at'];
         if (!in_array($sortBy, $allowedSort, true)) {
             $sortBy = 'created_at';
         }
@@ -35,11 +36,13 @@ class UserManagementController extends Controller
                 $query->where(function ($nested) use ($search): void {
                     $nested->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone_number', 'like', "%{$search}%")
                         ->orWhereHas('departmentRef', fn($q) => $q->where('name', 'like', "%{$search}%"));
                 });
             })
             ->when($role !== '', fn($query) => $query->where('role', $role))
             ->when($departmentId > 0, fn($query) => $query->where('department_id', $departmentId))
+            ->when($phone !== '', fn($query) => $query->where('phone_number', 'like', "%{$phone}%"))
             ->when($status !== '', function ($query) use ($status): void {
                 if ($status === 'active') {
                     $query->where('is_active', true);
@@ -70,6 +73,7 @@ class UserManagementController extends Controller
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            'phone_number' => $user->phone_number,
             'role' => $user->role,
             'department_id' => $user->department_id,
             'department_name' => $user->departmentRef?->name,
@@ -86,6 +90,7 @@ class UserManagementController extends Controller
         $user = User::query()->create([
             'name' => $data['name'],
             'email' => $data['email'],
+            'phone_number' => $data['phone_number'] !== '' ? $data['phone_number'] : null,
             'password' => Hash::make($data['password']),
             'role' => $data['role'],
             'department_id' => $data['department_id'] ?? null,
@@ -109,10 +114,11 @@ class UserManagementController extends Controller
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
         $data = $request->validated();
-        $before = $user->only(['name', 'email', 'role', 'department_id', 'is_active']);
+        $before = $user->only(['name', 'email', 'phone_number', 'role', 'department_id', 'is_active']);
 
         $user->name = $data['name'];
         $user->email = $data['email'];
+        $user->phone_number = $data['phone_number'] !== '' ? $data['phone_number'] : null;
         $user->role = $data['role'];
         $user->department_id = $data['department_id'] ?? null;
         $user->department = $this->resolveDepartmentName($data['department_id'] ?? null);
@@ -128,7 +134,7 @@ class UserManagementController extends Controller
             'actor_id' => $request->user()?->id,
             'target_user_id' => $user->id,
             'before' => $before,
-            'after' => $user->only(['name', 'email', 'role', 'department_id', 'is_active']),
+            'after' => $user->only(['name', 'email', 'phone_number', 'role', 'department_id', 'is_active']),
             'password_updated' => !empty($data['password']),
         ]);
 
@@ -168,7 +174,7 @@ class UserManagementController extends Controller
 
     private function resolveDepartmentName(?int $departmentId): ?string
     {
-        if (! $departmentId) {
+        if (!$departmentId) {
             return null;
         }
 

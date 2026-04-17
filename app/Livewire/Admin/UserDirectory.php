@@ -26,6 +26,8 @@ class UserDirectory extends Component
 
     public ?string $departmentFilter = '';
 
+    public string $phoneFilter = '';
+
     public int $perPage = 10;
 
     public bool $showForm = false;
@@ -35,6 +37,8 @@ class UserDirectory extends Component
     public string $name = '';
 
     public string $email = '';
+
+    public string $phone_number = '';
 
     public string $password = '';
 
@@ -73,6 +77,11 @@ class UserDirectory extends Component
         $this->resetPage();
     }
 
+    public function updatingPhoneFilter(): void
+    {
+        $this->resetPage();
+    }
+
     public function startCreate(): void
     {
         $this->resetForm();
@@ -86,6 +95,7 @@ class UserDirectory extends Component
         $this->editingUserId = $user->id;
         $this->name = $user->name;
         $this->email = $user->email;
+        $this->phone_number = (string) ($user->phone_number ?? '');
         $this->role = $user->role;
         $this->department_id = $user->department_id ? (string) $user->department_id : '';
         $this->is_active = (bool) $user->is_active;
@@ -103,15 +113,17 @@ class UserDirectory extends Component
     {
         $this->name = trim($this->name);
         $this->email = strtolower(trim($this->email));
+        $this->phone_number = trim($this->phone_number);
         $this->department_id = $this->department_id !== '' ? (string) ((int) $this->department_id) : null;
         $validated = $this->validate($this->rules(), $this->messages());
 
         if ($this->editingUserId) {
             $user = User::query()->findOrFail($this->editingUserId);
-            $before = $user->only(['name', 'email', 'role', 'department_id', 'is_active']);
+            $before = $user->only(['name', 'email', 'phone_number', 'role', 'department_id', 'is_active']);
 
             $user->name = $validated['name'];
             $user->email = $validated['email'];
+            $user->phone_number = $validated['phone_number'] !== '' ? $validated['phone_number'] : null;
             $user->role = $validated['role'];
             $user->department_id = $validated['department_id'] !== null ? (int) $validated['department_id'] : null;
             $user->department = $this->resolveDepartmentName($validated['department_id']);
@@ -127,7 +139,7 @@ class UserDirectory extends Component
                 'actor_id' => auth()->id(),
                 'target_user_id' => $user->id,
                 'before' => $before,
-                'after' => $user->only(['name', 'email', 'role', 'department_id', 'is_active']),
+                'after' => $user->only(['name', 'email', 'phone_number', 'role', 'department_id', 'is_active']),
             ]);
 
             session()->flash('success', 'Pengguna berhasil diperbarui.');
@@ -135,6 +147,7 @@ class UserDirectory extends Component
             $user = User::query()->create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
+                'phone_number' => $validated['phone_number'] !== '' ? $validated['phone_number'] : null,
                 'password' => Hash::make($validated['password']),
                 'role' => $validated['role'],
                 'department_id' => $validated['department_id'] !== null ? (int) $validated['department_id'] : null,
@@ -194,6 +207,7 @@ class UserDirectory extends Component
                 'max:255',
                 Rule::unique('users', 'email')->ignore($this->editingUserId),
             ],
+            'phone_number' => ['nullable', 'string', 'max:25', 'regex:/^[0-9+\-\s()]+$/'],
             'password' => $passwordRule,
             'role' => ['required', Rule::in(['admin', 'guru', 'tata_usaha', 'orang_tua'])],
             'department_id' => ['nullable', 'integer', 'exists:departements,id'],
@@ -208,6 +222,7 @@ class UserDirectory extends Component
     {
         return [
             'email.unique' => 'Email sudah digunakan pengguna lain.',
+            'phone_number.regex' => 'Format nomor telepon tidak valid.',
             'password.min' => 'Password minimal 8 karakter.',
         ];
     }
@@ -218,6 +233,7 @@ class UserDirectory extends Component
         $this->editingUserId = null;
         $this->name = '';
         $this->email = '';
+        $this->phone_number = '';
         $this->password = '';
         $this->role = 'guru';
         $this->department_id = '';
@@ -238,7 +254,7 @@ class UserDirectory extends Component
 
     public function sortUsers(string $field): void
     {
-        $allowed = ['id', 'name', 'email', 'role', 'department', 'is_active', 'created_at'];
+        $allowed = ['id', 'name', 'email', 'phone_number', 'role', 'department', 'is_active', 'created_at'];
 
         if (!in_array($field, $allowed, true)) {
             return;
@@ -261,6 +277,7 @@ class UserDirectory extends Component
                 $query->where(function ($nested) use ($search): void {
                     $nested->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone_number', 'like', "%{$search}%")
                         ->orWhereHas('departmentRef', fn($q) => $q->where('name', 'like', "%{$search}%"));
                 });
             })
@@ -268,6 +285,7 @@ class UserDirectory extends Component
             ->when($this->departmentFilter !== '', function ($query): void {
                 $query->where('department_id', (int) $this->departmentFilter);
             })
+            ->when($this->phoneFilter !== '', fn($query) => $query->where('phone_number', 'like', '%'.trim($this->phoneFilter).'%'))
             ->when($this->statusFilter !== '', function ($query): void {
                 if ($this->statusFilter === 'active') {
                     $query->where('is_active', true);

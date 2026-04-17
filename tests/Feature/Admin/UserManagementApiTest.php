@@ -20,6 +20,7 @@ class UserManagementApiTest extends TestCase
         $response = $this->postJson(route('admin.users.store'), [
             'name' => 'User Baru',
             'email' => 'userbaru@example.test',
+            'phone_number' => '081234567890',
             'password' => 'password123',
             'role' => 'guru',
             'department_id' => $department->id,
@@ -32,6 +33,7 @@ class UserManagementApiTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'email' => 'userbaru@example.test',
+            'phone_number' => '081234567890',
             'role' => 'guru',
             'department_id' => $department->id,
         ]);
@@ -47,6 +49,7 @@ class UserManagementApiTest extends TestCase
         $response = $this->patchJson(route('admin.users.update', $target), [
             'name' => 'Nama Update',
             'email' => 'updated@example.test',
+            'phone_number' => '081111111111',
             'role' => 'tata_usaha',
             'department_id' => $department->id,
             'is_active' => false,
@@ -60,6 +63,7 @@ class UserManagementApiTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id' => $target->id,
             'email' => 'updated@example.test',
+            'phone_number' => '081111111111',
             'role' => 'tata_usaha',
             'department_id' => $department->id,
             'is_active' => false,
@@ -93,7 +97,7 @@ class UserManagementApiTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $departmentA = Departement::query()->create(['name' => 'Akademik', 'urut' => 1]);
         $departmentB = Departement::query()->create(['name' => 'Administrasi', 'urut' => 2]);
-        User::factory()->create(['name' => 'Alice Guru', 'email' => 'alice.guru@example.test', 'role' => 'guru', 'department_id' => $departmentA->id, 'is_active' => true]);
+        User::factory()->create(['name' => 'Alice Guru', 'email' => 'alice.guru@example.test', 'phone_number' => '082222222222', 'role' => 'guru', 'department_id' => $departmentA->id, 'is_active' => true]);
         User::factory()->create(['name' => 'Bob TU', 'email' => 'bob.tu@example.test', 'role' => 'tata_usaha', 'department_id' => $departmentB->id, 'is_active' => false]);
 
         $this->actingAs($admin);
@@ -102,8 +106,9 @@ class UserManagementApiTest extends TestCase
             'search' => 'alice',
             'role' => 'guru',
             'department_id' => $departmentA->id,
+            'phone' => '0822',
             'status' => 'active',
-            'sort_by' => 'department',
+            'sort_by' => 'phone_number',
             'sort_direction' => 'asc',
         ]));
 
@@ -122,6 +127,7 @@ class UserManagementApiTest extends TestCase
         $create = $this->postJson(route('admin.users.store'), [
             'name' => 'Flow User',
             'email' => 'flow.user@example.test',
+            'phone_number' => '083333333333',
             'password' => 'password123',
             'role' => 'guru',
             'department_id' => $departmentA->id,
@@ -133,6 +139,7 @@ class UserManagementApiTest extends TestCase
         $this->patchJson(route('admin.users.update', $userId), [
             'name' => 'Flow User Updated',
             'email' => 'flow.user.updated@example.test',
+            'phone_number' => '084444444444',
             'role' => 'orang_tua',
             'department_id' => $departmentB->id,
             'is_active' => false,

@@ -111,6 +111,7 @@ components:
       properties:
         name: { type: string, example: "Nama Lengkap" }
         email: { type: string, format: email, example: "user@example.com" }
+        phone_number: { type: string, nullable: true, example: "081234567890" }
         password: { type: string, minLength: 8, example: "password123" }
         role: { type: string, enum: [admin, guru, tata_usaha, orang_tua] }
         department_id: { type: integer, nullable: true, example: 1 }
@@ -121,8 +122,8 @@ components:
       properties:
         name: { type: string, example: "Nama Update" }
         email:
+        phone_number: { type: string, nullable: true, example: "081111111111" }
           { type: string, format: email, example: "user-update@example.com" }
-        password: { type: string, minLength: 8, nullable: true }
         role: { type: string, enum: [admin, guru, tata_usaha, orang_tua] }
         department_id: { type: integer, nullable: true, example: 2 }
         is_active: { type: boolean, example: false }

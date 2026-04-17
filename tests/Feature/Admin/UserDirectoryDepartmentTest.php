@@ -23,6 +23,7 @@ class UserDirectoryDepartmentTest extends TestCase
             ->call('startCreate')
             ->set('name', 'User Dept')
             ->set('email', 'user.dept@example.test')
+            ->set('phone_number', '081200000000')
             ->set('password', 'password123')
             ->set('role', 'guru')
             ->set('department_id', (string) $department->id)
@@ -32,6 +33,7 @@ class UserDirectoryDepartmentTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'email' => 'user.dept@example.test',
+            'phone_number' => '081200000000',
             'department_id' => $department->id,
         ]);
     }
