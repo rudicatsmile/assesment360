@@ -12,10 +12,12 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Tests\Support\InteractsWithRoleConfig;
 
 class QuestionnaireFillNavigationTest extends TestCase
 {
     use RefreshDatabase;
+    use InteractsWithRoleConfig;
 
     public function test_next_question_moves_with_single_click_flow(): void
     {
@@ -79,8 +81,8 @@ class QuestionnaireFillNavigationTest extends TestCase
      */
     private function makeQuestionnaireFixture(): array
     {
-        $admin = User::factory()->create(['role' => 'admin']);
-        $user = User::factory()->create(['role' => 'guru']);
+        $admin = User::factory()->create(['role' => $this->adminSlug()]);
+        $user = User::factory()->create(['role' => $this->teacherSlug()]);
 
         $questionnaire = Questionnaire::query()->create([
             'title' => 'Kuisioner Navigasi',
@@ -93,7 +95,7 @@ class QuestionnaireFillNavigationTest extends TestCase
 
         QuestionnaireTarget::query()->create([
             'questionnaire_id' => $questionnaire->id,
-            'target_group' => 'guru',
+            'target_group' => $this->teacherSlug(),
         ]);
 
         $question1 = Question::query()->create([
@@ -134,8 +136,8 @@ class QuestionnaireFillNavigationTest extends TestCase
      */
     private function makeEssayQuestionnaireFixture(int $essayCount): array
     {
-        $admin = User::factory()->create(['role' => 'admin']);
-        $user = User::factory()->create(['role' => 'guru']);
+        $admin = User::factory()->create(['role' => $this->adminSlug()]);
+        $user = User::factory()->create(['role' => $this->teacherSlug()]);
 
         $questionnaire = Questionnaire::query()->create([
             'title' => 'Kuisioner Essay',
@@ -148,7 +150,7 @@ class QuestionnaireFillNavigationTest extends TestCase
 
         QuestionnaireTarget::query()->create([
             'questionnaire_id' => $questionnaire->id,
-            'target_group' => 'guru',
+            'target_group' => $this->teacherSlug(),
         ]);
 
         $questions = [];

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\QuestionnaireExportController;
 use App\Http\Controllers\Admin\DepartmentAnalyticsExportController;
 use App\Http\Controllers\Admin\DepartmentManagementController;
+use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\WhatsAppWebhookController;
@@ -13,6 +14,7 @@ use App\Livewire\Admin\QuestionnaireForm;
 use App\Livewire\Admin\QuestionnaireList;
 use App\Livewire\Admin\QuestionManager;
 use App\Livewire\Admin\DepartmentDirectory;
+use App\Livewire\Admin\RoleDirectory;
 use App\Livewire\Admin\UserDirectory;
 use App\Livewire\Fill\AvailableQuestionnaires;
 use App\Livewire\Fill\ParentDashboard;
@@ -23,6 +25,12 @@ use App\Livewire\Shared\ProfilePage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+
+$adminGateMiddleware = (string) config('rbac.middleware_aliases.admin_gate', 'access.admin');
+$evaluatorGateMiddleware = (string) config('rbac.middleware_aliases.evaluator_gate', 'access.evaluator');
+$roleRedirectMiddleware = (string) config('rbac.middleware_aliases.role_redirect', 'access.role.redirect');
+$adminRoutePrefix = (string) config('rbac.admin_route.prefix', '');
+$adminRouteName = (string) config('rbac.admin_route.name', 'admin.');
 
 Route::get('/', function () {
     return auth()->check()
@@ -46,7 +54,7 @@ Route::middleware('guest')->group(function (): void {
 Route::match(['get', 'post'], '/webhooks/whatsapp', WhatsAppWebhookController::class)
     ->name('webhooks.whatsapp');
 
-Route::middleware(['auth', 'role.redirect'])->get('/dashboard', function () {
+Route::middleware(['auth', $roleRedirectMiddleware])->get('/dashboard', function () {
     return response()->noContent();
 })->name('role.dashboard');
 
@@ -61,8 +69,8 @@ Route::middleware('auth')->group(function (): void {
     })->name('logout');
 });
 
-Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function (): void {
-    Route::redirect('/', '/admin/dashboard');
+Route::middleware(['auth', $adminGateMiddleware])->prefix($adminRoutePrefix)->name($adminRouteName)->group(function () use ($adminRoutePrefix): void {
+    Route::redirect('/', '/' . trim($adminRoutePrefix, '/') . '/dashboard');
     Route::get('/dashboard', AdminDashboard::class)->name('dashboard');
     Route::get('/analytics', DepartmentAnalytics::class)->name('analytics.index');
 
@@ -82,6 +90,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     });
 
     Route::get('/users', UserDirectory::class)->name('users.index');
+    Route::get('/roles', RoleDirectory::class)->name('roles.index');
     Route::get('/departments', DepartmentDirectory::class)->name('departments.index');
     Route::prefix('departments')->name('departments.')->group(function (): void {
         Route::get('/data', [DepartmentManagementController::class, 'index'])
@@ -118,9 +127,26 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
             ->middleware('throttle:30,1')
             ->name('destroy');
     });
+
+    Route::prefix('roles')->name('roles.')->group(function (): void {
+        Route::get('/data', [RoleController::class, 'index'])
+            ->middleware('throttle:120,1')
+            ->name('data');
+        Route::post('/', [RoleController::class, 'store'])
+            ->middleware('throttle:30,1')
+            ->name('store');
+        Route::match(['put', 'patch'], '/{role}', [RoleController::class, 'update'])
+            ->middleware('throttle:30,1')
+            ->name('update');
+        Route::delete('/{role}', [RoleController::class, 'destroy'])
+            ->middleware('throttle:30,1')
+            ->name('destroy');
+        Route::get('/create', [RoleController::class, 'create'])->name('create');
+        Route::get('/{role}/edit', [RoleController::class, 'edit'])->name('edit');
+    });
 });
 
-Route::middleware(['auth', 'evaluator'])->prefix('fill')->name('fill.')->group(function (): void {
+Route::middleware(['auth', $evaluatorGateMiddleware])->prefix('fill')->name('fill.')->group(function (): void {
     Route::prefix('dashboard')->name('dashboard.')->group(function (): void {
         Route::get('/guru', TeacherDashboard::class)->name('teacher');
         Route::get('/staff', StaffDashboard::class)->name('staff');

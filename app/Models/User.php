@@ -19,6 +19,7 @@ class User extends Authenticatable
         'phone_number',
         'password',
         'role',
+        'role_id',
         'department',
         'department_id',
         'is_active',
@@ -48,5 +49,45 @@ class User extends Authenticatable
     public function departmentRef(): BelongsTo
     {
         return $this->belongsTo(Departement::class, 'department_id');
+    }
+
+    public function roleRef(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    public function roleSlug(): string
+    {
+        return (string) ($this->roleRef?->slug ?: $this->role);
+    }
+
+    public function hasAnyRoleSlug(array $slugs): bool
+    {
+        return in_array($this->roleSlug(), $slugs, true);
+    }
+
+    public function isAdminRole(): bool
+    {
+        return $this->hasAnyRoleSlug((array) config('rbac.admin_slugs', []));
+    }
+
+    public function isEvaluatorRole(): bool
+    {
+        $configuredEvaluatorSlugs = (array) config('rbac.evaluator_slugs', []);
+        if ($configuredEvaluatorSlugs !== [] && $this->hasAnyRoleSlug($configuredEvaluatorSlugs)) {
+            return true;
+        }
+
+        // Fallback for custom role catalogs: any non-admin role is treated as evaluator.
+        if ($this->role_id !== null) {
+            return !$this->isAdminRole();
+        }
+
+        return false;
+    }
+
+    public function canManageRoles(): bool
+    {
+        return $this->isAdminRole();
     }
 }

@@ -1,6 +1,6 @@
 <div class="space-y-5">
     <div>
-        <h2 class="text-2xl font-semibold text-zinc-900">Dashboard Orang Tua</h2>
+        <h2 class="text-2xl font-semibold text-zinc-900">Dashboard {{ config('rbac.role_labels.'.config('rbac.dashboard_role_slugs.parent'), 'Evaluator') }}</h2>
         <p class="text-sm text-zinc-500">Lihat kuisioner yang tersedia dan riwayat pengisian Anda.</p>
     </div>
 

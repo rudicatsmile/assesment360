@@ -41,13 +41,13 @@
 
                 <label class="space-y-1 text-sm">
                     <span class="font-medium text-zinc-700">Role</span>
-                    <select wire:model.live="role" class="w-full rounded-lg border border-zinc-300 px-3 py-2">
-                        <option value="admin">admin</option>
-                        <option value="guru">guru</option>
-                        <option value="tata_usaha">tata_usaha</option>
-                        <option value="orang_tua">orang_tua</option>
+                    <select wire:model.live="role_id" class="w-full rounded-lg border border-zinc-300 px-3 py-2">
+                        <option value="">Pilih role</option>
+                        @foreach ($roles as $role)
+                            <option value="{{ $role->id }}">{{ $role->name }}</option>
+                        @endforeach
                     </select>
-                    @error('role') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                    @error('role_id') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
                 </label>
 
                 <label class="space-y-1 text-sm">
@@ -82,10 +82,9 @@
         <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari nama/email..." class="rounded-lg border border-zinc-300 px-3 py-2 text-sm">
         <select wire:model.live="roleFilter" class="rounded-lg border border-zinc-300 px-3 py-2 text-sm">
             <option value="">Semua role</option>
-            <option value="admin">admin</option>
-            <option value="guru">guru</option>
-            <option value="tata_usaha">tata_usaha</option>
-            <option value="orang_tua">orang_tua</option>
+            @foreach ($roles as $role)
+                <option value="{{ $role->id }}">{{ $role->name }}</option>
+            @endforeach
         </select>
         <select wire:model.live="statusFilter" class="rounded-lg border border-zinc-300 px-3 py-2 text-sm">
             <option value="">Semua status</option>
@@ -136,7 +135,7 @@
                                     <span class="text-xs text-zinc-500">{{ $user->phone_number ?: '-' }}</span>
                                 </div>
                             </td>
-                            <td class="px-4 py-3 text-zinc-700">{{ $user->role }}</td>
+                            <td class="px-4 py-3 text-zinc-700">{{ $user->roleRef?->name ?: $user->role }}</td>
                             <td class="px-4 py-3 text-zinc-700">{{ $user->departmentRef?->name ?: '-' }}</td>
                             <td class="px-4 py-3">
                                 <span class="rounded-full px-2 py-1 text-xs font-medium {{ $user->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-200 text-zinc-700' }}">

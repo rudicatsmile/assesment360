@@ -11,8 +11,8 @@ class QuestionnaireSummarySheet implements FromArray, WithHeadings, WithTitle
 {
     /**
      * @param array{
-     *   respondent_breakdown: array{guru:int,tata_usaha:int,orang_tua:int},
-     *   averages: array{overall:float,per_group:array{guru:float,tata_usaha:float,orang_tua:float}},
+     *   respondent_breakdown: array<string,int>,
+     *   averages: array{overall:float,per_group:array<string,float>},
      *   question_scores: array<int, array{question_id:int,question_text:string,type:string,average_score:float,responses_count:int}>,
      *   distribution: array<int, array{question_id:int,question_text:string,option_text:string,score:int|null,count:int,percentage:float}>
      * } $analytics
@@ -25,42 +25,52 @@ class QuestionnaireSummarySheet implements FromArray, WithHeadings, WithTitle
 
     public function headings(): array
     {
-        return [
+        $headings = [
             'questionnaire_id',
             'title',
             'status',
             'average_overall',
-            'avg_guru',
-            'avg_tata_usaha',
-            'avg_orang_tua',
-            'respondent_guru',
-            'respondent_tata_usaha',
-            'respondent_orang_tua',
             'total_questions_scored',
             'generated_at',
         ];
+
+        foreach ($this->roleSlugs() as $slug) {
+            $headings[] = 'avg_' . $slug;
+            $headings[] = 'respondent_' . $slug;
+        }
+
+        return $headings;
     }
 
     public function array(): array
     {
-        return [[
+        $row = [
             $this->questionnaire->id,
             $this->questionnaire->title,
             $this->questionnaire->status,
             $this->analytics['averages']['overall'],
-            $this->analytics['averages']['per_group']['guru'],
-            $this->analytics['averages']['per_group']['tata_usaha'],
-            $this->analytics['averages']['per_group']['orang_tua'],
-            $this->analytics['respondent_breakdown']['guru'],
-            $this->analytics['respondent_breakdown']['tata_usaha'],
-            $this->analytics['respondent_breakdown']['orang_tua'],
             count($this->analytics['question_scores']),
             now()->toDateTimeString(),
-        ]];
+        ];
+
+        foreach ($this->roleSlugs() as $slug) {
+            $row[] = (float) ($this->analytics['averages']['per_group'][$slug] ?? 0);
+            $row[] = (int) ($this->analytics['respondent_breakdown'][$slug] ?? 0);
+        }
+
+        return [$row];
     }
 
     public function title(): string
     {
         return 'Summary';
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function roleSlugs(): array
+    {
+        return array_values(array_unique(array_filter((array) config('rbac.questionnaire_target_slugs', []))));
     }
 }

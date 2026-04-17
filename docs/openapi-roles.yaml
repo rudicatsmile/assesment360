@@ -1,0 +1,69 @@
+openapi: 3.0.3
+info:
+  title: KepsekEval Roles API
+  version: 1.0.0
+  description: API CRUD role management berbasis database.
+servers:
+  - url: http://127.0.0.1:8000
+paths:
+  /api/roles:
+    get:
+      summary: List roles
+      tags: [Roles]
+      responses:
+        "200":
+          description: OK
+    post:
+      summary: Create role
+      tags: [Roles]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleRequest"
+      responses:
+        "201":
+          description: Created
+  /api/roles/{id}:
+    put:
+      summary: Update role
+      tags: [Roles]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleRequest"
+      responses:
+        "200":
+          description: Updated
+    delete:
+      summary: Delete role
+      tags: [Roles]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Deleted
+        "422":
+          description: Role masih dipakai user
+components:
+  schemas:
+    RoleRequest:
+      type: object
+      required: [name, prosentase, is_active]
+      properties:
+        name: { type: string, maxLength: 50, example: Admin Operasional }
+        description: { type: string, nullable: true, example: Mengelola operasional harian }
+        prosentase: { type: number, format: float, minimum: 0, maximum: 100, example: 75.5 }
+        is_active: { type: boolean, example: true }
+

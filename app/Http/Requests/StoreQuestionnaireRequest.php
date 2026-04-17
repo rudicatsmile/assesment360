@@ -34,7 +34,7 @@ class StoreQuestionnaireRequest extends FormRequest
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'status' => ['required', Rule::in(['draft', 'active', 'closed'])],
             'target_groups' => ['required', 'array', 'min:1'],
-            'target_groups.*' => ['required', 'string', 'distinct', Rule::in(['guru', 'tata_usaha', 'orang_tua'])],
+            'target_groups.*' => ['required', 'string', 'distinct', Rule::in(Questionnaire::targetGroups())],
         ];
     }
 }

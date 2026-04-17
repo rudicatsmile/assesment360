@@ -24,11 +24,14 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        $legacyRoles = array_values(array_filter((array) config('rbac.legacy_allowed_slugs', [])));
+        $defaultRole = (string) config('rbac.default_legacy_role_slug', '');
+
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'phone_number' => fake()->optional()->numerify('08##########'),
-            'role' => fake()->randomElement(['admin', 'guru', 'tata_usaha', 'orang_tua']),
+            'role' => $legacyRoles !== [] ? fake()->randomElement($legacyRoles) : $defaultRole,
             'department' => fake()->optional()->randomElement(['Akademik', 'Kesiswaan', 'Kurikulum', 'Administrasi']),
             'department_id' => null,
             'is_active' => true,

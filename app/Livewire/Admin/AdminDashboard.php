@@ -24,7 +24,8 @@ class AdminDashboard extends Component
     public function render()
     {
         $metrics = Cache::remember('admin_dashboard_overview_v1', now()->addMinutes(5), function (): array {
-            $roles = ['guru', 'tata_usaha', 'orang_tua'];
+            $roles = array_values(array_unique(array_filter((array) config('rbac.questionnaire_target_slugs', []))));
+            $roleLabels = (array) config('rbac.role_labels', []);
 
             $activeQuestionnaires = Questionnaire::query()
                 ->where('status', 'active')
@@ -40,12 +41,12 @@ class AdminDashboard extends Component
             $totalTargetSlots = $activeQuestionnaires->sum(function (Questionnaire $questionnaire) use ($userCountByRole): int {
                 return $questionnaire->targets
                     ->unique('target_group')
-                    ->sum(fn ($target): int => (int) ($userCountByRole[$target->target_group] ?? 0));
+                    ->sum(fn($target): int => (int) ($userCountByRole[$target->target_group] ?? 0));
             });
 
             $totalSubmittedActiveResponses = Response::query()
                 ->where('status', 'submitted')
-                ->whereHas('questionnaire', fn ($query) => $query->where('status', 'active'))
+                ->whereHas('questionnaire', fn($query) => $query->where('status', 'active'))
                 ->count();
 
             $participationRate = $totalTargetSlots > 0
@@ -59,7 +60,7 @@ class AdminDashboard extends Component
 
             $averageOverallScore = (float) Answer::query()
                 ->whereNotNull('calculated_score')
-                ->whereHas('response', fn ($query) => $query->where('status', 'submitted'))
+                ->whereHas('response', fn($query) => $query->where('status', 'submitted'))
                 ->avg('calculated_score');
 
             $breakdown = Response::query()
@@ -71,16 +72,26 @@ class AdminDashboard extends Component
                 ->groupBy('users.role')
                 ->pluck('total', 'users.role');
 
+            $breakdownByRole = collect($roles)
+                ->mapWithKeys(fn(string $slug): array => [$slug => (int) ($breakdown[$slug] ?? 0)])
+                ->all();
+
+            $breakdownCards = collect($roles)
+                ->map(fn(string $slug): array => [
+                    'slug' => $slug,
+                    'label' => (string) ($roleLabels[$slug] ?? str($slug)->replace('_', ' ')->title()),
+                    'total' => (int) ($breakdown[$slug] ?? 0),
+                ])
+                ->values()
+                ->all();
+
             return [
                 'total_active_questionnaires' => $activeQuestionnaires->count(),
                 'total_respondents' => $totalRespondentUsers,
                 'participation_rate' => $participationRate,
                 'average_score' => round($averageOverallScore, 2),
-                'breakdown' => [
-                    'guru' => (int) ($breakdown['guru'] ?? 0),
-                    'tata_usaha' => (int) ($breakdown['tata_usaha'] ?? 0),
-                    'orang_tua' => (int) ($breakdown['orang_tua'] ?? 0),
-                ],
+                'breakdown' => $breakdownByRole,
+                'breakdown_cards' => $breakdownCards,
             ];
         });
 

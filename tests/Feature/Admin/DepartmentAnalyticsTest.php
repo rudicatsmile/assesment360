@@ -11,14 +11,16 @@ use App\Models\User;
 use App\Services\DepartmentAnalyticsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Support\InteractsWithRoleConfig;
 
 class DepartmentAnalyticsTest extends TestCase
 {
     use RefreshDatabase;
+    use InteractsWithRoleConfig;
 
     public function test_admin_can_open_department_analytics_page(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = User::factory()->create(['role' => $this->adminSlug()]);
         $this->actingAs($admin);
 
         $this->get(route('admin.analytics.index'))
@@ -29,8 +31,8 @@ class DepartmentAnalyticsTest extends TestCase
     public function test_service_calculates_department_metrics_without_duplicate_respondents(): void
     {
         $dep = Departement::query()->create(['name' => 'Akademik', 'urut' => 1]);
-        $admin = User::factory()->create(['role' => 'admin', 'department_id' => $dep->id]);
-        $user = User::factory()->create(['role' => 'guru', 'department_id' => $dep->id, 'is_active' => true]);
+        $admin = User::factory()->create(['role' => $this->adminSlug(), 'department_id' => $dep->id]);
+        $user = User::factory()->create(['role' => $this->teacherSlug(), 'department_id' => $dep->id, 'is_active' => true]);
         $questionnaire = Questionnaire::factory()->create(['created_by' => $admin->id, 'status' => 'active']);
         $question = Question::factory()->create(['questionnaire_id' => $questionnaire->id, 'type' => 'single_choice']);
 
@@ -79,10 +81,10 @@ class DepartmentAnalyticsTest extends TestCase
     public function test_service_handles_large_dataset_10000_answers(): void
     {
         $dep = Departement::query()->create(['name' => 'Kurikulum', 'urut' => 1]);
-        $admin = User::factory()->create(['role' => 'admin', 'department_id' => $dep->id]);
+        $admin = User::factory()->create(['role' => $this->adminSlug(), 'department_id' => $dep->id]);
         $questionnaire = Questionnaire::factory()->create(['created_by' => $admin->id, 'status' => 'active']);
         $users = User::factory()->count(200)->create([
-            'role' => 'guru',
+            'role' => $this->teacherSlug(),
             'department_id' => $dep->id,
             'is_active' => true,
         ]);

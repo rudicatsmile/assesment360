@@ -4,8 +4,8 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 class EnsureUserIsAdmin
 {
@@ -13,7 +13,7 @@ class EnsureUserIsAdmin
     {
         $user = $request->user();
 
-        if (! $user || $user->role !== 'admin') {
+        if (!$user || !$user->isAdminRole()) {
             throw new AccessDeniedHttpException('Akses ditolak. Hanya admin yang dapat mengakses halaman ini.');
         }
 

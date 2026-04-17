@@ -13,8 +13,10 @@ class TeacherDashboard extends Component
 
     public function render()
     {
+        $roleSlug = (string) config('rbac.dashboard_role_slugs.teacher');
+
         return view('livewire.fill.teacher-dashboard', [
-            'payload' => $this->getDashboardMetricsByRole('guru'),
+            'payload' => $this->getDashboardMetricsByRole($roleSlug),
         ]);
     }
 }

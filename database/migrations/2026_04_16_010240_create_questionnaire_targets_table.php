@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('questionnaire_targets', function (Blueprint $table) {
             $table->id();
             $table->foreignId('questionnaire_id')->constrained()->onDelete('cascade');
-            $table->enum('target_group', ['guru', 'tata_usaha', 'orang_tua']);
+            $table->string('target_group', 50);
             $table->timestamps();
 
             $table->unique(['questionnaire_id', 'target_group']);

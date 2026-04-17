@@ -15,8 +15,6 @@ class Questionnaire extends Model
     /** @use HasFactory<\Database\Factories\QuestionnaireFactory> */
     use HasFactory, SoftDeletes;
 
-    public const array TARGET_GROUPS = ['guru', 'tata_usaha', 'orang_tua'];
-
     protected $fillable = [
         'title',
         'description',
@@ -56,10 +54,11 @@ class Questionnaire extends Model
      */
     public function syncTargetGroups(array $targetGroups): void
     {
+        $allowedTargetGroups = self::targetGroups();
         $normalized = array_values(array_unique(
             array_filter(
                 $targetGroups,
-                fn(mixed $value): bool => is_string($value) && in_array($value, self::TARGET_GROUPS, true)
+                fn(mixed $value): bool => is_string($value) && in_array($value, $allowedTargetGroups, true)
             )
         ));
 
@@ -81,5 +80,51 @@ class Questionnaire extends Model
                 );
             }
         });
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function targetGroups(): array
+    {
+        $slugs = Role::query()
+            ->whereNotIn('id', [1, 2])
+            ->whereNotNull('slug')
+            ->pluck('slug')
+            ->filter(fn(mixed $value): bool => is_string($value) && trim($value) !== '')
+            ->map(fn(string $value): string => trim($value))
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($slugs !== []) {
+            return $slugs;
+        }
+
+        return array_values(array_unique(array_filter(
+            (array) config('rbac.questionnaire_target_slugs', []),
+            fn(mixed $value): bool => is_string($value) && $value !== ''
+        )));
+    }
+
+    /**
+     * @return array<int, array{slug: string, name: string}>
+     */
+    public static function targetGroupOptions(): array
+    {
+        return Role::query()
+            ->whereNotIn('id', [1, 2])
+            ->whereNotNull('slug')
+            ->orderBy('name')
+            ->get(['name', 'slug'])
+            ->map(function (Role $role): array {
+                return [
+                    'slug' => (string) $role->slug,
+                    'name' => (string) $role->name,
+                ];
+            })
+            ->filter(fn(array $item): bool => $item['slug'] !== '')
+            ->values()
+            ->all();
     }
 }

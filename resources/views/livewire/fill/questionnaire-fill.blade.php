@@ -388,14 +388,14 @@
         x-show="showToast"
         x-transition.opacity.duration.200ms
         class="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-white shadow-lg"
-        :class="toastType === 'user' ? 'bg-emerald-600' : 'bg-sky-700'"
+        :class="toastType === 'manual' ? 'bg-emerald-600' : 'bg-sky-700'"
         role="status"
         aria-live="polite"
         aria-atomic="true"
         style="display: none;"
     >
-        <span x-show="toastType === 'user'" aria-hidden="true">✓</span>
-        <span x-show="toastType !== 'user'" aria-hidden="true">⟳</span>
+        <span x-show="toastType === 'manual'" aria-hidden="true">✓</span>
+        <span x-show="toastType !== 'manual'" aria-hidden="true">⟳</span>
         <span x-text="toastMessage"></span>
     </div>
 </div>

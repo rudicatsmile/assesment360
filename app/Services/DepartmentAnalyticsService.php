@@ -29,7 +29,7 @@ class DepartmentAnalyticsService
             ->selectRaw('department_id, COUNT(*) as total_employees')
             ->whereNotNull('department_id')
             ->where('is_active', true)
-            ->whereIn('role', ['guru', 'tata_usaha', 'orang_tua'])
+            ->whereIn('role', (array) config('rbac.evaluator_slugs', []))
             ->groupBy('department_id');
 
         $respondentsSub = DB::table('responses')
@@ -37,8 +37,8 @@ class DepartmentAnalyticsService
             ->selectRaw('users.department_id, COUNT(DISTINCT responses.user_id) as total_respondents')
             ->where('responses.status', 'submitted')
             ->whereNotNull('users.department_id')
-            ->when($dateFrom, fn ($query) => $query->whereDate('responses.submitted_at', '>=', $dateFrom))
-            ->when($dateTo, fn ($query) => $query->whereDate('responses.submitted_at', '<=', $dateTo))
+            ->when($dateFrom, fn($query) => $query->whereDate('responses.submitted_at', '>=', $dateFrom))
+            ->when($dateTo, fn($query) => $query->whereDate('responses.submitted_at', '<=', $dateTo))
             ->groupBy('users.department_id');
 
         $scoresSub = DB::table('answers')
@@ -47,15 +47,15 @@ class DepartmentAnalyticsService
             ->where('responses.status', 'submitted')
             ->whereNotNull('answers.department_id')
             ->whereNotNull('answers.calculated_score')
-            ->when($dateFrom, fn ($query) => $query->whereDate('responses.submitted_at', '>=', $dateFrom))
-            ->when($dateTo, fn ($query) => $query->whereDate('responses.submitted_at', '<=', $dateTo))
+            ->when($dateFrom, fn($query) => $query->whereDate('responses.submitted_at', '>=', $dateFrom))
+            ->when($dateTo, fn($query) => $query->whereDate('responses.submitted_at', '<=', $dateTo))
             ->groupBy('answers.department_id');
 
         $query = Departement::query()
-            ->leftJoinSub($employeesSub, 'emp', fn ($join) => $join->on('emp.department_id', '=', 'departements.id'))
-            ->leftJoinSub($respondentsSub, 'resp', fn ($join) => $join->on('resp.department_id', '=', 'departements.id'))
-            ->leftJoinSub($scoresSub, 'sc', fn ($join) => $join->on('sc.department_id', '=', 'departements.id'))
-            ->when($departmentId, fn ($q) => $q->where('departements.id', $departmentId))
+            ->leftJoinSub($employeesSub, 'emp', fn($join) => $join->on('emp.department_id', '=', 'departements.id'))
+            ->leftJoinSub($respondentsSub, 'resp', fn($join) => $join->on('resp.department_id', '=', 'departements.id'))
+            ->leftJoinSub($scoresSub, 'sc', fn($join) => $join->on('sc.department_id', '=', 'departements.id'))
+            ->when($departmentId, fn($q) => $q->where('departements.id', $departmentId))
             ->selectRaw('
                 departements.id,
                 departements.name,
@@ -70,7 +70,7 @@ class DepartmentAnalyticsService
             ');
 
         $allowedSort = ['name', 'total_respondents', 'participation_rate', 'average_score', 'urut'];
-        if (! in_array($sortBy, $allowedSort, true)) {
+        if (!in_array($sortBy, $allowedSort, true)) {
             $sortBy = 'participation_rate';
         }
         $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
@@ -86,9 +86,9 @@ class DepartmentAnalyticsService
         return [
             'rows' => $rows,
             'chart' => [
-                'labels' => $chartRows->pluck('name')->map(fn ($name): string => (string) $name)->all(),
-                'average_scores' => $chartRows->pluck('average_score')->map(fn ($score): float => (float) $score)->all(),
-                'participation_rates' => $chartRows->pluck('participation_rate')->map(fn ($rate): float => (float) $rate)->all(),
+                'labels' => $chartRows->pluck('name')->map(fn($name): string => (string) $name)->all(),
+                'average_scores' => $chartRows->pluck('average_score')->map(fn($score): float => (float) $score)->all(),
+                'participation_rates' => $chartRows->pluck('participation_rate')->map(fn($rate): float => (float) $rate)->all(),
             ],
         ];
     }

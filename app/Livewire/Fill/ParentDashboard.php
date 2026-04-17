@@ -13,8 +13,10 @@ class ParentDashboard extends Component
 
     public function render()
     {
+        $roleSlug = (string) config('rbac.dashboard_role_slugs.parent');
+
         return view('livewire.fill.parent-dashboard', [
-            'payload' => $this->getDashboardMetricsByRole('orang_tua'),
+            'payload' => $this->getDashboardMetricsByRole($roleSlug),
         ]);
     }
 }

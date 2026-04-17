@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\Departement;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class UserManagementController extends Controller
         $this->authorizeAdmin($request);
 
         $search = trim((string) $request->query('search', ''));
-        $role = (string) $request->query('role', '');
+        $roleId = (int) $request->query('role_id', 0);
         $departmentId = (int) $request->query('department_id', 0);
         $status = (string) $request->query('status', '');
         $phone = trim((string) $request->query('phone', ''));
@@ -37,10 +38,11 @@ class UserManagementController extends Controller
                     $nested->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
                         ->orWhere('phone_number', 'like', "%{$search}%")
+                        ->orWhereHas('roleRef', fn($q) => $q->where('name', 'like', "%{$search}%"))
                         ->orWhereHas('departmentRef', fn($q) => $q->where('name', 'like', "%{$search}%"));
                 });
             })
-            ->when($role !== '', fn($query) => $query->where('role', $role))
+            ->when($roleId > 0, fn($query) => $query->where('role_id', $roleId))
             ->when($departmentId > 0, fn($query) => $query->where('department_id', $departmentId))
             ->when($phone !== '', fn($query) => $query->where('phone_number', 'like', "%{$phone}%"))
             ->when($status !== '', function ($query) use ($status): void {
@@ -58,8 +60,22 @@ class UserManagementController extends Controller
                         ->limit(1),
                     $sortDirection
                 );
-            }, fn($query) => $query->orderBy($sortBy, $sortDirection))
-            ->with('departmentRef:id,name')
+            }, function ($query) use ($sortBy, $sortDirection): void {
+                if ($sortBy === 'role') {
+                    $query->orderBy(
+                        Role::query()
+                            ->select('name')
+                            ->whereColumn('roles.id', 'users.role_id')
+                            ->limit(1),
+                        $sortDirection
+                    );
+
+                    return;
+                }
+
+                $query->orderBy($sortBy, $sortDirection);
+            })
+            ->with(['departmentRef:id,name', 'roleRef:id,name,slug'])
             ->paginate($perPage);
 
         return response()->json($users);
@@ -74,7 +90,9 @@ class UserManagementController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'phone_number' => $user->phone_number,
-            'role' => $user->role,
+            'role_id' => $user->role_id,
+            'role_name' => $user->roleRef?->name,
+            'role_slug' => $user->roleSlug(),
             'department_id' => $user->department_id,
             'department_name' => $user->departmentRef?->name,
             'is_active' => (bool) $user->is_active,
@@ -92,7 +110,8 @@ class UserManagementController extends Controller
             'email' => $data['email'],
             'phone_number' => $data['phone_number'] !== '' ? $data['phone_number'] : null,
             'password' => Hash::make($data['password']),
-            'role' => $data['role'],
+            'role_id' => $data['role_id'],
+            'role' => $this->resolveLegacyRoleSlug($data['role_id']),
             'department_id' => $data['department_id'] ?? null,
             'department' => $this->resolveDepartmentName($data['department_id'] ?? null),
             'is_active' => (bool) $data['is_active'],
@@ -114,12 +133,13 @@ class UserManagementController extends Controller
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
         $data = $request->validated();
-        $before = $user->only(['name', 'email', 'phone_number', 'role', 'department_id', 'is_active']);
+        $before = $user->only(['name', 'email', 'phone_number', 'role_id', 'role', 'department_id', 'is_active']);
 
         $user->name = $data['name'];
         $user->email = $data['email'];
         $user->phone_number = $data['phone_number'] !== '' ? $data['phone_number'] : null;
-        $user->role = $data['role'];
+        $user->role_id = $data['role_id'];
+        $user->role = $this->resolveLegacyRoleSlug($data['role_id']);
         $user->department_id = $data['department_id'] ?? null;
         $user->department = $this->resolveDepartmentName($data['department_id'] ?? null);
         $user->is_active = (bool) $data['is_active'];
@@ -134,7 +154,7 @@ class UserManagementController extends Controller
             'actor_id' => $request->user()?->id,
             'target_user_id' => $user->id,
             'before' => $before,
-            'after' => $user->only(['name', 'email', 'phone_number', 'role', 'department_id', 'is_active']),
+            'after' => $user->only(['name', 'email', 'phone_number', 'role_id', 'role', 'department_id', 'is_active']),
             'password_updated' => !empty($data['password']),
         ]);
 
@@ -169,7 +189,7 @@ class UserManagementController extends Controller
 
     private function authorizeAdmin(Request $request): void
     {
-        abort_unless($request->user()?->role === 'admin', 403);
+        abort_unless($request->user()?->isAdminRole(), 403);
     }
 
     private function resolveDepartmentName(?int $departmentId): ?string
@@ -181,5 +201,21 @@ class UserManagementController extends Controller
         return Departement::query()
             ->where('id', $departmentId)
             ->value('name');
+    }
+
+    private function resolveLegacyRoleSlug(?int $roleId): string
+    {
+        if (!$roleId) {
+            return (string) config('rbac.default_legacy_role_slug', '');
+        }
+
+        $slug = (string) Role::query()->where('id', $roleId)->value('slug');
+        $aliases = (array) config('rbac.role_aliases', []);
+        $allowed = (array) config('rbac.legacy_allowed_slugs', []);
+        $resolved = (string) ($aliases[$slug] ?? $slug);
+
+        return in_array($resolved, $allowed, true)
+            ? $resolved
+            : (string) config('rbac.default_legacy_role_slug', '');
     }
 }

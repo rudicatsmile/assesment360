@@ -3,17 +3,37 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Departement;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Support\InteractsWithRoleConfig;
 
 class UserManagementApiTest extends TestCase
 {
     use RefreshDatabase;
+    use InteractsWithRoleConfig;
+
+    private function seedCoreRoles(): array
+    {
+        $labels = (array) config('rbac.role_labels', []);
+        $adminSlug = $this->adminSlug();
+        $teacherSlug = $this->teacherSlug();
+        $staffSlug = $this->staffSlug();
+        $parentSlug = $this->parentSlug();
+
+        return [
+            $adminSlug => Role::query()->create(['name' => (string) ($labels[$adminSlug] ?? 'Admin'), 'slug' => $adminSlug, 'prosentase' => 90, 'is_active' => true]),
+            $teacherSlug => Role::query()->create(['name' => (string) ($labels[$teacherSlug] ?? 'Evaluator'), 'slug' => $teacherSlug, 'prosentase' => 70, 'is_active' => true]),
+            $staffSlug => Role::query()->create(['name' => (string) ($labels[$staffSlug] ?? 'Evaluator'), 'slug' => $staffSlug, 'prosentase' => 60, 'is_active' => true]),
+            $parentSlug => Role::query()->create(['name' => (string) ($labels[$parentSlug] ?? 'Evaluator'), 'slug' => $parentSlug, 'prosentase' => 50, 'is_active' => true]),
+        ];
+    }
 
     public function test_admin_can_create_user_via_api(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $roles = $this->seedCoreRoles();
+        $admin = User::factory()->create(['role' => $this->adminSlug(), 'role_id' => $roles[$this->adminSlug()]->id]);
         $department = Departement::query()->create(['name' => 'Akademik', 'urut' => 1]);
         $this->actingAs($admin);
 
@@ -22,7 +42,7 @@ class UserManagementApiTest extends TestCase
             'email' => 'userbaru@example.test',
             'phone_number' => '081234567890',
             'password' => 'password123',
-            'role' => 'guru',
+            'role_id' => $roles[$this->teacherSlug()]->id,
             'department_id' => $department->id,
             'is_active' => true,
         ]);
@@ -34,23 +54,25 @@ class UserManagementApiTest extends TestCase
         $this->assertDatabaseHas('users', [
             'email' => 'userbaru@example.test',
             'phone_number' => '081234567890',
-            'role' => 'guru',
+            'role' => $this->teacherSlug(),
+            'role_id' => $roles[$this->teacherSlug()]->id,
             'department_id' => $department->id,
         ]);
     }
 
     public function test_admin_can_update_user_and_password_is_optional(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $roles = $this->seedCoreRoles();
+        $admin = User::factory()->create(['role' => $this->adminSlug(), 'role_id' => $roles[$this->adminSlug()]->id]);
         $department = Departement::query()->create(['name' => 'Administrasi', 'urut' => 1]);
-        $target = User::factory()->create(['role' => 'guru', 'is_active' => true]);
+        $target = User::factory()->create(['role' => $this->teacherSlug(), 'role_id' => $roles[$this->teacherSlug()]->id, 'is_active' => true]);
         $this->actingAs($admin);
 
         $response = $this->patchJson(route('admin.users.update', $target), [
             'name' => 'Nama Update',
             'email' => 'updated@example.test',
             'phone_number' => '081111111111',
-            'role' => 'tata_usaha',
+            'role_id' => $roles[$this->staffSlug()]->id,
             'department_id' => $department->id,
             'is_active' => false,
         ]);
@@ -64,7 +86,8 @@ class UserManagementApiTest extends TestCase
             'id' => $target->id,
             'email' => 'updated@example.test',
             'phone_number' => '081111111111',
-            'role' => 'tata_usaha',
+            'role' => $this->staffSlug(),
+            'role_id' => $roles[$this->staffSlug()]->id,
             'department_id' => $department->id,
             'is_active' => false,
         ]);
@@ -72,8 +95,9 @@ class UserManagementApiTest extends TestCase
 
     public function test_admin_can_soft_delete_user(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
-        $target = User::factory()->create(['role' => 'orang_tua']);
+        $roles = $this->seedCoreRoles();
+        $admin = User::factory()->create(['role' => $this->adminSlug(), 'role_id' => $roles[$this->adminSlug()]->id]);
+        $target = User::factory()->create(['role' => $this->parentSlug(), 'role_id' => $roles[$this->parentSlug()]->id]);
         $this->actingAs($admin);
 
         $response = $this->deleteJson(route('admin.users.destroy', $target));
@@ -84,7 +108,8 @@ class UserManagementApiTest extends TestCase
 
     public function test_non_admin_cannot_access_user_management_api(): void
     {
-        $guru = User::factory()->create(['role' => 'guru']);
+        $roles = $this->seedCoreRoles();
+        $guru = User::factory()->create(['role' => $this->teacherSlug(), 'role_id' => $roles[$this->teacherSlug()]->id]);
         $this->actingAs($guru);
 
         $response = $this->getJson(route('admin.users.data'));
@@ -94,17 +119,18 @@ class UserManagementApiTest extends TestCase
 
     public function test_admin_can_filter_and_search_users(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $roles = $this->seedCoreRoles();
+        $admin = User::factory()->create(['role' => $this->adminSlug(), 'role_id' => $roles[$this->adminSlug()]->id]);
         $departmentA = Departement::query()->create(['name' => 'Akademik', 'urut' => 1]);
         $departmentB = Departement::query()->create(['name' => 'Administrasi', 'urut' => 2]);
-        User::factory()->create(['name' => 'Alice Guru', 'email' => 'alice.guru@example.test', 'phone_number' => '082222222222', 'role' => 'guru', 'department_id' => $departmentA->id, 'is_active' => true]);
-        User::factory()->create(['name' => 'Bob TU', 'email' => 'bob.tu@example.test', 'role' => 'tata_usaha', 'department_id' => $departmentB->id, 'is_active' => false]);
+        User::factory()->create(['name' => 'Alice Guru', 'email' => 'alice.guru@example.test', 'phone_number' => '082222222222', 'role' => $this->teacherSlug(), 'role_id' => $roles[$this->teacherSlug()]->id, 'department_id' => $departmentA->id, 'is_active' => true]);
+        User::factory()->create(['name' => 'Bob TU', 'email' => 'bob.tu@example.test', 'role' => $this->staffSlug(), 'role_id' => $roles[$this->staffSlug()]->id, 'department_id' => $departmentB->id, 'is_active' => false]);
 
         $this->actingAs($admin);
 
         $response = $this->getJson(route('admin.users.data', [
             'search' => 'alice',
-            'role' => 'guru',
+            'role_id' => $roles[$this->teacherSlug()]->id,
             'department_id' => $departmentA->id,
             'phone' => '0822',
             'status' => 'active',
@@ -119,7 +145,8 @@ class UserManagementApiTest extends TestCase
 
     public function test_admin_full_crud_flow_integration(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $roles = $this->seedCoreRoles();
+        $admin = User::factory()->create(['role' => $this->adminSlug(), 'role_id' => $roles[$this->adminSlug()]->id]);
         $departmentA = Departement::query()->create(['name' => 'Kurikulum', 'urut' => 1]);
         $departmentB = Departement::query()->create(['name' => 'Kesiswaan', 'urut' => 2]);
         $this->actingAs($admin);
@@ -129,7 +156,7 @@ class UserManagementApiTest extends TestCase
             'email' => 'flow.user@example.test',
             'phone_number' => '083333333333',
             'password' => 'password123',
-            'role' => 'guru',
+            'role_id' => $roles[$this->teacherSlug()]->id,
             'department_id' => $departmentA->id,
             'is_active' => true,
         ])->assertCreated();
@@ -140,7 +167,7 @@ class UserManagementApiTest extends TestCase
             'name' => 'Flow User Updated',
             'email' => 'flow.user.updated@example.test',
             'phone_number' => '084444444444',
-            'role' => 'orang_tua',
+            'role_id' => $roles[$this->parentSlug()]->id,
             'department_id' => $departmentB->id,
             'is_active' => false,
             'password' => 'newpassword123',

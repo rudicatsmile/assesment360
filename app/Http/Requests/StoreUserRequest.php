@@ -10,7 +10,7 @@ class StoreUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->role === 'admin';
+        return (bool) $this->user()?->isAdminRole();
     }
 
     /**
@@ -35,7 +35,7 @@ class StoreUserRequest extends FormRequest
             'email' => ['required', 'email:rfc,dns', 'max:255', 'unique:users,email'],
             'phone_number' => ['nullable', 'string', 'max:25', 'regex:/^[0-9+\-\s()]+$/'],
             'password' => $passwordRule,
-            'role' => ['required', Rule::in(['admin', 'guru', 'tata_usaha', 'orang_tua'])],
+            'role_id' => ['required', 'integer', 'exists:roles,id'],
             'department_id' => ['nullable', 'integer', 'exists:departements,id'],
             'is_active' => ['required', 'boolean'],
         ];
@@ -47,6 +47,7 @@ class StoreUserRequest extends FormRequest
             'name' => trim((string) $this->input('name')),
             'email' => strtolower(trim((string) $this->input('email'))),
             'phone_number' => trim((string) $this->input('phone_number')),
+            'role_id' => $this->input('role_id') !== '' ? (int) $this->input('role_id') : null,
             'department_id' => $this->input('department_id') !== '' ? (int) $this->input('department_id') : null,
         ]);
     }

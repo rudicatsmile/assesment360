@@ -34,7 +34,7 @@ class DepartmentDirectory extends Component
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->role === 'admin', 403);
+        abort_unless(auth()->user()?->isAdminRole(), 403);
     }
 
     public function updatingSearch(): void

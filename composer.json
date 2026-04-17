@@ -50,6 +50,12 @@
             "@php artisan config:clear --ansi",
             "@php artisan test"
         ],
+        "ci:check-role-slugs": [
+            "@php scripts/ci/check-role-slugs.php"
+        ],
+        "ci:guard": [
+            "@composer ci:check-role-slugs"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

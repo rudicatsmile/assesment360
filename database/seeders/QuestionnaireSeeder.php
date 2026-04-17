@@ -15,12 +15,19 @@ class QuestionnaireSeeder extends Seeder
 {
     public function run(): void
     {
+        $dashboardRoleSlugs = (array) config('rbac.dashboard_role_slugs', []);
+        $adminSlug = (string) ((array) config('rbac.admin_slugs', []))[0];
+        $teacherSlug = (string) ($dashboardRoleSlugs['teacher'] ?? '');
+        $staffSlug = (string) ($dashboardRoleSlugs['staff'] ?? '');
+        $parentSlug = (string) ($dashboardRoleSlugs['parent'] ?? '');
+        $targetGroups = array_values(array_unique(array_filter((array) config('rbac.questionnaire_target_slugs', []))));
+
         $users = collect([
-            ['name' => 'Admin Kepsek', 'email' => 'admin@kepsekeval.test', 'role' => 'admin'],
-            ['name' => 'Guru Contoh 1', 'email' => 'guru1@kepsekeval.test', 'role' => 'guru'],
-            ['name' => 'Guru Contoh 2', 'email' => 'guru2@kepsekeval.test', 'role' => 'guru'],
-            ['name' => 'Tata Usaha Contoh', 'email' => 'tu@kepsekeval.test', 'role' => 'tata_usaha'],
-            ['name' => 'Orang Tua Contoh', 'email' => 'orangtua@kepsekeval.test', 'role' => 'orang_tua'],
+            ['name' => 'Admin Kepsek', 'email' => 'admin@kepsekeval.test', 'role' => $adminSlug],
+            ['name' => 'Guru Contoh 1', 'email' => 'guru1@kepsekeval.test', 'role' => $teacherSlug],
+            ['name' => 'Guru Contoh 2', 'email' => 'guru2@kepsekeval.test', 'role' => $teacherSlug],
+            ['name' => 'Tata Usaha Contoh', 'email' => 'tu@kepsekeval.test', 'role' => $staffSlug],
+            ['name' => 'Orang Tua Contoh', 'email' => 'orangtua@kepsekeval.test', 'role' => $parentSlug],
         ])->mapWithKeys(function (array $userData) {
             $user = User::updateOrCreate(
                 ['email' => $userData['email']],
@@ -116,13 +123,13 @@ class QuestionnaireSeeder extends Seeder
             ['option_text' => 'Sangat Tidak Setuju', 'score' => 1, 'order' => 5],
         ];
 
-        $questionnaires = collect($questionnaireDefinitions)->map(function (array $definition) use ($admin, $questionTemplates, $optionTemplates) {
+        $questionnaires = collect($questionnaireDefinitions)->map(function (array $definition) use ($admin, $questionTemplates, $optionTemplates, $targetGroups) {
             $questionnaire = Questionnaire::updateOrCreate(
                 ['title' => $definition['title']],
                 $definition + ['created_by' => $admin->id],
             );
 
-            foreach (['guru', 'tata_usaha', 'orang_tua'] as $targetGroup) {
+            foreach ($targetGroups as $targetGroup) {
                 QuestionnaireTarget::updateOrCreate(
                     [
                         'questionnaire_id' => $questionnaire->id,
@@ -167,6 +174,18 @@ class QuestionnaireSeeder extends Seeder
             ['questionnaire' => 1, 'email' => 'guru1@kepsekeval.test', 'status' => 'draft', 'submitted_at' => null],
         ];
 
+        $essayByRole = [
+            $teacherSlug => 'Kepala sekolah terbuka terhadap ide pembelajaran baru dan cukup aktif memberi arahan.',
+            $staffSlug => 'Koordinasi administrasi berjalan baik dan keputusan biasanya jelas.',
+            $parentSlug => 'Komunikasi dengan orang tua sudah baik dan informasinya mudah dipahami.',
+        ];
+
+        $combinedEssayByRole = [
+            $teacherSlug => 'Komunikasi berjalan dua arah dan tindak lanjut biasanya cepat.',
+            $staffSlug => 'Arahan kerja mudah dipahami serta membantu proses administrasi.',
+            $parentSlug => 'Informasi sekolah cukup rutin dan membantu kami mengikuti perkembangan.',
+        ];
+
         foreach ($responseBlueprints as $index => $blueprint) {
             $questionnaire = $questionnaires[$blueprint['questionnaire']];
             $respondent = $users[$blueprint['email']];
@@ -202,21 +221,11 @@ class QuestionnaireSeeder extends Seeder
                 }
 
                 if ($question->type === 'essay') {
-                    $essayAnswer = match ($respondent->role) {
-                        'guru' => 'Kepala sekolah terbuka terhadap ide pembelajaran baru dan cukup aktif memberi arahan.',
-                        'tata_usaha' => 'Koordinasi administrasi berjalan baik dan keputusan biasanya jelas.',
-                        'orang_tua' => 'Komunikasi dengan orang tua sudah baik dan informasinya mudah dipahami.',
-                        default => 'Catatan evaluasi umum.',
-                    };
+                    $essayAnswer = (string) ($essayByRole[$respondent->role] ?? 'Catatan evaluasi umum.');
                 }
 
                 if ($question->type === 'combined') {
-                    $essayAnswer = match ($respondent->role) {
-                        'guru' => 'Komunikasi berjalan dua arah dan tindak lanjut biasanya cepat.',
-                        'tata_usaha' => 'Arahan kerja mudah dipahami serta membantu proses administrasi.',
-                        'orang_tua' => 'Informasi sekolah cukup rutin dan membantu kami mengikuti perkembangan.',
-                        default => 'Komunikasi cukup baik.',
-                    };
+                    $essayAnswer = (string) ($combinedEssayByRole[$respondent->role] ?? 'Komunikasi cukup baik.');
                 }
 
                 Answer::updateOrCreate(

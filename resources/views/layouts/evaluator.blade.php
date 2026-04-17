@@ -17,13 +17,9 @@
 </head>
 <body class="min-h-screen bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
     @php
-        $role = auth()->user()?->role;
-        $dashboardRoute = match ($role) {
-            'guru' => route('fill.dashboard.teacher'),
-            'tata_usaha' => route('fill.dashboard.staff'),
-            'orang_tua' => route('fill.dashboard.parent'),
-            default => route('fill.questionnaires.index'),
-        };
+        $role = auth()->user()?->roleSlug();
+        $dashboardPath = (string) (config("rbac.dashboard_paths.{$role}") ?? '/fill/questionnaires');
+        $dashboardRoute = url($dashboardPath);
     @endphp
 
     <div class="mx-auto max-w-5xl p-4 md:p-6">
@@ -37,11 +33,15 @@
                 <div>
                     <p class="text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Dashboard Penilai</p>
                     <h1 class="text-lg font-semibold">Evaluasi Kepala Sekolah</h1>
+                    <p class="text-xs text-amber-600 dark:text-amber-400">
+                        Role: {{ $role ?: '-' }}
+                    </p>
                 </div>
                 <div class="flex flex-wrap items-center justify-end gap-2">
                     <a href="{{ route('fill.questionnaires.index') }}" wire:navigate>
                         <flux:button variant="ghost" icon="clipboard-document-list">Kuisioner Saya</flux:button>
                     </a>
+
                     <a href="{{ $dashboardRoute }}" wire:navigate>
                         <flux:button variant="ghost" icon="clock">Riwayat Pengisian</flux:button>
                     </a>
@@ -70,7 +70,7 @@
         {{ $slot }}
 
         <footer class="mt-8 border-t border-zinc-200 pt-4 text-center text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-            KepsekEval - SDN Contoh Nusantara
+            Evaluasi Kepala Sekolah - Yayasan Al-Wathoniyah 9
         </footer>
     </div>
 

@@ -19,18 +19,12 @@
             <p class="text-xs uppercase tracking-wide text-zinc-500">Rata-rata Keseluruhan</p>
             <p class="mt-2 text-3xl font-semibold text-zinc-900">{{ number_format($analytics['averages']['overall'], 2) }}</p>
         </article>
-        <article class="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-            <p class="text-xs uppercase tracking-wide text-zinc-500">Responden Guru</p>
-            <p class="mt-2 text-3xl font-semibold text-zinc-900">{{ $analytics['respondent_breakdown']['guru'] }}</p>
-        </article>
-        <article class="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-            <p class="text-xs uppercase tracking-wide text-zinc-500">Responden Tata Usaha</p>
-            <p class="mt-2 text-3xl font-semibold text-zinc-900">{{ $analytics['respondent_breakdown']['tata_usaha'] }}</p>
-        </article>
-        <article class="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-            <p class="text-xs uppercase tracking-wide text-zinc-500">Responden Orang Tua</p>
-            <p class="mt-2 text-3xl font-semibold text-zinc-900">{{ $analytics['respondent_breakdown']['orang_tua'] }}</p>
-        </article>
+        @foreach ($roleSlugs as $slug)
+            <article class="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+                <p class="text-xs uppercase tracking-wide text-zinc-500">Responden {{ $roleLabels[$slug] ?? str_replace('_', ' ', $slug) }}</p>
+                <p class="mt-2 text-3xl font-semibold text-zinc-900">{{ $analytics['respondent_breakdown'][$slug] ?? 0 }}</p>
+            </article>
+        @endforeach
     </section>
 
     <section class="grid gap-4 lg:grid-cols-2">
@@ -122,6 +116,7 @@
         const questionAverages = @json($chartQuestionAverages);
 
         if (groupCtx) {
+            const groupColors = groupLabels.map((_, idx) => ['#2563eb', '#16a34a', '#9333ea', '#ea580c', '#0d9488'][idx % 5]);
             new Chart(groupCtx, {
                 type: 'bar',
                 data: {
@@ -129,7 +124,7 @@
                     datasets: [{
                         label: 'Rata-rata skor',
                         data: groupAverages,
-                        backgroundColor: ['#2563eb', '#16a34a', '#9333ea'],
+                        backgroundColor: groupColors,
                         borderRadius: 8,
                     }]
                 },

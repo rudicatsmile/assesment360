@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\AnswerOption;
 use App\Models\Departement;
+use App\Models\Role;
 use App\Models\Question;
 use App\Models\Questionnaire;
 use App\Models\User;
@@ -13,6 +14,17 @@ class BasicTestingSeeder extends Seeder
 {
     public function run(): void
     {
+        $adminSlug = (string) ((array) config('rbac.admin_slugs', []))[0];
+        $teacherSlug = (string) config('rbac.dashboard_role_slugs.teacher');
+        $staffSlug = (string) config('rbac.dashboard_role_slugs.staff');
+        $parentSlug = (string) config('rbac.dashboard_role_slugs.parent');
+        $targetGroups = array_values(array_unique(array_filter((array) config('rbac.questionnaire_target_slugs', []))));
+
+        $roleAdmin = Role::query()->where('slug', $adminSlug)->first();
+        $roleGuru = Role::query()->where('slug', $teacherSlug)->first();
+        $roleTu = Role::query()->where('slug', $staffSlug)->first();
+        $roleParent = Role::query()->where('slug', $parentSlug)->first();
+
         $depAcademic = Departement::query()->updateOrCreate(
             ['name' => 'Akademik'],
             ['urut' => 1, 'description' => 'Urusan akademik']
@@ -26,7 +38,8 @@ class BasicTestingSeeder extends Seeder
             ['email' => 'admin.basic@kepsekeval.test'],
             [
                 'name' => 'Admin Basic',
-                'role' => 'admin',
+                'role' => $adminSlug,
+                'role_id' => $roleAdmin?->id,
                 'department_id' => $depAdministration->id,
                 'password' => 'password',
                 'email_verified_at' => now(),
@@ -35,15 +48,15 @@ class BasicTestingSeeder extends Seeder
 
         User::query()->updateOrCreate(
             ['email' => 'guru.basic@kepsekeval.test'],
-            ['name' => 'Guru Basic', 'role' => 'guru', 'department_id' => $depAcademic->id, 'password' => 'password', 'email_verified_at' => now()]
+            ['name' => 'Guru Basic', 'role' => $teacherSlug, 'role_id' => $roleGuru?->id, 'department_id' => $depAcademic->id, 'password' => 'password', 'email_verified_at' => now()]
         );
         User::query()->updateOrCreate(
             ['email' => 'tu.basic@kepsekeval.test'],
-            ['name' => 'TU Basic', 'role' => 'tata_usaha', 'department_id' => $depAdministration->id, 'password' => 'password', 'email_verified_at' => now()]
+            ['name' => 'TU Basic', 'role' => $staffSlug, 'role_id' => $roleTu?->id, 'department_id' => $depAdministration->id, 'password' => 'password', 'email_verified_at' => now()]
         );
         User::query()->updateOrCreate(
             ['email' => 'ortu.basic@kepsekeval.test'],
-            ['name' => 'Orang Tua Basic', 'role' => 'orang_tua', 'department_id' => $depAcademic->id, 'password' => 'password', 'email_verified_at' => now()]
+            ['name' => 'Orang Tua Basic', 'role' => $parentSlug, 'role_id' => $roleParent?->id, 'department_id' => $depAcademic->id, 'password' => 'password', 'email_verified_at' => now()]
         );
 
         $questionnaire = Questionnaire::query()->updateOrCreate(
@@ -57,7 +70,7 @@ class BasicTestingSeeder extends Seeder
             ]
         );
 
-        $questionnaire->syncTargetGroups(['guru', 'tata_usaha', 'orang_tua']);
+        $questionnaire->syncTargetGroups($targetGroups);
 
         $question = Question::query()->updateOrCreate(
             [

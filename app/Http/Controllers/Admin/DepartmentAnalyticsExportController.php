@@ -57,6 +57,6 @@ class DepartmentAnalyticsExportController extends Controller
 
     private function authorizeAdmin(Request $request): void
     {
-        abort_unless($request->user()?->role === 'admin', 403);
+        abort_unless($request->user()?->isAdminRole(), 403);
     }
 }

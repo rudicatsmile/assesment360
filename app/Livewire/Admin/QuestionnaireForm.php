@@ -29,13 +29,22 @@ class QuestionnaireForm extends Component
     public string $status = 'draft';
 
     /** @var array<int, string> */
-    public array $target_groups = ['guru'];
+    public array $target_groups = [];
 
-    /** @var array<int, string> */
-    public array $availableTargetGroups = ['guru', 'tata_usaha', 'orang_tua'];
+    /** @var array<int, array{slug:string, name:string}> */
+    public array $availableTargetGroups = [];
+
+    /** @var array<string, string> */
+    public array $targetGroupLabels = [];
 
     public function mount(?Questionnaire $questionnaire = null): void
     {
+        $this->availableTargetGroups = Questionnaire::targetGroupOptions();
+        $this->targetGroupLabels = collect($this->availableTargetGroups)
+            ->mapWithKeys(fn(array $group): array => [(string) $group['slug'] => (string) $group['name']])
+            ->all();
+        $defaultTargetGroup = (string) ($this->availableTargetGroups[0]['slug'] ?? '');
+        $this->target_groups = $defaultTargetGroup !== '' ? [$defaultTargetGroup] : [];
         $this->questionnaire = $questionnaire;
 
         if ($this->questionnaire) {
@@ -53,8 +62,9 @@ class QuestionnaireForm extends Component
                 ->all();
 
             if ($this->target_groups === []) {
-                $this->questionnaire->syncTargetGroups(['guru']);
-                $this->target_groups = ['guru'];
+                $fallback = $defaultTargetGroup !== '' ? [$defaultTargetGroup] : [];
+                $this->questionnaire->syncTargetGroups($fallback);
+                $this->target_groups = $fallback;
             }
         } else {
             $this->authorize('create', Questionnaire::class);

@@ -24,15 +24,15 @@ class QuestionnaireScorer
 
     /**
      * @return array{
-     *   respondent_breakdown: array{guru:int,tata_usaha:int,orang_tua:int},
-     *   averages: array{overall:float,per_group:array{guru:float,tata_usaha:float,orang_tua:float}},
+     *   respondent_breakdown: array<string,int>,
+     *   averages: array{overall:float,per_group:array<string,float>},
      *   question_scores: array<int, array{question_id:int,question_text:string,type:string,average_score:float,responses_count:int}>,
      *   distribution: array<int, array{question_id:int,question_text:string,option_text:string,score:int|null,count:int,percentage:float}>
      * }
      */
     public function summarizeQuestionnaire(Questionnaire $questionnaire): array
     {
-        $roles = ['guru', 'tata_usaha', 'orang_tua'];
+        $roles = array_values(array_unique(array_filter((array) config('rbac.questionnaire_target_slugs', []))));
         $responseBase = Response::query()
             ->where('questionnaire_id', $questionnaire->id)
             ->where('status', 'submitted');
@@ -97,18 +97,14 @@ class QuestionnaireScorer
         $distribution = $this->toDistributionWithPercentage($distributionRows);
 
         return [
-            'respondent_breakdown' => [
-                'guru' => (int) ($respondentBreakdown['guru'] ?? 0),
-                'tata_usaha' => (int) ($respondentBreakdown['tata_usaha'] ?? 0),
-                'orang_tua' => (int) ($respondentBreakdown['orang_tua'] ?? 0),
-            ],
+            'respondent_breakdown' => collect($roles)
+                ->mapWithKeys(fn (string $role): array => [$role => (int) ($respondentBreakdown[$role] ?? 0)])
+                ->all(),
             'averages' => [
                 'overall' => round($overallAverage, 2),
-                'per_group' => [
-                    'guru' => (float) ($groupAverages['guru'] ?? 0),
-                    'tata_usaha' => (float) ($groupAverages['tata_usaha'] ?? 0),
-                    'orang_tua' => (float) ($groupAverages['orang_tua'] ?? 0),
-                ],
+                'per_group' => collect($roles)
+                    ->mapWithKeys(fn (string $role): array => [$role => (float) ($groupAverages[$role] ?? 0)])
+                    ->all(),
             ],
             'question_scores' => $questionScores,
             'distribution' => $distribution,

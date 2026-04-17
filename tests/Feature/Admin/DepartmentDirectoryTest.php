@@ -8,14 +8,16 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Tests\Support\InteractsWithRoleConfig;
 
 class DepartmentDirectoryTest extends TestCase
 {
     use RefreshDatabase;
+    use InteractsWithRoleConfig;
 
     public function test_admin_can_create_department_from_livewire(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = User::factory()->create(['role' => $this->adminSlug()]);
         $this->actingAs($admin);
 
         Livewire::test(DepartmentDirectory::class)
@@ -34,7 +36,7 @@ class DepartmentDirectoryTest extends TestCase
 
     public function test_search_department_on_livewire_table(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = User::factory()->create(['role' => $this->adminSlug()]);
         $this->actingAs($admin);
 
         Departement::query()->create(['name' => 'Akademik', 'urut' => 1]);

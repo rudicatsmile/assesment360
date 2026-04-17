@@ -18,9 +18,12 @@ class QuestionnaireTargetFactory extends Factory
      */
     public function definition(): array
     {
+        $targetGroups = array_values(array_filter((array) config('rbac.questionnaire_target_slugs', [])));
+        $defaultTarget = (string) ($targetGroups[0] ?? '');
+
         return [
             'questionnaire_id' => Questionnaire::factory(),
-            'target_group' => fake()->randomElement(['guru', 'tata_usaha', 'orang_tua']),
+            'target_group' => $targetGroups !== [] ? fake()->randomElement($targetGroups) : $defaultTarget,
         ];
     }
 }

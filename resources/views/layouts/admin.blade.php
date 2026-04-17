@@ -28,7 +28,7 @@
 
             <nav class="space-y-2" aria-label="Admin Navigation">
                 <a href="{{ route('admin.dashboard') }}" wire:navigate class="block">
-                    <flux:button variant="ghost" icon="home" class="w-full justify-start">
+                    <flux:button :variant="request()->routeIs('admin.dashboard') ? 'primary' : 'ghost'" icon="home" class="w-full justify-start">
                         Dashboard
                     </flux:button>
                 </a>
@@ -38,21 +38,28 @@
                     </flux:button>
                 </a>
                 <a href="{{ route('admin.analytics.index') }}" wire:navigate class="block">
-                    <flux:button variant="ghost" icon="chart-bar" class="w-full justify-start">
+                    <flux:button :variant="request()->routeIs('admin.analytics.*') ? 'primary' : 'ghost'" icon="chart-bar" class="w-full justify-start">
                         Analytics
                     </flux:button>
                 </a>
-                @if (auth()->user()?->role === 'admin')
+                @if (auth()->user()?->isAdminRole())
                     <a href="{{ route('admin.departments.index') }}" wire:navigate class="block">
-                        <flux:button variant="ghost" icon="building-office" class="w-full justify-start">
+                        <flux:button :variant="request()->routeIs('admin.departments.*') ? 'primary' : 'ghost'" icon="building-office" class="w-full justify-start">
                             Departments
                         </flux:button>
                     </a>
                     <a href="{{ route('admin.users.index') }}" wire:navigate class="block">
-                        <flux:button variant="ghost" icon="users" class="w-full justify-start">
+                        <flux:button :variant="request()->routeIs('admin.users.*') ? 'primary' : 'ghost'" icon="users" class="w-full justify-start">
                             Users
                         </flux:button>
                     </a>
+                    @if (auth()->user()?->canManageRoles())
+                        <a href="{{ route('admin.roles.index') }}" wire:navigate class="block">
+                            <flux:button :variant="request()->routeIs('admin.roles.*') ? 'primary' : 'ghost'" icon="shield-check" class="w-full justify-start">
+                                Role Management
+                            </flux:button>
+                        </a>
+                    @endif
                 @endif
             </nav>
 
@@ -84,7 +91,7 @@
             {{ $slot }}
 
             <footer class="mt-8 border-t border-zinc-200 pt-4 text-center text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-                KepsekEval - SDN Contoh Nusantara
+                Evaluasi Kepala Sekolah - Yayasan Al-Wathoniyah 9
             </footer>
         </main>
     </div>

@@ -57,10 +57,8 @@
                     <tr>
                         <th class="px-4 py-3"><button type="button" wire:click="sortByColumn('id')" class="inline-flex items-center gap-1">ID</button></th>
                         <th class="px-4 py-3"><button type="button" wire:click="sortByColumn('name')" class="inline-flex items-center gap-1">Name</button></th>
-                        <th class="px-4 py-3"><button type="button" wire:click="sortByColumn('urut')" class="inline-flex items-center gap-1">Urut</button></th>
                         <th class="px-4 py-3">Description</th>
                         <th class="px-4 py-3">Users</th>
-                        <th class="px-4 py-3"><button type="button" wire:click="sortByColumn('created_at')" class="inline-flex items-center gap-1">Created</button></th>
                         <th class="px-4 py-3 text-right">Aksi</th>
                     </tr>
                 </thead>
@@ -69,10 +67,8 @@
                         <tr>
                             <td class="px-4 py-3 text-zinc-500">{{ $department->id }}</td>
                             <td class="px-4 py-3 text-zinc-900">{{ $department->name }}</td>
-                            <td class="px-4 py-3 text-zinc-700">{{ $department->urut }}</td>
                             <td class="px-4 py-3 text-zinc-700">{{ $department->description ?: '-' }}</td>
                             <td class="px-4 py-3 text-zinc-700">{{ $department->users_count }}</td>
-                            <td class="px-4 py-3 text-zinc-500">{{ $department->created_at?->format('d M Y') }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex justify-end gap-2">
                                     <flux:button size="xs" variant="outline" wire:click="startEdit({{ $department->id }})">Edit</flux:button>
@@ -89,7 +85,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-6 text-center text-zinc-500">Belum ada data department.</td>
+                            <td colspan="5" class="px-4 py-6 text-center text-zinc-500">Belum ada data department.</td>
                         </tr>
                     @endforelse
                 </tbody>

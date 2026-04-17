@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Departement;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Hash;
@@ -42,7 +43,7 @@ class UserDirectory extends Component
 
     public string $password = '';
 
-    public string $role = 'guru';
+    public string $role_id = '';
 
     public ?string $department_id = '';
 
@@ -54,7 +55,7 @@ class UserDirectory extends Component
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->role === 'admin', 403);
+        abort_unless(auth()->user()?->isAdminRole(), 403);
     }
 
     public function updatingSearch(): void
@@ -96,7 +97,7 @@ class UserDirectory extends Component
         $this->name = $user->name;
         $this->email = $user->email;
         $this->phone_number = (string) ($user->phone_number ?? '');
-        $this->role = $user->role;
+        $this->role_id = (string) ($user->role_id ?? '');
         $this->department_id = $user->department_id ? (string) $user->department_id : '';
         $this->is_active = (bool) $user->is_active;
         $this->password = '';
@@ -119,12 +120,13 @@ class UserDirectory extends Component
 
         if ($this->editingUserId) {
             $user = User::query()->findOrFail($this->editingUserId);
-            $before = $user->only(['name', 'email', 'phone_number', 'role', 'department_id', 'is_active']);
+            $before = $user->only(['name', 'email', 'phone_number', 'role_id', 'role', 'department_id', 'is_active']);
 
             $user->name = $validated['name'];
             $user->email = $validated['email'];
             $user->phone_number = $validated['phone_number'] !== '' ? $validated['phone_number'] : null;
-            $user->role = $validated['role'];
+            $user->role_id = (int) $validated['role_id'];
+            $user->role = $this->resolveLegacyRoleSlug((int) $validated['role_id']);
             $user->department_id = $validated['department_id'] !== null ? (int) $validated['department_id'] : null;
             $user->department = $this->resolveDepartmentName($validated['department_id']);
             $user->is_active = (bool) $validated['is_active'];
@@ -139,7 +141,7 @@ class UserDirectory extends Component
                 'actor_id' => auth()->id(),
                 'target_user_id' => $user->id,
                 'before' => $before,
-                'after' => $user->only(['name', 'email', 'phone_number', 'role', 'department_id', 'is_active']),
+                'after' => $user->only(['name', 'email', 'phone_number', 'role_id', 'role', 'department_id', 'is_active']),
             ]);
 
             session()->flash('success', 'Pengguna berhasil diperbarui.');
@@ -149,7 +151,8 @@ class UserDirectory extends Component
                 'email' => $validated['email'],
                 'phone_number' => $validated['phone_number'] !== '' ? $validated['phone_number'] : null,
                 'password' => Hash::make($validated['password']),
-                'role' => $validated['role'],
+                'role_id' => (int) $validated['role_id'],
+                'role' => $this->resolveLegacyRoleSlug((int) $validated['role_id']),
                 'department_id' => $validated['department_id'] !== null ? (int) $validated['department_id'] : null,
                 'department' => $this->resolveDepartmentName($validated['department_id']),
                 'is_active' => (bool) $validated['is_active'],
@@ -209,7 +212,7 @@ class UserDirectory extends Component
             ],
             'phone_number' => ['nullable', 'string', 'max:25', 'regex:/^[0-9+\-\s()]+$/'],
             'password' => $passwordRule,
-            'role' => ['required', Rule::in(['admin', 'guru', 'tata_usaha', 'orang_tua'])],
+            'role_id' => ['required', 'integer', 'exists:roles,id'],
             'department_id' => ['nullable', 'integer', 'exists:departements,id'],
             'is_active' => ['required', 'boolean'],
         ];
@@ -235,7 +238,7 @@ class UserDirectory extends Component
         $this->email = '';
         $this->phone_number = '';
         $this->password = '';
-        $this->role = 'guru';
+        $this->role_id = '';
         $this->department_id = '';
         $this->is_active = true;
         $this->resetErrorBag();
@@ -250,6 +253,18 @@ class UserDirectory extends Component
         return Departement::query()
             ->where('id', (int) $departmentId)
             ->value('name');
+    }
+
+    private function resolveLegacyRoleSlug(int $roleId): string
+    {
+        $slug = (string) Role::query()->where('id', $roleId)->value('slug');
+        $aliases = (array) config('rbac.role_aliases', []);
+        $allowed = (array) config('rbac.legacy_allowed_slugs', []);
+        $resolved = (string) ($aliases[$slug] ?? $slug);
+
+        return in_array($resolved, $allowed, true)
+            ? $resolved
+            : (string) config('rbac.default_legacy_role_slug', '');
     }
 
     public function sortUsers(string $field): void
@@ -271,21 +286,21 @@ class UserDirectory extends Component
     public function render()
     {
         $users = User::query()
-            ->whereIn('role', ['admin', 'guru', 'tata_usaha', 'orang_tua'])
             ->when($this->search !== '', function ($query): void {
                 $search = trim($this->search);
                 $query->where(function ($nested) use ($search): void {
                     $nested->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
                         ->orWhere('phone_number', 'like', "%{$search}%")
+                        ->orWhereHas('roleRef', fn($q) => $q->where('name', 'like', "%{$search}%"))
                         ->orWhereHas('departmentRef', fn($q) => $q->where('name', 'like', "%{$search}%"));
                 });
             })
-            ->when($this->roleFilter !== '', fn($query) => $query->where('role', $this->roleFilter))
+            ->when($this->roleFilter !== '', fn($query) => $query->where('role_id', (int) $this->roleFilter))
             ->when($this->departmentFilter !== '', function ($query): void {
                 $query->where('department_id', (int) $this->departmentFilter);
             })
-            ->when($this->phoneFilter !== '', fn($query) => $query->where('phone_number', 'like', '%'.trim($this->phoneFilter).'%'))
+            ->when($this->phoneFilter !== '', fn($query) => $query->where('phone_number', 'like', '%' . trim($this->phoneFilter) . '%'))
             ->when($this->statusFilter !== '', function ($query): void {
                 if ($this->statusFilter === 'active') {
                     $query->where('is_active', true);
@@ -301,8 +316,22 @@ class UserDirectory extends Component
                         ->limit(1),
                     $this->sortDirection
                 );
-            }, fn($query) => $query->orderBy($this->sortBy, $this->sortDirection))
-            ->with('departmentRef:id,name')
+            }, function ($query): void {
+                if ($this->sortBy === 'role') {
+                    $query->orderBy(
+                        Role::query()
+                            ->select('name')
+                            ->whereColumn('roles.id', 'users.role_id')
+                            ->limit(1),
+                        $this->sortDirection
+                    );
+
+                    return;
+                }
+
+                $query->orderBy($this->sortBy, $this->sortDirection);
+            })
+            ->with(['departmentRef:id,name', 'roleRef:id,name,slug'])
             ->paginate($this->perPage);
 
         $departments = Departement::query()
@@ -310,9 +339,15 @@ class UserDirectory extends Component
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $roles = Role::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug']);
+
         return view('livewire.admin.user-directory', [
             'users' => $users,
             'departments' => $departments,
+            'roles' => $roles,
         ]);
     }
 }

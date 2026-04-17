@@ -9,8 +9,8 @@ class ProfilePage extends Component
 {
     public function render()
     {
-        $role = Auth::user()?->role;
-        $layout = $role === 'admin' ? 'layouts.admin' : 'layouts.evaluator';
+        $user = Auth::user();
+        $layout = $user?->isAdminRole() ? 'layouts.admin' : 'layouts.evaluator';
 
         return view('livewire.shared.profile-page')->layout($layout);
     }

@@ -39,18 +39,12 @@
     <section class="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
         <h2 class="text-sm font-semibold text-zinc-800">Breakdown Responden Per Kelompok</h2>
         <div class="mt-3 grid gap-3 md:grid-cols-3">
-            <article class="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-                <p class="text-xs uppercase tracking-wide text-zinc-500">Guru</p>
-                <p class="mt-1 text-2xl font-semibold text-zinc-900">{{ $metrics['breakdown']['guru'] }}</p>
-            </article>
-            <article class="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-                <p class="text-xs uppercase tracking-wide text-zinc-500">Tata Usaha</p>
-                <p class="mt-1 text-2xl font-semibold text-zinc-900">{{ $metrics['breakdown']['tata_usaha'] }}</p>
-            </article>
-            <article class="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-                <p class="text-xs uppercase tracking-wide text-zinc-500">Orang Tua</p>
-                <p class="mt-1 text-2xl font-semibold text-zinc-900">{{ $metrics['breakdown']['orang_tua'] }}</p>
-            </article>
+            @foreach ($metrics['breakdown_cards'] as $item)
+                <article class="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+                    <p class="text-xs uppercase tracking-wide text-zinc-500">{{ $item['label'] }}</p>
+                    <p class="mt-1 text-2xl font-semibold text-zinc-900">{{ $item['total'] }}</p>
+                </article>
+            @endforeach
         </div>
     </section>
 </div>

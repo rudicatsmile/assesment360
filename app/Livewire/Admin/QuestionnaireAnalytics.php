@@ -26,22 +26,33 @@ class QuestionnaireAnalytics extends Component
 
     public function render()
     {
+        $roleSlugs = array_values(array_unique(array_filter((array) config('rbac.questionnaire_target_slugs', []))));
+        $roleLabels = (array) config('rbac.role_labels', []);
+
         $analytics = Cache::remember(
             $this->analyticsCacheKey(),
             now()->addMinutes(5),
-            fn (): array => app(QuestionnaireScorer::class)->summarizeQuestionnaire($this->questionnaire)
+            fn(): array => app(QuestionnaireScorer::class)->summarizeQuestionnaire($this->questionnaire)
         );
+
+        $chartGroupLabels = collect($roleSlugs)
+            ->map(fn(string $slug): string => (string) ($roleLabels[$slug] ?? str($slug)->replace('_', ' ')->title()))
+            ->values()
+            ->all();
+
+        $chartGroupAverages = collect($roleSlugs)
+            ->map(fn(string $slug): float => (float) ($analytics['averages']['per_group'][$slug] ?? 0))
+            ->values()
+            ->all();
 
         return view('livewire.admin.questionnaire-analytics', [
             'analytics' => $analytics,
+            'roleSlugs' => $roleSlugs,
+            'roleLabels' => $roleLabels,
             'chartQuestionLabels' => collect($analytics['question_scores'])->pluck('question_text')->values()->all(),
             'chartQuestionAverages' => collect($analytics['question_scores'])->pluck('average_score')->values()->all(),
-            'chartGroupLabels' => ['Guru', 'Tata Usaha', 'Orang Tua'],
-            'chartGroupAverages' => [
-                $analytics['averages']['per_group']['guru'],
-                $analytics['averages']['per_group']['tata_usaha'],
-                $analytics['averages']['per_group']['orang_tua'],
-            ],
+            'chartGroupLabels' => $chartGroupLabels,
+            'chartGroupAverages' => $chartGroupAverages,
         ]);
     }
 
@@ -52,11 +63,11 @@ class QuestionnaireAnalytics extends Component
             ->max('updated_at');
 
         $lastAnswerUpdate = Answer::query()
-            ->whereHas('response', fn ($query) => $query->where('questionnaire_id', $this->questionnaire->id))
+            ->whereHas('response', fn($query) => $query->where('questionnaire_id', $this->questionnaire->id))
             ->max('updated_at');
 
-        $version = md5((string) $lastResponseUpdate.'|'.(string) $lastAnswerUpdate.'|'.(string) $this->questionnaire->updated_at);
+        $version = md5((string) $lastResponseUpdate . '|' . (string) $lastAnswerUpdate . '|' . (string) $this->questionnaire->updated_at);
 
-        return 'questionnaire_analytics_'.$this->questionnaire->id.'_'.$version;
+        return 'questionnaire_analytics_' . $this->questionnaire->id . '_' . $version;
     }
 }

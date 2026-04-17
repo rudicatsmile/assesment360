@@ -84,12 +84,12 @@
                         <label class="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2">
                             <input
                                 type="checkbox"
-                                value="{{ $group }}"
+                                value="{{ $group['slug'] }}"
                                 wire:model.live="target_groups"
-                                @disabled(count($target_groups) === 1 && in_array($group, $target_groups, true))
+                                @disabled(count($target_groups) === 1 && in_array($group['slug'], $target_groups, true))
                                 class="rounded border-zinc-300"
                             >
-                            <span>{{ str_replace('_', ' ', $group) }}</span>
+                            <span>{{ $group['name'] }}</span>
                         </label>
                     @endforeach
                     @error('target_groups') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
@@ -102,7 +102,7 @@
                     <div class="flex flex-wrap gap-2">
                         @foreach ($target_groups as $group)
                             <span class="rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
-                                {{ str_replace('_', ' ', $group) }}
+                                {{ $targetGroupLabels[$group] ?? str_replace('_', ' ', $group) }}
                             </span>
                         @endforeach
                     </div>
@@ -117,7 +117,7 @@
                 <p><span class="font-medium text-zinc-800">Judul:</span> {{ $title ?: '-' }}</p>
                 <p><span class="font-medium text-zinc-800">Periode:</span> {{ $start_date ?: '-' }} s/d {{ $end_date ?: '-' }}</p>
                 <p><span class="font-medium text-zinc-800">Status:</span> {{ strtoupper($status) }}</p>
-                <p><span class="font-medium text-zinc-800">Target:</span> {{ $target_groups ? implode(', ', $target_groups) : '-' }}</p>
+                <p><span class="font-medium text-zinc-800">Target:</span> {{ $target_groups ? implode(', ', array_map(fn ($slug) => $targetGroupLabels[$slug] ?? str_replace('_', ' ', $slug), $target_groups)) : '-' }}</p>
             </div>
         </div>
 

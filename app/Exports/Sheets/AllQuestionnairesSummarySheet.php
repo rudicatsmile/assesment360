@@ -17,19 +17,20 @@ class AllQuestionnairesSummarySheet implements FromArray, WithHeadings, WithTitl
 
     public function headings(): array
     {
-        return [
+        $headings = [
             'questionnaire_id',
             'title',
             'status',
             'average_overall',
-            'avg_guru',
-            'avg_tata_usaha',
-            'avg_orang_tua',
-            'respondent_guru',
-            'respondent_tata_usaha',
-            'respondent_orang_tua',
             'generated_at',
         ];
+
+        foreach ($this->roleSlugs() as $slug) {
+            $headings[] = 'avg_' . $slug;
+            $headings[] = 'respondent_' . $slug;
+        }
+
+        return $headings;
     }
 
     public function array(): array
@@ -39,20 +40,20 @@ class AllQuestionnairesSummarySheet implements FromArray, WithHeadings, WithTitl
             ->get()
             ->map(function (Questionnaire $questionnaire): array {
                 $analytics = $this->scorer->summarizeQuestionnaire($questionnaire);
-
-                return [
+                $row = [
                     $questionnaire->id,
                     $questionnaire->title,
                     $questionnaire->status,
                     $analytics['averages']['overall'],
-                    $analytics['averages']['per_group']['guru'],
-                    $analytics['averages']['per_group']['tata_usaha'],
-                    $analytics['averages']['per_group']['orang_tua'],
-                    $analytics['respondent_breakdown']['guru'],
-                    $analytics['respondent_breakdown']['tata_usaha'],
-                    $analytics['respondent_breakdown']['orang_tua'],
                     now()->toDateTimeString(),
                 ];
+
+                foreach ($this->roleSlugs() as $slug) {
+                    $row[] = (float) ($analytics['averages']['per_group'][$slug] ?? 0);
+                    $row[] = (int) ($analytics['respondent_breakdown'][$slug] ?? 0);
+                }
+
+                return $row;
             })
             ->values()
             ->all();
@@ -61,5 +62,13 @@ class AllQuestionnairesSummarySheet implements FromArray, WithHeadings, WithTitl
     public function title(): string
     {
         return 'All Summary';
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function roleSlugs(): array
+    {
+        return array_values(array_unique(array_filter((array) config('rbac.questionnaire_target_slugs', []))));
     }
 }

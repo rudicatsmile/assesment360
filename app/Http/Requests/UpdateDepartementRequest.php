@@ -9,7 +9,7 @@ class UpdateDepartementRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->role === 'admin';
+        return (bool) $this->user()?->isAdminRole();
     }
 
     /**

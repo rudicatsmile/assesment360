@@ -12,12 +12,12 @@ class RedirectByRole
     {
         $user = $request->user();
 
-        if (! $user) {
+        if (!$user) {
             return $next($request);
         }
 
         if ($request->routeIs('role.dashboard')) {
-            return redirect()->to($this->dashboardPath($user->role));
+            return redirect()->to($this->dashboardPath($user->roleSlug()));
         }
 
         return $next($request);
@@ -25,12 +25,6 @@ class RedirectByRole
 
     private function dashboardPath(string $role): string
     {
-        return match ($role) {
-            'admin' => '/admin/dashboard',
-            'guru' => '/fill/dashboard/guru',
-            'tata_usaha' => '/fill/dashboard/staff',
-            'orang_tua' => '/fill/dashboard/parent',
-            default => '/fill/questionnaires',
-        };
+        return (string) (config("rbac.dashboard_paths.{$role}") ?? '/fill/questionnaires');
     }
 }

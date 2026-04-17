@@ -13,8 +13,10 @@ class StaffDashboard extends Component
 
     public function render()
     {
+        $roleSlug = (string) config('rbac.dashboard_role_slugs.staff');
+
         return view('livewire.fill.staff-dashboard', [
-            'payload' => $this->getDashboardMetricsByRole('tata_usaha'),
+            'payload' => $this->getDashboardMetricsByRole($roleSlug),
         ]);
     }
 }

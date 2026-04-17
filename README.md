@@ -56,3 +56,45 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Project Setup Notes
+
+### Role Management Migration & Seeder
+
+Sistem role sekarang berbasis database (`roles` + `users.role_id`).
+
+Jalankan:
+
+```bash
+php artisan migrate
+php artisan db:seed --class=RoleSeeder
+php artisan config:clear
+```
+
+Atau untuk fresh install:
+
+```bash
+php artisan migrate:fresh --seed
+```
+
+### Role Management Access
+
+- Halaman admin role management: `/admin/roles`
+- API endpoints:
+- `GET /api/roles`
+- `POST /api/roles`
+- `PUT /api/roles/{id}`
+- `DELETE /api/roles/{id}`
+
+### CI Guard: Role Slug Consistency
+
+Untuk mencegah hardcoded role slug tersebar lagi, jalankan guard berikut:
+
+```bash
+composer ci:check-role-slugs
+```
+
+Perilaku:
+
+- Lolos (`exit 0`) jika literal role slug hanya ada di `config/rbac.php`.
+- Gagal (`exit 1`) jika menemukan literal slug role pada file selain `config/rbac.php`.

@@ -20,7 +20,7 @@
                     @disabled(count($selectedTargetGroups) === 1 && in_array($group, $selectedTargetGroups, true))
                     class="rounded border-zinc-300"
                 >
-                <span>{{ str_replace('_', ' ', $group) }}</span>
+                <span>{{ $targetGroupLabels[$group] ?? str_replace('_', ' ', $group) }}</span>
             </label>
         @endforeach
     </div>
