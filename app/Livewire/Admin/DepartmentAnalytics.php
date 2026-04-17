@@ -1,0 +1,125 @@
+<?php
+
+namespace App\Livewire\Admin;
+
+use App\Models\Departement;
+use App\Services\DepartmentAnalyticsService;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Livewire\Attributes\Layout;
+use Livewire\Component;
+use Livewire\WithPagination;
+
+#[Layout('layouts.admin')]
+class DepartmentAnalytics extends Component
+{
+    use AuthorizesRequests;
+    use WithPagination;
+
+    public ?string $dateFrom = null;
+
+    public ?string $dateTo = null;
+
+    public ?int $departmentFilter = null;
+
+    public string $sortBy = 'participation_rate';
+
+    public string $sortDirection = 'desc';
+
+    public int $perPage = 10;
+
+    public ?string $errorMessage = null;
+
+    public function mount(): void
+    {
+        abort_unless(auth()->user()?->role === 'admin', 403);
+    }
+
+    public function updatingDateFrom(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDateTo(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDepartmentFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function sort(string $field): void
+    {
+        $allowed = ['name', 'total_respondents', 'participation_rate', 'average_score', 'urut'];
+        if (!in_array($field, $allowed, true)) {
+            return;
+        }
+
+        if ($this->sortBy === $field) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortBy = $field;
+            $this->sortDirection = 'asc';
+        }
+    }
+
+    public function exportExcelUrl(): string
+    {
+        return route('admin.exports.department-analytics.excel', $this->queryParams());
+    }
+
+    public function exportPdfUrl(): string
+    {
+        return route('admin.exports.department-analytics.pdf', $this->queryParams());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function queryParams(): array
+    {
+        return array_filter([
+            'date_from' => $this->dateFrom,
+            'date_to' => $this->dateTo,
+            'department_id' => $this->departmentFilter,
+            'sort_by' => $this->sortBy,
+            'sort_direction' => $this->sortDirection,
+        ], fn($value) => $value !== null && $value !== '');
+    }
+
+    public function render()
+    {
+        $departments = Departement::query()
+            ->orderBy('urut')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        try {
+            $result = app(DepartmentAnalyticsService::class)->summarize(
+                $this->dateFrom,
+                $this->dateTo,
+                $this->departmentFilter,
+                $this->sortBy,
+                $this->sortDirection,
+                $this->perPage,
+                $this->getPage()
+            );
+
+            $this->errorMessage = null;
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->errorMessage = 'Terjadi kesalahan saat memuat data analitik.';
+            $result = [
+                'rows' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, $this->perPage),
+                'chart' => ['labels' => [], 'average_scores' => [], 'participation_rates' => []],
+            ];
+        }
+
+        return view('livewire.admin.department-analytics', [
+            'departments' => $departments,
+            'rows' => $result['rows'],
+            'chart' => $result['chart'],
+        ]);
+    }
+}

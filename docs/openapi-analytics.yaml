@@ -1,0 +1,49 @@
+openapi: 3.0.3
+info:
+  title: KepsekEval Department Analytics API
+  version: 1.0.0
+  description: Endpoint analitik departemen (filter, chart data, export Excel/PDF).
+servers:
+  - url: http://127.0.0.1:8000
+paths:
+  /admin/analytics:
+    get:
+      summary: Halaman analytics departemen
+      tags: [Department Analytics]
+      responses:
+        "200":
+          description: HTML page
+  /admin/exports/department-analytics/excel:
+    get:
+      summary: Export analytics departemen ke Excel
+      tags: [Department Analytics]
+      parameters:
+        - in: query
+          name: date_from
+          schema: { type: string, format: date }
+        - in: query
+          name: date_to
+          schema: { type: string, format: date }
+        - in: query
+          name: department_id
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Excel file
+  /admin/exports/department-analytics/pdf:
+    get:
+      summary: Export analytics departemen ke printable HTML/PDF
+      tags: [Department Analytics]
+      parameters:
+        - in: query
+          name: date_from
+          schema: { type: string, format: date }
+        - in: query
+          name: date_to
+          schema: { type: string, format: date }
+        - in: query
+          name: department_id
+          schema: { type: integer }
+      responses:
+        "200":
+          description: HTML printable response

@@ -15,6 +15,7 @@ class Answer extends Model
     protected $fillable = [
         'response_id',
         'question_id',
+        'department_id',
         'answer_option_id',
         'essay_answer',
         'calculated_score',
@@ -28,6 +29,11 @@ class Answer extends Model
     public function question(): BelongsTo
     {
         return $this->belongsTo(Question::class);
+    }
+
+    public function departmentRef(): BelongsTo
+    {
+        return $this->belongsTo(Departement::class, 'department_id');
     }
 
     public function answerOption(): BelongsTo

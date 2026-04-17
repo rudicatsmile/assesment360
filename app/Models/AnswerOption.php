@@ -14,6 +14,7 @@ class AnswerOption extends Model
 
     protected $fillable = [
         'question_id',
+        'department_id',
         'option_text',
         'score',
         'order',
@@ -22,6 +23,11 @@ class AnswerOption extends Model
     public function question(): BelongsTo
     {
         return $this->belongsTo(Question::class);
+    }
+
+    public function departmentRef(): BelongsTo
+    {
+        return $this->belongsTo(Departement::class, 'department_id');
     }
 
     public function answers(): HasMany

@@ -36,7 +36,7 @@
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <p class="text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Dashboard Penilai</p>
-                    <h1 class="text-lg font-semibold">KepsekEval</h1>
+                    <h1 class="text-lg font-semibold">Evaluasi Kepala Sekolah</h1>
                 </div>
                 <div class="flex flex-wrap items-center justify-end gap-2">
                     <a href="{{ route('fill.questionnaires.index') }}" wire:navigate>

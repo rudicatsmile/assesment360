@@ -147,11 +147,13 @@ class QuestionManager extends Component
             $question->answerOptions()->delete();
         } else {
             $keptIds = [];
+            $departmentId = $this->questionnaire->creator?->department_id;
 
             foreach ($preparedOptions as $index => $optionData) {
                 $option = $question->answerOptions()->updateOrCreate(
                     ['id' => $optionData['id']],
                     [
+                        'department_id' => $departmentId,
                         'option_text' => $optionData['option_text'],
                         'score' => $optionData['score'],
                         'order' => $index + 1,

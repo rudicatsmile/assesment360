@@ -15,8 +15,8 @@
                 <h1 class="mt-2 text-3xl font-semibold">Masuk Ke Dashboard</h1>
                 <p class="mt-3 text-sm text-zinc-300">Silakan login menggunakan akun role Anda untuk mengakses dashboard sesuai hak akses.</p>
                 <div class="mt-6 space-y-1 text-xs text-zinc-300">
-                    <p>Demo Admin: admin@kepsekeval.test / password</p>
-                    <p>Demo Guru: guru1@kepsekeval.test / password</p>
+                    <p>Demo Admin: admin@admin.com / password</p>
+                    <p>Demo Penilai: user3@yalwash9.org / password</p>
                 </div>
             </aside>
 

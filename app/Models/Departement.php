@@ -20,4 +20,14 @@ class Departement extends Model
     {
         return $this->hasMany(User::class, 'department_id');
     }
+
+    public function answers(): HasMany
+    {
+        return $this->hasMany(Answer::class, 'department_id');
+    }
+
+    public function answerOptions(): HasMany
+    {
+        return $this->hasMany(AnswerOption::class, 'department_id');
+    }
 }

@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\Admin\QuestionnaireExportController;
+use App\Http\Controllers\Admin\DepartmentAnalyticsExportController;
 use App\Http\Controllers\Admin\DepartmentManagementController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Livewire\Admin\AdminDashboard;
+use App\Livewire\Admin\DepartmentAnalytics;
 use App\Livewire\Admin\QuestionnaireAnalytics;
 use App\Livewire\Admin\QuestionnaireForm;
 use App\Livewire\Admin\QuestionnaireList;
@@ -50,6 +52,7 @@ Route::middleware('auth')->group(function (): void {
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function (): void {
     Route::redirect('/', '/admin/dashboard');
     Route::get('/dashboard', AdminDashboard::class)->name('dashboard');
+    Route::get('/analytics', DepartmentAnalytics::class)->name('analytics.index');
 
     Route::prefix('questionnaires')->name('questionnaires.')->group(function (): void {
         Route::get('/', QuestionnaireList::class)->name('index');
@@ -62,6 +65,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::prefix('exports')->name('exports.')->group(function (): void {
         Route::get('/questionnaires-all', [QuestionnaireExportController::class, 'all'])->name('all');
         Route::get('/questionnaires/{questionnaire}', [QuestionnaireExportController::class, 'questionnaire'])->name('questionnaire');
+        Route::get('/department-analytics/excel', [DepartmentAnalyticsExportController::class, 'excel'])->name('department-analytics.excel');
+        Route::get('/department-analytics/pdf', [DepartmentAnalyticsExportController::class, 'pdf'])->name('department-analytics.pdf');
     });
 
     Route::get('/users', UserDirectory::class)->name('users.index');

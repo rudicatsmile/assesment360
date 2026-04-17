@@ -224,6 +224,7 @@ class QuestionnaireFill extends Component
                         [
                             'response_id' => $this->response->id,
                             'question_id' => $question->id,
+                            'department_id' => Auth::user()?->department_id,
                             'answer_option_id' => $optionId,
                             'essay_answer' => $essayValue,
                             'calculated_score' => $this->scorer()->calculateScoreForAnswer($question, $optionId),
@@ -232,7 +233,7 @@ class QuestionnaireFill extends Component
                         ]
                     ],
                     ['response_id', 'question_id'],
-                    ['answer_option_id', 'essay_answer', 'calculated_score', 'updated_at']
+                    ['department_id', 'answer_option_id', 'essay_answer', 'calculated_score', 'updated_at']
                 );
             }
         });
@@ -434,6 +435,7 @@ class QuestionnaireFill extends Component
             $upsertRows[] = [
                 'response_id' => $this->response->id,
                 'question_id' => (int) $questionId,
+                'department_id' => Auth::user()?->department_id,
                 'answer_option_id' => $optionId,
                 'essay_answer' => $essayValue,
                 'calculated_score' => null,
@@ -447,7 +449,7 @@ class QuestionnaireFill extends Component
                 Answer::query()->upsert(
                     $upsertRows,
                     ['response_id', 'question_id'],
-                    ['answer_option_id', 'essay_answer', 'calculated_score', 'updated_at']
+                    ['department_id', 'answer_option_id', 'essay_answer', 'calculated_score', 'updated_at']
                 );
             }
 

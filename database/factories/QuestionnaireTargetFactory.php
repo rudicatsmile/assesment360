@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\QuestionnaireTarget;
+use App\Models\Questionnaire;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,7 +19,8 @@ class QuestionnaireTargetFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'questionnaire_id' => Questionnaire::factory(),
+            'target_group' => fake()->randomElement(['guru', 'tata_usaha', 'orang_tua']),
         ];
     }
 }
