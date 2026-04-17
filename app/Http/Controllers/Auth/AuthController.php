@@ -18,14 +18,46 @@ class AuthController extends Controller
 {
     public function showLogin(): View
     {
+        $mode = $this->resolveLoginMode();
+
         return view('auth.login', [
             'verificationPending' => (bool) session('phone_login_verification_id'),
             'maskedPhone' => session('phone_login_masked'),
+            'loginMode' => $mode,
+            'passwordLoginEnabled' => in_array($mode, ['password', 'both'], true),
+            'whatsAppLoginEnabled' => in_array($mode, ['whatsapp', 'both'], true),
         ]);
+    }
+
+    public function loginWithPassword(Request $request): RedirectResponse
+    {
+        if (! in_array($this->resolveLoginMode(), ['password', 'both'], true)) {
+            return back()->with('error', 'Mode login email/password saat ini dinonaktifkan.');
+        }
+
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+        ]);
+
+        $remember = (bool) $request->boolean('remember');
+        if (! Auth::attempt($credentials, $remember)) {
+            return back()
+                ->withInput($request->only('email', 'remember'))
+                ->with('error', 'Email atau password tidak valid.');
+        }
+
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('role.dashboard'));
     }
 
     public function sendVerification(Request $request, WhatsAppBusinessService $service): RedirectResponse
     {
+        if (! in_array($this->resolveLoginMode(), ['whatsapp', 'both'], true)) {
+            return back()->with('error', 'Mode login verifikasi WhatsApp saat ini dinonaktifkan.');
+        }
+
         $validated = $request->validate([
             'country_code' => ['required', 'regex:/^\+\d{1,4}$/'],
             'phone_number' => ['required', 'regex:/^[0-9]{6,15}$/'],
@@ -100,6 +132,10 @@ class AuthController extends Controller
 
     public function verifyCode(Request $request): RedirectResponse
     {
+        if (! in_array($this->resolveLoginMode(), ['whatsapp', 'both'], true)) {
+            return back()->with('error', 'Mode login verifikasi WhatsApp saat ini dinonaktifkan.');
+        }
+
         $validated = $request->validate([
             'verification_code' => ['required', 'digits:6'],
         ]);
@@ -210,5 +246,12 @@ class AuthController extends Controller
             'phone_login_country_code',
             'phone_login_number',
         ]);
+    }
+
+    private function resolveLoginMode(): string
+    {
+        $mode = strtolower((string) config('features.login_mode', 'both'));
+
+        return in_array($mode, ['password', 'whatsapp', 'both'], true) ? $mode : 'both';
     }
 }
