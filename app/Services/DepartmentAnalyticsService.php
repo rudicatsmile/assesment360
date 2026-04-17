@@ -6,6 +6,7 @@ use App\Models\Departement;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\LengthAwarePaginator as Paginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DepartmentAnalyticsService
@@ -20,8 +21,8 @@ class DepartmentAnalyticsService
         ?string $dateFrom,
         ?string $dateTo,
         ?int $departmentId,
-        string $sortBy = 'participation_rate',
-        string $sortDirection = 'desc',
+        string $sortBy = 'urut',
+        string $sortDirection = 'asc',
         int $perPage = 10,
         int $page = 1
     ): array {
@@ -71,7 +72,7 @@ class DepartmentAnalyticsService
 
         $allowedSort = ['name', 'total_respondents', 'participation_rate', 'average_score', 'urut'];
         if (!in_array($sortBy, $allowedSort, true)) {
-            $sortBy = 'participation_rate';
+            $sortBy = 'urut';
         }
         $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
 
@@ -91,6 +92,100 @@ class DepartmentAnalyticsService
                 'participation_rates' => $chartRows->pluck('participation_rate')->map(fn($rate): float => (float) $rate)->all(),
             ],
         ];
+    }
+
+    /**
+     * @return array{
+     *   department_name: string,
+     *   rows: array<int, array{
+     *     role_id:int,
+     *     role_name:string,
+     *     total_respondents:int,
+     *     participation_rate:float,
+     *     average_score:float
+     *   }>
+     * }
+     */
+    public function summarizeRolesByDepartment(
+        int $departmentId,
+        ?string $dateFrom = null,
+        ?string $dateTo = null
+    ): array {
+        $cacheKey = implode(':', [
+            'department_role_analytics',
+            $departmentId,
+            $dateFrom ?: 'none',
+            $dateTo ?: 'none',
+        ]);
+
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($departmentId, $dateFrom, $dateTo): array {
+            $departmentName = (string) (Departement::query()->where('id', $departmentId)->value('name') ?? '');
+
+            $totalByRoleSub = DB::table('users')
+                ->selectRaw('role_id, COUNT(DISTINCT id) as total_users')
+                ->where('department_id', $departmentId)
+                ->whereNotNull('role_id')
+                ->whereNull('deleted_at')
+                ->groupBy('role_id');
+
+            $activeRespondentsSub = DB::table('responses')
+                ->join('users', 'users.id', '=', 'responses.user_id')
+                ->selectRaw('users.role_id, COUNT(DISTINCT users.id) as active_respondents')
+                ->where('users.department_id', $departmentId)
+                ->whereNotNull('users.role_id')
+                ->whereNull('users.deleted_at')
+                ->where('responses.status', 'submitted')
+                ->whereNull('responses.deleted_at')
+                ->when($dateFrom, fn($query) => $query->whereDate('responses.submitted_at', '>=', $dateFrom))
+                ->when($dateTo, fn($query) => $query->whereDate('responses.submitted_at', '<=', $dateTo))
+                ->groupBy('users.role_id');
+
+            $averageScoreSub = DB::table('answers')
+                ->join('responses', 'responses.id', '=', 'answers.response_id')
+                ->join('users', 'users.id', '=', 'responses.user_id')
+                ->selectRaw('users.role_id, AVG(answers.calculated_score) as average_score')
+                ->where('users.department_id', $departmentId)
+                ->whereNotNull('users.role_id')
+                ->whereNull('users.deleted_at')
+                ->where('responses.status', 'submitted')
+                ->whereNull('responses.deleted_at')
+                ->whereNull('answers.deleted_at')
+                ->whereNotNull('answers.calculated_score')
+                ->when($dateFrom, fn($query) => $query->whereDate('responses.submitted_at', '>=', $dateFrom))
+                ->when($dateTo, fn($query) => $query->whereDate('responses.submitted_at', '<=', $dateTo))
+                ->groupBy('users.role_id');
+
+            $rows = DB::table('roles')
+                ->joinSub($totalByRoleSub, 'tot', fn($join) => $join->on('tot.role_id', '=', 'roles.id'))
+                ->leftJoinSub($activeRespondentsSub, 'resp', fn($join) => $join->on('resp.role_id', '=', 'roles.id'))
+                ->leftJoinSub($averageScoreSub, 'score', fn($join) => $join->on('score.role_id', '=', 'roles.id'))
+                ->orderBy('roles.name')
+                ->selectRaw('
+                    roles.id as role_id,
+                    roles.name as role_name,
+                    COALESCE(tot.total_users, 0) as total_respondents,
+                    CASE
+                        WHEN COALESCE(tot.total_users, 0) = 0 THEN 0
+                        ELSE ROUND((COALESCE(resp.active_respondents, 0) / tot.total_users) * 100, 1)
+                    END as participation_rate,
+                    ROUND(COALESCE(score.average_score, 0), 2) as average_score
+                ')
+                ->get()
+                ->map(fn(object $row): array => [
+                    'role_id' => (int) $row->role_id,
+                    'role_name' => (string) $row->role_name,
+                    'total_respondents' => (int) $row->total_respondents,
+                    'participation_rate' => (float) $row->participation_rate,
+                    'average_score' => (float) $row->average_score,
+                ])
+                ->values()
+                ->all();
+
+            return [
+                'department_name' => $departmentName,
+                'rows' => $rows,
+            ];
+        });
     }
 
     /**

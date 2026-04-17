@@ -21,13 +21,22 @@ class DepartmentAnalytics extends Component
 
     public ?int $departmentFilter = null;
 
-    public string $sortBy = 'participation_rate';
+    public string $sortBy = 'urut';
 
-    public string $sortDirection = 'desc';
+    public string $sortDirection = 'asc';
 
     public int $perPage = 10;
 
     public ?string $errorMessage = null;
+
+    public ?int $selectedDepartmentId = null;
+
+    public string $selectedDepartmentName = '';
+
+    /** @var array<int, array{role_id:int, role_name:string, total_respondents:int, participation_rate:float, average_score:float}> */
+    public array $roleRows = [];
+
+    public ?string $roleErrorMessage = null;
 
     public function mount(): void
     {
@@ -44,9 +53,22 @@ class DepartmentAnalytics extends Component
         $this->resetPage();
     }
 
+    public function updatedDateFrom(): void
+    {
+        $this->refreshSelectedDepartmentRoles();
+    }
+
+    public function updatedDateTo(): void
+    {
+        $this->refreshSelectedDepartmentRoles();
+    }
+
     public function updatingDepartmentFilter(): void
     {
         $this->resetPage();
+        if ($this->selectedDepartmentId !== null && (int) $this->departmentFilter !== $this->selectedDepartmentId) {
+            $this->clearSelectedDepartment();
+        }
     }
 
     public function sort(string $field): void
@@ -61,6 +83,48 @@ class DepartmentAnalytics extends Component
         } else {
             $this->sortBy = $field;
             $this->sortDirection = 'asc';
+        }
+    }
+
+    public function selectDepartment(int $departmentId): void
+    {
+        $this->selectedDepartmentId = $departmentId;
+        $this->selectedDepartmentName = '';
+        $this->roleRows = [];
+        $this->roleErrorMessage = null;
+
+        try {
+            $result = app(DepartmentAnalyticsService::class)->summarizeRolesByDepartment(
+                $departmentId,
+                $this->dateFrom,
+                $this->dateTo
+            );
+
+            $this->selectedDepartmentName = $result['department_name'];
+            $this->roleRows = $result['rows'];
+
+            if ($this->roleRows === []) {
+                $this->roleErrorMessage = 'Department ini belum memiliki data role atau metrik responden.';
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->roleErrorMessage = 'Gagal memuat analitik role untuk department yang dipilih.';
+            $this->roleRows = [];
+        }
+    }
+
+    public function clearSelectedDepartment(): void
+    {
+        $this->selectedDepartmentId = null;
+        $this->selectedDepartmentName = '';
+        $this->roleRows = [];
+        $this->roleErrorMessage = null;
+    }
+
+    private function refreshSelectedDepartmentRoles(): void
+    {
+        if ($this->selectedDepartmentId !== null) {
+            $this->selectDepartment($this->selectedDepartmentId);
         }
     }
 

@@ -6,6 +6,7 @@ use App\Models\Answer;
 use App\Models\Departement;
 use App\Models\Question;
 use App\Models\Questionnaire;
+use App\Models\Role;
 use App\Models\Response;
 use App\Models\User;
 use App\Services\DepartmentAnalyticsService;
@@ -125,5 +126,71 @@ class DepartmentAnalyticsTest extends TestCase
 
         $summary = app(DepartmentAnalyticsService::class)->summarize(null, null, null, 'name', 'asc', 10, 1);
         $this->assertNotEmpty($summary['rows']->items());
+    }
+
+    public function test_service_can_summarize_roles_for_selected_department(): void
+    {
+        $dep = Departement::query()->create(['name' => 'Kesiswaan', 'urut' => 2]);
+        $roleA = Role::query()->create(['name' => 'Pengurus Yayasan', 'slug' => 'pengurus_yayasan', 'prosentase' => 80, 'is_active' => true]);
+        $roleB = Role::query()->create(['name' => 'Guru Staf', 'slug' => 'guru_staf', 'prosentase' => 70, 'is_active' => true]);
+
+        $userRoleA1 = User::factory()->create([
+            'department_id' => $dep->id,
+            'role_id' => $roleA->id,
+            'role' => $roleA->slug,
+            'is_active' => true,
+        ]);
+        $userRoleA2 = User::factory()->create([
+            'department_id' => $dep->id,
+            'role_id' => $roleA->id,
+            'role' => $roleA->slug,
+            'is_active' => true,
+        ]);
+        $userRoleB1 = User::factory()->create([
+            'department_id' => $dep->id,
+            'role_id' => $roleB->id,
+            'role' => $roleB->slug,
+            'is_active' => true,
+        ]);
+
+        $questionnaire = Questionnaire::factory()->create(['status' => 'active', 'created_by' => $userRoleA1->id]);
+        $question = Question::factory()->create(['questionnaire_id' => $questionnaire->id, 'type' => 'single_choice']);
+
+        $responseA1 = Response::query()->create([
+            'questionnaire_id' => $questionnaire->id,
+            'user_id' => $userRoleA1->id,
+            'status' => 'submitted',
+            'submitted_at' => now(),
+        ]);
+        $responseB1 = Response::query()->create([
+            'questionnaire_id' => $questionnaire->id,
+            'user_id' => $userRoleB1->id,
+            'status' => 'submitted',
+            'submitted_at' => now(),
+        ]);
+
+        Answer::query()->create([
+            'response_id' => $responseA1->id,
+            'question_id' => $question->id,
+            'department_id' => $dep->id,
+            'calculated_score' => 4.2,
+        ]);
+        Answer::query()->create([
+            'response_id' => $responseB1->id,
+            'question_id' => $question->id,
+            'department_id' => $dep->id,
+            'calculated_score' => 3.5,
+        ]);
+
+        $summary = app(DepartmentAnalyticsService::class)->summarizeRolesByDepartment($dep->id);
+        $rows = collect($summary['rows'])->keyBy('role_name');
+
+        $this->assertSame('Kesiswaan', $summary['department_name']);
+        $this->assertSame(2, (int) $rows['Pengurus Yayasan']['total_respondents']);
+        $this->assertSame(50.0, (float) $rows['Pengurus Yayasan']['participation_rate']);
+        $this->assertSame(4.2, (float) $rows['Pengurus Yayasan']['average_score']);
+        $this->assertSame(1, (int) $rows['Guru Staf']['total_respondents']);
+        $this->assertSame(100.0, (float) $rows['Guru Staf']['participation_rate']);
+        $this->assertSame(3.5, (float) $rows['Guru Staf']['average_score']);
     }
 }
