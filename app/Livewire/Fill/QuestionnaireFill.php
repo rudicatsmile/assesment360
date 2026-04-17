@@ -271,7 +271,7 @@ class QuestionnaireFill extends Component
     public function getRequiredQuestionCountProperty(): int
     {
         return $this->questions
-            ->filter(fn($question): bool => $question->is_required || $question->type === 'combined')
+            ->filter(fn($question): bool => $question->is_required || in_array($question->type, ['essay', 'combined'], true))
             ->count();
     }
 
@@ -279,7 +279,7 @@ class QuestionnaireFill extends Component
     {
         return $this->questions
             ->filter(function ($question): bool {
-                if (!$question->is_required && $question->type !== 'combined') {
+                if (!$question->is_required && !in_array($question->type, ['essay', 'combined'], true)) {
                     return true;
                 }
 
@@ -316,9 +316,7 @@ class QuestionnaireFill extends Component
         }
 
         if ($question->type === 'essay') {
-            $rules[$prefix . '.essay_answer'] = $question->is_required
-                ? ['required', 'string', 'min:3', 'max:2000']
-                : ['nullable', 'string', 'max:2000'];
+            $rules[$prefix . '.essay_answer'] = ['required', 'string', 'min:3', 'max:2000'];
             $messages[$prefix . '.essay_answer.required'] = 'Jawaban esai wajib diisi.';
         }
 
@@ -352,7 +350,7 @@ class QuestionnaireFill extends Component
                 $messages[$prefix . '.answer_option_id.required'] = 'Pilih salah satu opsi jawaban.';
             }
 
-            if ($question->type === 'essay' && $question->is_required) {
+            if ($question->type === 'essay') {
                 $rules[$prefix . '.essay_answer'] = ['required', 'string', 'min:3', 'max:2000'];
                 $messages[$prefix . '.essay_answer.required'] = 'Jawaban esai wajib diisi.';
             }
@@ -499,6 +497,8 @@ class QuestionnaireFill extends Component
 
     public function render()
     {
+        $singleQuestionMode = (bool) config('features.questionnaire_single_question_mode', false);
+
         return view('livewire.fill.questionnaire-fill', [
             'currentQuestion' => $this->currentQuestion,
             'totalQuestions' => $this->questions->count(),
@@ -506,6 +506,7 @@ class QuestionnaireFill extends Component
             'progressPercent' => $this->progressPercent,
             'requiredQuestionCount' => $this->requiredQuestionCount,
             'answeredRequiredCount' => $this->answeredRequiredCount,
+            'singleQuestionMode' => $singleQuestionMode,
         ]);
     }
 }

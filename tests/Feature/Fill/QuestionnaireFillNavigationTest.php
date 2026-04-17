@@ -49,6 +49,31 @@ class QuestionnaireFillNavigationTest extends TestCase
         $this->assertSame(1, Answer::query()->where('question_id', $question1->id)->count());
     }
 
+    public function test_submit_confirmation_fails_when_single_required_essay_is_empty(): void
+    {
+        [$user, $questionnaire, $essayQuestion] = $this->makeEssayQuestionnaireFixture(1);
+        $this->actingAs($user);
+
+        Livewire::test(QuestionnaireFill::class, ['questionnaire' => $questionnaire])
+            ->call('openSubmitConfirmation')
+            ->assertHasErrors(["answers.{$essayQuestion->id}.essay_answer"])
+            ->assertSet('showSubmitConfirmation', false);
+    }
+
+    public function test_submit_confirmation_fails_when_multiple_required_essay_are_empty(): void
+    {
+        [$user, $questionnaire, $essayQuestions] = $this->makeEssayQuestionnaireFixture(2);
+        $this->actingAs($user);
+
+        $component = Livewire::test(QuestionnaireFill::class, ['questionnaire' => $questionnaire])
+            ->call('openSubmitConfirmation')
+            ->assertSet('showSubmitConfirmation', false);
+
+        foreach ($essayQuestions as $question) {
+            $component->assertHasErrors(["answers.{$question->id}.essay_answer"]);
+        }
+    }
+
     /**
      * @return array{0: User, 1: Questionnaire, 2: Question, 3: Question, 4: AnswerOption}
      */
@@ -102,5 +127,41 @@ class QuestionnaireFillNavigationTest extends TestCase
         ]);
 
         return [$user, $questionnaire, $question1, $question2, $option1];
+    }
+
+    /**
+     * @return array{0: User, 1: Questionnaire, 2: Question|array<int, Question>}
+     */
+    private function makeEssayQuestionnaireFixture(int $essayCount): array
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $user = User::factory()->create(['role' => 'guru']);
+
+        $questionnaire = Questionnaire::query()->create([
+            'title' => 'Kuisioner Essay',
+            'description' => 'Uji validasi essay',
+            'start_date' => now()->subDay(),
+            'end_date' => now()->addDay(),
+            'status' => 'active',
+            'created_by' => $admin->id,
+        ]);
+
+        QuestionnaireTarget::query()->create([
+            'questionnaire_id' => $questionnaire->id,
+            'target_group' => 'guru',
+        ]);
+
+        $questions = [];
+        for ($i = 1; $i <= $essayCount; $i++) {
+            $questions[] = Question::query()->create([
+                'questionnaire_id' => $questionnaire->id,
+                'question_text' => "Pertanyaan Essay {$i}",
+                'type' => 'essay',
+                'is_required' => true,
+                'order' => $i,
+            ]);
+        }
+
+        return [$user, $questionnaire, $essayCount === 1 ? $questions[0] : $questions];
     }
 }
