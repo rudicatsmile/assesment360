@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DepartmentAnalyticsExportController;
 use App\Http\Controllers\Admin\DepartmentManagementController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\WhatsAppWebhookController;
 use App\Livewire\Admin\AdminDashboard;
 use App\Livewire\Admin\DepartmentAnalytics;
 use App\Livewire\Admin\QuestionnaireAnalytics;
@@ -31,8 +32,16 @@ Route::get('/', function () {
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [AuthController::class, 'login'])->name('login.attempt');
+    Route::post('/login/send-verification', [AuthController::class, 'sendVerification'])
+        ->middleware('throttle:10,1')
+        ->name('login.send_verification');
+    Route::post('/login/verify-code', [AuthController::class, 'verifyCode'])
+        ->middleware('throttle:15,1')
+        ->name('login.verify_code');
 });
+
+Route::match(['get', 'post'], '/webhooks/whatsapp', WhatsAppWebhookController::class)
+    ->name('webhooks.whatsapp');
 
 Route::middleware(['auth', 'role.redirect'])->get('/dashboard', function () {
     return response()->noContent();

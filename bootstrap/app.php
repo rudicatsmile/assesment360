@@ -16,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'evaluator' => \App\Http\Middleware\EnsureUserIsEvaluator::class,
             'role.redirect' => \App\Http\Middleware\RedirectByRole::class,
         ]);
+
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/whatsapp',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

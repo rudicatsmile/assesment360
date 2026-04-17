@@ -35,4 +35,19 @@ return [
         ],
     ],
 
+    'whatsapp' => [
+        'enabled' => env('WHATSAPP_ENABLED', false),
+        'base_url' => env('WHATSAPP_BASE_URL', 'https://jkt.wablas.com/api/send-message'),
+        'token' => env('WHATSAPP_TOKEN', ''),
+    ],
+
+    'whatsapp_business' => [
+        'enabled' => env('WA_BUSINESS_ENABLED', false),
+        'base_url' => env('WA_BUSINESS_BASE_URL', env('WHATSAPP_BASE_URL', 'https://jkt.wablas.com/api/send-message')),
+        'messages_endpoint' => env('WA_BUSINESS_MESSAGES_ENDPOINT', '/messages'),
+        'access_token' => env('WA_BUSINESS_ACCESS_TOKEN', env('WHATSAPP_TOKEN', '')),
+        'template' => env('WA_BUSINESS_TEMPLATE', 'login_verification'),
+        'webhook_verify_token' => env('WA_BUSINESS_WEBHOOK_VERIFY_TOKEN', ''),
+    ],
+
 ];
