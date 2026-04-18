@@ -11,23 +11,23 @@
     <main class="mx-auto flex min-h-screen max-w-5xl items-center justify-center p-4">
         <section class="grid w-full overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm md:grid-cols-2">
             <aside class="hidden bg-zinc-900 p-8 text-white md:block">
-                <p class="text-xs uppercase tracking-wider text-zinc-400">KepsekEval</p>
+                <p class="text-xs uppercase tracking-wider text-zinc-400">{{ config('app.name', 'KepsekEval') }}</p>
                 <h1 class="mt-2 text-3xl font-semibold">Masuk Ke Dashboard</h1>
                 <p class="mt-3 text-sm text-zinc-300">
                     @if ($loginMode === 'both')
                         Anda dapat login dengan email/password atau verifikasi WhatsApp.
                     @elseif ($loginMode === 'password')
-                        Login menggunakan email dan password.
+                        Silahkan login menggunakan email dan password.
                     @else
-                        Login menggunakan nomor telepon dan verifikasi kode OTP via WhatsApp.
+                        Silahkan login menggunakan nomor telepon dan verifikasi kode OTP via WhatsApp.
                     @endif
                 </p>
                 <div class="mt-6 space-y-1 text-xs text-zinc-300">
                     @if ($passwordLoginEnabled)
-                        <p>Mode Password: Masukkan email dan password akun.</p>
+                        {{-- <p>Mode Password: Masukkan email dan password akun.</p> --}}
                     @endif
                     @if ($whatsAppLoginEnabled)
-                        <p>Mode WhatsApp: Isi nomor lalu verifikasi kode 6 digit.</p>
+                        {{-- <p>Mode WhatsApp: Isi nomor lalu verifikasi kode 6 digit.</p> --}}
                     @endif
                 </div>
             </aside>
@@ -92,7 +92,7 @@
                         </label>
 
                         <button type="submit" class="w-full rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800">
-                            Masuk dengan Password
+                            L o g i n
                         </button>
                     </form>
                 @endif

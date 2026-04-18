@@ -54,9 +54,11 @@ class QuestionnaireFill extends Component
             throw new AccessDeniedHttpException('Kuisioner ini tidak aktif.');
         }
 
+        $userRoleSlug = $user->roleSlug();
+
         $isTargeted = $this->questionnaire
             ->targets()
-            ->where('target_group', $user->role)
+            ->where('target_group', $userRoleSlug)
             ->exists();
 
         if (!$isTargeted) {

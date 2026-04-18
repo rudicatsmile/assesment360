@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Models\Answer;
 use App\Models\Questionnaire;
 use App\Models\Response;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Cache;
@@ -24,8 +25,17 @@ class AdminDashboard extends Component
     public function render()
     {
         $metrics = Cache::remember('admin_dashboard_overview_v1', now()->addMinutes(5), function (): array {
-            $roles = array_values(array_unique(array_filter((array) config('rbac.questionnaire_target_slugs', []))));
-            $roleLabels = (array) config('rbac.role_labels', []);
+            $adminSlugs = (array) config('rbac.admin_slugs', ['super_admin', 'admin']);
+            $targetAliases = (array) config('rbac.questionnaire_target_aliases', []);
+
+            $allRoles = Role::query()
+                ->where('is_active', true)
+                ->whereNotIn('slug', $adminSlugs)
+                ->orderBy('name')
+                ->get(['id', 'name', 'slug']);
+
+            $roles = $allRoles->pluck('slug')->toArray();
+            $roleLabels = $allRoles->mapWithKeys(fn(Role $role): array => [$role->slug => $role->name])->toArray();
 
             $activeQuestionnaires = Questionnaire::query()
                 ->where('status', 'active')
@@ -33,15 +43,27 @@ class AdminDashboard extends Component
                 ->get();
 
             $userCountByRole = User::query()
-                ->whereIn('role', $roles)
-                ->selectRaw('role, COUNT(*) as total')
-                ->groupBy('role')
-                ->pluck('total', 'role');
+                ->join('roles', 'roles.id', '=', 'users.role_id')
+                ->whereIn('roles.slug', $roles)
+                ->selectRaw('roles.slug, COUNT(*) as total')
+                ->groupBy('roles.slug')
+                ->pluck('total', 'roles.slug');
 
-            $totalTargetSlots = $activeQuestionnaires->sum(function (Questionnaire $questionnaire) use ($userCountByRole): int {
+            $totalTargetSlots = $activeQuestionnaires->sum(function (Questionnaire $questionnaire) use ($userCountByRole, $targetAliases): int {
                 return $questionnaire->targets
                     ->unique('target_group')
-                    ->sum(fn($target): int => (int) ($userCountByRole[$target->target_group] ?? 0));
+                    ->sum(function ($target) use ($userCountByRole, $targetAliases): int {
+                        $targetGroup = $target->target_group;
+                        $count = (int) ($userCountByRole[$targetGroup] ?? 0);
+
+                        foreach ($targetAliases as $primarySlug => $aliasSlug) {
+                            if ($aliasSlug === $targetGroup && isset($userCountByRole[$primarySlug])) {
+                                $count += (int) $userCountByRole[$primarySlug];
+                            }
+                        }
+
+                        return $count;
+                    });
             });
 
             $totalSubmittedActiveResponses = Response::query()
@@ -65,23 +87,35 @@ class AdminDashboard extends Component
 
             $breakdown = Response::query()
                 ->join('users', 'users.id', '=', 'responses.user_id')
+                ->join('roles', 'roles.id', '=', 'users.role_id')
                 ->whereNull('users.deleted_at')
                 ->where('responses.status', 'submitted')
-                ->whereIn('users.role', $roles)
-                ->selectRaw('users.role, COUNT(DISTINCT responses.user_id) as total')
-                ->groupBy('users.role')
-                ->pluck('total', 'users.role');
+                ->whereIn('roles.slug', $roles)
+                ->selectRaw('roles.slug, COUNT(DISTINCT responses.user_id) as total')
+                ->groupBy('roles.slug')
+                ->pluck('total', 'roles.slug');
 
             $breakdownByRole = collect($roles)
                 ->mapWithKeys(fn(string $slug): array => [$slug => (int) ($breakdown[$slug] ?? 0)])
                 ->all();
 
-            $breakdownCards = collect($roles)
-                ->map(fn(string $slug): array => [
-                    'slug' => $slug,
-                    'label' => (string) ($roleLabels[$slug] ?? str($slug)->replace('_', ' ')->title()),
-                    'total' => (int) ($breakdown[$slug] ?? 0),
-                ])
+            $breakdownCards = collect($allRoles)
+                ->map(function (Role $role) use ($breakdown, $targetAliases): array {
+                    $slug = $role->slug;
+                    $total = (int) ($breakdown[$slug] ?? 0);
+
+                    foreach ($targetAliases as $primarySlug => $aliasSlug) {
+                        if ($primarySlug === $slug && isset($breakdown[$aliasSlug])) {
+                            $total += (int) $breakdown[$aliasSlug];
+                        }
+                    }
+
+                    return [
+                        'slug' => $slug,
+                        'label' => $role->name,
+                        'total' => $total,
+                    ];
+                })
                 ->values()
                 ->all();
 

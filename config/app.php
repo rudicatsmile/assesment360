@@ -17,6 +17,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application Copyright
+    |--------------------------------------------------------------------------
+    |
+    | This value is the copyright information for your application, which will
+    | be used in the footer and other UI elements where copyright information
+    | needs to be displayed.
+    |
+    */
+
+    'copyright' => env('APP_COPYRIGHT', 'Yayasan Al-Wathoniyah 9'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

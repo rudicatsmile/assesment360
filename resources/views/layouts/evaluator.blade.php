@@ -11,6 +11,7 @@
         })();
     </script>
     <title>{{ config('app.name', 'KepsekEval') }} - Penilai</title>
+    <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @fluxAppearance
     @livewireStyles
@@ -32,7 +33,7 @@
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <p class="text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Dashboard Penilai</p>
-                    <h1 class="text-lg font-semibold">Evaluasi Kepala Sekolah</h1>
+                    <h1 class="text-lg font-semibold">{{ config('app.name', 'KepsekEval') }}</h1>
                     <p class="text-xs text-amber-600 dark:text-amber-400">
                         Role: {{ $role ?: '-' }}
                     </p>
@@ -70,7 +71,7 @@
         {{ $slot }}
 
         <footer class="mt-8 border-t border-zinc-200 pt-4 text-center text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-            Evaluasi Kepala Sekolah - Yayasan Al-Wathoniyah 9
+            {{ config('app.name', 'KepsekEval') }} - {{ config('app.copyright', 'Yayasan Al-Wathoniyah 9') }}
         </footer>
     </div>
 
