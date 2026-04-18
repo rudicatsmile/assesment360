@@ -189,6 +189,73 @@ class DepartmentAnalyticsService
     }
 
     /**
+     * @return array<int, array{
+     *   user_id:int,
+     *   user_name:string,
+     *   total_submissions:int,
+     *   average_score:float
+     * }>
+     */
+    public function summarizeUsersByDepartmentRole(
+        int $departmentId,
+        int $roleId,
+        ?string $dateFrom = null,
+        ?string $dateTo = null
+    ): array {
+        $cacheKey = implode(':', [
+            'department_role_users',
+            $departmentId,
+            $roleId,
+            $dateFrom ?: 'none',
+            $dateTo ?: 'none',
+        ]);
+
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($departmentId, $roleId, $dateFrom, $dateTo): array {
+            $submissionSub = DB::table('responses')
+                ->selectRaw('user_id, COUNT(*) as total_submissions')
+                ->where('status', 'submitted')
+                ->whereNull('deleted_at')
+                ->when($dateFrom, fn ($query) => $query->whereDate('submitted_at', '>=', $dateFrom))
+                ->when($dateTo, fn ($query) => $query->whereDate('submitted_at', '<=', $dateTo))
+                ->groupBy('user_id');
+
+            $scoreSub = DB::table('answers')
+                ->join('responses', 'responses.id', '=', 'answers.response_id')
+                ->selectRaw('responses.user_id, AVG(answers.calculated_score) as average_score')
+                ->where('responses.status', 'submitted')
+                ->whereNull('responses.deleted_at')
+                ->whereNull('answers.deleted_at')
+                ->whereNotNull('answers.calculated_score')
+                ->when($dateFrom, fn ($query) => $query->whereDate('responses.submitted_at', '>=', $dateFrom))
+                ->when($dateTo, fn ($query) => $query->whereDate('responses.submitted_at', '<=', $dateTo))
+                ->groupBy('responses.user_id');
+
+            return DB::table('users')
+                ->leftJoinSub($submissionSub, 'sub', fn ($join) => $join->on('sub.user_id', '=', 'users.id'))
+                ->leftJoinSub($scoreSub, 'sc', fn ($join) => $join->on('sc.user_id', '=', 'users.id'))
+                ->where('users.department_id', $departmentId)
+                ->where('users.role_id', $roleId)
+                ->whereNull('users.deleted_at')
+                ->orderBy('users.name')
+                ->selectRaw('
+                    users.id as user_id,
+                    users.name as user_name,
+                    COALESCE(sub.total_submissions, 0) as total_submissions,
+                    ROUND(COALESCE(sc.average_score, 0), 2) as average_score
+                ')
+                ->get()
+                ->map(fn (object $row): array => [
+                    'user_id' => (int) $row->user_id,
+                    'user_name' => (string) $row->user_name,
+                    'total_submissions' => (int) $row->total_submissions,
+                    'average_score' => (float) $row->average_score,
+                ])
+                ->values()
+                ->all();
+        });
+    }
+
+    /**
      * @param Collection<int, object> $items
      */
     private function paginateCollection(Collection $items, int $perPage, int $page): LengthAwarePaginator

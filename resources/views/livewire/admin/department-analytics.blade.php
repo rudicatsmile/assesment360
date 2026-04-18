@@ -140,11 +140,72 @@
                         <tbody class="divide-y divide-zinc-100">
                             @foreach ($roleRows as $roleRow)
                                 <tr>
-                                    <td class="px-4 py-3 font-medium text-zinc-900">{{ $roleRow['role_name'] }}</td>
+                                    <td class="px-4 py-3 font-medium text-zinc-900">
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center gap-2 text-left hover:underline"
+                                            wire:click="toggleRole({{ $roleRow['role_id'] }})"
+                                        >
+                                            <span>{{ $roleRow['role_name'] }}</span>
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                                style="
+                                                    width: 14px;
+                                                    height: 14px;
+                                                    min-width: 14px;
+                                                    display: inline-block;
+                                                    vertical-align: middle;
+                                                    transition: transform 320ms ease;
+                                                    transform-origin: 50% 50%;
+                                                    transform: {{ $expandedRoleId === $roleRow['role_id'] ? 'rotate(180deg)' : 'rotate(0deg)' }};
+                                                "
+                                            >
+                                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </td>
                                     <td class="px-4 py-3 text-zinc-700">{{ number_format($roleRow['total_respondents'], 0) }}</td>
                                     <td class="px-4 py-3 text-zinc-700">{{ number_format($roleRow['participation_rate'], 1) }}%</td>
                                     <td class="px-4 py-3 text-zinc-700">{{ number_format($roleRow['average_score'], 2) }}</td>
                                 </tr>
+
+                                @if ($expandedRoleId === $roleRow['role_id'])
+                                    <tr>
+                                        <td colspan="4" class="bg-zinc-50 px-4 py-3">
+                                            <div x-data="{ open: true }" x-show="open" x-transition.duration.350ms>
+                                                <div wire:init="loadRoleUsers({{ $roleRow['role_id'] }})" class="space-y-2">
+                                                    @if (!array_key_exists($roleRow['role_id'], $roleUsersByRole) && !array_key_exists($roleRow['role_id'], $roleUsersErrorByRole))
+                                                        <div class="space-y-2">
+                                                            <div class="h-4 animate-pulse rounded bg-zinc-200"></div>
+                                                            <div class="h-4 animate-pulse rounded bg-zinc-200"></div>
+                                                            <div class="h-4 animate-pulse rounded bg-zinc-200"></div>
+                                                        </div>
+                                                    @elseif (array_key_exists($roleRow['role_id'], $roleUsersErrorByRole))
+                                                        <div class="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                                                            {{ $roleUsersErrorByRole[$roleRow['role_id']] }}
+                                                        </div>
+                                                    @elseif (($roleUsersByRole[$roleRow['role_id']] ?? []) === [])
+                                                        <div class="rounded border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-600">
+                                                            Tidak ada user pada role ini.
+                                                        </div>
+                                                    @else
+                                                        <div class="rounded border border-zinc-200 bg-white">
+                                                            @foreach (($roleUsersByRole[$roleRow['role_id']] ?? []) as $userRow)
+                                                                <div class="border-b border-zinc-100 px-3 py-2 last:border-b-0">
+                                                                    <p class="text-sm text-zinc-800">
+                                                                        {{ $userRow['user_name'] }} - Submit: {{ number_format($userRow['total_submissions'], 0) }} - Avg Score: {{ number_format($userRow['average_score'], 2) }}
+                                                                    </p>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endif
                             @endforeach
                         </tbody>
                     </table>

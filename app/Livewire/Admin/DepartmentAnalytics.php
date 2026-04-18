@@ -36,6 +36,14 @@ class DepartmentAnalytics extends Component
     /** @var array<int, array{role_id:int, role_name:string, total_respondents:int, participation_rate:float, average_score:float}> */
     public array $roleRows = [];
 
+    public ?int $expandedRoleId = null;
+
+    /** @var array<int, array<int, array{user_id:int, user_name:string, total_submissions:int, average_score:float}>> */
+    public array $roleUsersByRole = [];
+
+    /** @var array<int, string> */
+    public array $roleUsersErrorByRole = [];
+
     public ?string $roleErrorMessage = null;
 
     public function mount(): void
@@ -91,6 +99,9 @@ class DepartmentAnalytics extends Component
         $this->selectedDepartmentId = $departmentId;
         $this->selectedDepartmentName = '';
         $this->roleRows = [];
+        $this->expandedRoleId = null;
+        $this->roleUsersByRole = [];
+        $this->roleUsersErrorByRole = [];
         $this->roleErrorMessage = null;
 
         try {
@@ -118,7 +129,46 @@ class DepartmentAnalytics extends Component
         $this->selectedDepartmentId = null;
         $this->selectedDepartmentName = '';
         $this->roleRows = [];
+        $this->expandedRoleId = null;
+        $this->roleUsersByRole = [];
+        $this->roleUsersErrorByRole = [];
         $this->roleErrorMessage = null;
+    }
+
+    public function toggleRole(int $roleId): void
+    {
+        if ($this->expandedRoleId === $roleId) {
+            $this->expandedRoleId = null;
+
+            return;
+        }
+
+        $this->expandedRoleId = $roleId;
+    }
+
+    public function loadRoleUsers(int $roleId): void
+    {
+        if ($this->selectedDepartmentId === null) {
+            return;
+        }
+
+        if (array_key_exists($roleId, $this->roleUsersByRole)) {
+            return;
+        }
+
+        try {
+            $this->roleUsersByRole[$roleId] = app(DepartmentAnalyticsService::class)->summarizeUsersByDepartmentRole(
+                $this->selectedDepartmentId,
+                $roleId,
+                $this->dateFrom,
+                $this->dateTo
+            );
+            unset($this->roleUsersErrorByRole[$roleId]);
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->roleUsersErrorByRole[$roleId] = 'Gagal memuat daftar user untuk role ini.';
+            $this->roleUsersByRole[$roleId] = [];
+        }
     }
 
     private function refreshSelectedDepartmentRoles(): void

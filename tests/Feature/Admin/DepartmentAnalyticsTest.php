@@ -193,4 +193,60 @@ class DepartmentAnalyticsTest extends TestCase
         $this->assertSame(100.0, (float) $rows['Guru Staf']['participation_rate']);
         $this->assertSame(3.5, (float) $rows['Guru Staf']['average_score']);
     }
+
+    public function test_service_can_summarize_users_for_department_role(): void
+    {
+        $dep = Departement::query()->create(['name' => 'Sarana', 'urut' => 3]);
+        $role = Role::query()->create(['name' => 'Komite', 'slug' => 'komite', 'prosentase' => 60, 'is_active' => true]);
+        $userA = User::factory()->create([
+            'department_id' => $dep->id,
+            'role_id' => $role->id,
+            'role' => $role->slug,
+            'name' => 'Ahmad Komite',
+            'is_active' => true,
+        ]);
+        $userB = User::factory()->create([
+            'department_id' => $dep->id,
+            'role_id' => $role->id,
+            'role' => $role->slug,
+            'name' => 'Budi Komite',
+            'is_active' => true,
+        ]);
+
+        $questionnaire = Questionnaire::factory()->create(['status' => 'active', 'created_by' => $userA->id]);
+        $question = Question::factory()->create(['questionnaire_id' => $questionnaire->id, 'type' => 'single_choice']);
+
+        $responseA = Response::query()->create([
+            'questionnaire_id' => $questionnaire->id,
+            'user_id' => $userA->id,
+            'status' => 'submitted',
+            'submitted_at' => now(),
+        ]);
+        $responseB = Response::query()->create([
+            'questionnaire_id' => $questionnaire->id,
+            'user_id' => $userB->id,
+            'status' => 'submitted',
+            'submitted_at' => now(),
+        ]);
+
+        Answer::query()->create([
+            'response_id' => $responseA->id,
+            'question_id' => $question->id,
+            'department_id' => $dep->id,
+            'calculated_score' => 4.7,
+        ]);
+        Answer::query()->create([
+            'response_id' => $responseB->id,
+            'question_id' => $question->id,
+            'department_id' => $dep->id,
+            'calculated_score' => 3.9,
+        ]);
+
+        $users = app(DepartmentAnalyticsService::class)->summarizeUsersByDepartmentRole($dep->id, $role->id);
+        $first = collect($users)->firstWhere('user_name', 'Ahmad Komite');
+
+        $this->assertNotEmpty($users);
+        $this->assertSame(1, (int) ($first['total_submissions'] ?? 0));
+        $this->assertSame(4.7, (float) ($first['average_score'] ?? 0));
+    }
 }

@@ -98,3 +98,11 @@ Perilaku:
 
 - Lolos (`exit 0`) jika literal role slug hanya ada di `config/rbac.php`.
 - Gagal (`exit 1`) jika menemukan literal slug role pada file selain `config/rbac.php`.
+
+### Department Analytics Role Accordion
+
+- Buka halaman `/admin/analytics`.
+- Klik salah satu baris department untuk memuat section `Role Analytics`.
+- Klik nama role untuk expand accordion dan melihat daftar user role tersebut.
+- Data user dimuat async (Livewire AJAX) dengan loading skeleton.
+- Klik role yang sama lagi untuk collapse, atau klik role lain untuk pindah panel.
