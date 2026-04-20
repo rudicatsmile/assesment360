@@ -12,6 +12,7 @@
     </script>
     <title>{{ config('app.name', 'KepsekEval') }} - Admin</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @fluxAppearance
     @livewireStyles

@@ -178,6 +178,37 @@ class DepartmentAnalytics extends Component
         }
     }
 
+    public function getChartData(): array
+    {
+        try {
+            $result = app(DepartmentAnalyticsService::class)->summarize(
+                $this->dateFrom,
+                $this->dateTo,
+                $this->departmentFilter,
+                'urut',
+                'asc',
+                100,
+                1
+            );
+
+            return [
+                'success' => true,
+                'data' => $result['chart'],
+            ];
+        } catch (\Throwable $exception) {
+            report($exception);
+            return [
+                'success' => false,
+                'error' => 'Gagal memuat data grafik.',
+            ];
+        }
+    }
+
+    public function refreshCharts(): void
+    {
+        $this->dispatch('chart-data-refreshed');
+    }
+
     public function exportExcelUrl(): string
     {
         return route('admin.exports.department-analytics.excel', $this->queryParams());

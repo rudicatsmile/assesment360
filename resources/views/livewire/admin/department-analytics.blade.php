@@ -59,13 +59,63 @@
     </div>
 
     <section class="grid gap-4 lg:grid-cols-2">
-        <article class="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-            <h2 class="mb-3 text-sm font-semibold text-zinc-800">Rata-rata Skor Antar Department</h2>
-            <canvas id="department-score-bar" height="220"></canvas>
+        <article class="group relative overflow-hidden rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div class="mb-3 flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-zinc-800">Rata-rata Skor Antar Department</h2>
+                <div wire:loading.remove wire:target="dateFrom,dateTo,departmentFilter" class="opacity-0 transition-opacity group-hover:opacity-100">
+                    <button wire:click="refreshCharts" class="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600" title="Refresh Chart">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div wire:loading wire:target="dateFrom,dateTo,departmentFilter" class="flex h-56 items-center justify-center">
+                <div class="flex flex-col items-center gap-2">
+                    <div class="h-8 w-8 animate-spin rounded-full border-4 border-zinc-200 border-t-blue-600"></div>
+                    <span class="text-xs text-zinc-500">Memuat grafik...</span>
+                </div>
+            </div>
+            <canvas wire:loading.remove wire:target="dateFrom,dateTo,departmentFilter" id="department-score-bar" class="transition-opacity group-hover:opacity-[0.98]" height="220"></canvas>
+            @if (count($chart['labels']) === 0)
+                <div class="absolute inset-0 flex flex-col items-center justify-center bg-zinc-50 text-center">
+                    <svg class="mb-2 h-12 w-12 text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    <p class="text-sm text-zinc-500">Belum ada data department</p>
+                    <p class="mt-1 text-xs text-zinc-400">Data akan muncul setelah ada responden</p>
+                </div>
+            @endif
         </article>
-        <article class="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-            <h2 class="mb-3 text-sm font-semibold text-zinc-800">Tingkat Partisipasi per Department (%)</h2>
-            <canvas id="department-participation-donut" height="220"></canvas>
+
+        <article class="group relative overflow-hidden rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div class="mb-3 flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-zinc-800">Tingkat Partisipasi per Department (%)</h2>
+                <div wire:loading.remove wire:target="dateFrom,dateTo,departmentFilter" class="opacity-0 transition-opacity group-hover:opacity-100">
+                    <button wire:click="refreshCharts" class="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600" title="Refresh Chart">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div wire:loading wire:target="dateFrom,dateTo,departmentFilter" class="flex h-56 items-center justify-center">
+                <div class="flex flex-col items-center gap-2">
+                    <div class="h-8 w-8 animate-spin rounded-full border-4 border-zinc-200 border-t-emerald-600"></div>
+                    <span class="text-xs text-zinc-500">Memuat grafik...</span>
+                </div>
+            </div>
+            <canvas wire:loading.remove wire:target="dateFrom,dateTo,departmentFilter" id="department-participation-donut" class="transition-opacity group-hover:opacity-[0.98]" height="220"></canvas>
+            @if (count($chart['labels']) === 0)
+                <div class="absolute inset-0 flex flex-col items-center justify-center bg-zinc-50 text-center">
+                    <svg class="mb-2 h-12 w-12 text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/>
+                    </svg>
+                    <p class="text-sm text-zinc-500">Belum ada data department</p>
+                    <p class="mt-1 text-xs text-zinc-400">Data akan muncul setelah ada responden</p>
+                </div>
+            @endif
         </article>
     </section>
 
@@ -215,48 +265,290 @@
     @endif
 
     @script
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
         <script>
-            const labels = @json($chart['labels']);
-            const averageScores = @json($chart['average_scores']);
-            const participationRates = @json($chart['participation_rates']);
+            const chartTheme = {
+                primary: '#2563eb',
+                primaryLight: 'rgba(37, 99, 235, 0.1)',
+                colors: [
+                    '#2563eb', '#16a34a', '#9333ea', '#ea580c', '#0f766e', '#be185d',
+                    '#0891b2', '#ca8a04', '#7c3aed', '#dc2626', '#65a30d', '#6366f1'
+                ],
+                textColor: '#3f3f46',
+                gridColor: 'rgba(0, 0, 0, 0.06)',
+            };
 
-            const scoreCanvas = document.getElementById('department-score-bar');
-            const participationCanvas = document.getElementById('department-participation-donut');
+            const defaultTooltipConfig = {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleColor: '#ffffff',
+                bodyColor: '#e4e4e7',
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                borderWidth: 1,
+                cornerRadius: 8,
+                padding: 12,
+                displayColors: true,
+                boxPadding: 6,
+            };
 
-            if (window.departmentScoreChart) window.departmentScoreChart.destroy();
-            if (window.departmentParticipationChart) window.departmentParticipationChart.destroy();
+            function initializeBarChart(canvas, labels, data) {
+                if (!canvas || !labels.length) return null;
 
-            if (scoreCanvas) {
-                window.departmentScoreChart = new Chart(scoreCanvas, {
+                return new Chart(canvas, {
                     type: 'bar',
                     data: {
                         labels,
                         datasets: [{
-                            label: 'Rata-rata skor',
-                            data: averageScores,
-                            backgroundColor: '#2563eb',
-                            borderRadius: 8,
+                            label: 'Rata-rata Skor',
+                            data,
+                            backgroundColor: chartTheme.primary,
+                            hoverBackgroundColor: '#1d4ed8',
+                            borderColor: chartTheme.primary,
+                            borderWidth: 0,
+                            borderRadius: 10,
+                            borderSkipped: false,
+                            hoverOffset: 8,
                         }]
                     },
                     options: {
                         responsive: true,
-                        scales: { y: { beginAtZero: true, suggestedMax: 5 } }
+                        maintainAspectRatio: true,
+                        interaction: {
+                            intersect: false,
+                            mode: 'index',
+                        },
+                        plugins: {
+                            legend: {
+                                display: false,
+                            },
+                            tooltip: {
+                                ...defaultTooltipConfig,
+                                callbacks: {
+                                    title: (items) => items[0]?.label || '',
+                                    label: (context) => {
+                                        const value = context.parsed?.y ?? 0;
+                                        const maxScore = 5;
+                                        const percentage = Math.round((value / maxScore) * 100);
+                                        return [
+                                            `Skor: ${value.toFixed(2)}`,
+                                            `Progress: ${percentage}%`
+                                        ];
+                                    },
+                                    afterLabel: (context) => {
+                                        const value = context.parsed?.y ?? 0;
+                                        if (value >= 4) return '⭐ Excellent';
+                                        if (value >= 3) return '👍 Good';
+                                        if (value >= 2) return '⚠️ Needs Improvement';
+                                        return '❌ Poor';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 5,
+                                grid: {
+                                    color: chartTheme.gridColor,
+                                    drawBorder: false,
+                                },
+                                ticks: {
+                                    color: chartTheme.textColor,
+                                    font: { size: 11, weight: '500' },
+                                    stepSize: 1,
+                                    callback: function(value) {
+                                        return value.toFixed(0);
+                                    }
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false,
+                                },
+                                ticks: {
+                                    color: chartTheme.textColor,
+                                    font: { size: 10 },
+                                    maxRotation: 45,
+                                    minRotation: 0,
+                                }
+                            }
+                        },
+                        animation: {
+                            duration: 800,
+                            easing: 'easeOutQuart',
+                        }
                     }
                 });
             }
 
-            if (participationCanvas) {
-                window.departmentParticipationChart = new Chart(participationCanvas, {
+            function initializeDoughnutChart(canvas, labels, data) {
+                if (!canvas || !labels.length) return null;
+
+                return new Chart(canvas, {
                     type: 'doughnut',
                     data: {
                         labels,
                         datasets: [{
-                            data: participationRates,
-                            backgroundColor: ['#16a34a', '#2563eb', '#9333ea', '#ea580c', '#0f766e', '#be185d'],
+                            data,
+                            backgroundColor: chartTheme.colors.slice(0, labels.length),
+                            hoverBackgroundColor: chartTheme.colors.slice(0, labels.length).map(c => c),
+                            borderWidth: 3,
+                            borderColor: '#ffffff',
+                            hoverOffset: 12,
                         }]
                     },
-                    options: { responsive: true }
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        cutout: '60%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: chartTheme.textColor,
+                                    font: { size: 11, weight: '500' },
+                                    padding: 16,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle',
+                                    generateLabels: function(chart) {
+                                        const data = chart.data;
+                                        if (data.labels.length && data.datasets.length) {
+                                            return data.labels.map((label, i) => {
+                                                const value = data.datasets[0].data[i];
+                                                const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                                return {
+                                                    text: `${label} (${percentage}%)`,
+                                                    fillStyle: chartTheme.colors[i % chartTheme.colors.length],
+                                                    strokeStyle: chartTheme.colors[i % chartTheme.colors.length],
+                                                    hidden: false,
+                                                    index: i,
+                                                    pointStyle: 'circle',
+                                                };
+                                            });
+                                        }
+                                        return [];
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                ...defaultTooltipConfig,
+                                callbacks: {
+                                    title: (items) => items[0]?.label || '',
+                                    label: (context) => {
+                                        const value = context.parsed ?? 0;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                        return [
+                                            `Partisipasi: ${value.toFixed(1)}%`,
+                                            `Jumlah: ${total > 0 ? (value / 100 * total).toFixed(1) : 0} responden`
+                                        ];
+                                    }
+                                }
+                            }
+                        },
+                        animation: {
+                            animateRotate: true,
+                            animateScale: true,
+                            duration: 1000,
+                            easing: 'easeOutQuart',
+                        }
+                    }
+                });
+            }
+
+            const scoreCanvas = document.getElementById('department-score-bar');
+            const participationCanvas = document.getElementById('department-participation-donut');
+
+            if (window.departmentScoreChart) {
+                window.departmentScoreChart.destroy();
+                window.departmentScoreChart = null;
+            }
+            if (window.departmentParticipationChart) {
+                window.departmentParticipationChart.destroy();
+                window.departmentParticipationChart = null;
+            }
+
+            const labels = @json($chart['labels']);
+            const averageScores = @json($chart['average_scores']);
+            const participationRates = @json($chart['participation_rates']);
+
+            if (scoreCanvas && labels.length > 0) {
+                 window.departmentScoreChart = initializeBarChart(scoreCanvas, labels, averageScores);
+             }
+
+             if (participationCanvas && labels.length > 0) {
+                 window.departmentParticipationChart = initializeDoughnutChart(participationCanvas, labels, participationRates);
+             }
+
+             if (typeof Chart !== 'undefined') {
+                 const chartjsStatus = document.getElementById('chartjs-status');
+                 if (chartjsStatus) {
+                     chartjsStatus.textContent = 'YES ✓';
+                     chartjsStatus.className = 'text-green-700 font-semibold';
+                 }
+             } else {
+                 const chartjsStatus = document.getElementById('chartjs-status');
+                 if (chartjsStatus) {
+                     chartjsStatus.textContent = 'NO ✗ - CDN Failed';
+                     chartjsStatus.className = 'text-red-700 font-semibold';
+                 }
+             }
+
+             window.addEventListener('chart-data-refreshed', async function() {
+                try {
+                    const response = await fetch('?chart=1', {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        }
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+
+                        if (result.success && result.data) {
+                            const newLabels = result.data.labels;
+                            const newScores = result.data.average_scores;
+                            const newRates = result.data.participation_rates;
+
+                            if (window.departmentScoreChart) {
+                                window.departmentScoreChart.data.labels = newLabels;
+                                window.departmentScoreChart.data.datasets[0].data = newScores;
+                                window.departmentScoreChart.update('active');
+                            }
+
+                            if (window.departmentParticipationChart) {
+                                window.departmentParticipationChart.data.labels = newLabels;
+                                window.departmentParticipationChart.data.datasets[0].data = newRates;
+                                window.departmentParticipationChart.data.datasets[0].backgroundColor = chartTheme.colors.slice(0, newLabels.length);
+                                window.departmentParticipationChart.update('active');
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to refresh chart data:', error);
+                }
+            });
+
+            if (typeof Livewire !== 'undefined') {
+                Livewire.hook('message.processed', (message, component) => {
+                    if (component.name === 'admin.department-analytics') {
+                        const newLabels = @json($chart['labels']);
+                        const newScores = @json($chart['average_scores']);
+                        const newRates = @json($chart['participation_rates']);
+
+                        if (window.departmentScoreChart) {
+                            window.departmentScoreChart.data.labels = newLabels;
+                            window.departmentScoreChart.data.datasets[0].data = newScores;
+                            window.departmentScoreChart.update('active');
+                        }
+
+                        if (window.departmentParticipationChart) {
+                            window.departmentParticipationChart.data.labels = newLabels;
+                            window.departmentParticipationChart.data.datasets[0].data = newRates;
+                            window.departmentParticipationChart.data.datasets[0].backgroundColor = chartTheme.colors.slice(0, newLabels.length);
+                            window.departmentParticipationChart.update('active');
+                        }
+                    }
                 });
             }
         </script>
