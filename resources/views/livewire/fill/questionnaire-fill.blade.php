@@ -80,7 +80,7 @@
             <p class="mt-2 text-sm text-emerald-700">Jawaban Anda sudah berhasil dikirim dan tidak dapat diubah lagi.</p>
             <div class="mt-4">
                 <a href="{{ route('fill.questionnaires.index') }}" wire:navigate>
-                    <flux:button variant="primary">Kembali ke Dashboard</flux:button>
+                    <flux:button variant="primary">Kembali ke Daftar Kuisioner</flux:button>
                 </a>
             </div>
         </div>

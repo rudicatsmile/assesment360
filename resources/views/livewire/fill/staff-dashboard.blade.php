@@ -1,6 +1,7 @@
 <div class="space-y-5">
     <div>
-        <h2 class="text-2xl font-semibold text-zinc-900">Dashboard {{ config('rbac.role_labels.'.config('rbac.dashboard_role_slugs.staff'), 'Evaluator') }}</h2>
+        <h2 class="text-2xl font-semibold text-zinc-900">Dashboard
+            {{ config('rbac.role_labels.' . config('rbac.dashboard_role_slugs.staff'), 'Evaluator') }}</h2>
         <p class="text-sm text-zinc-500">Pantau kuisioner yang tersedia dan histori pengisian.</p>
     </div>
 
@@ -28,7 +29,7 @@
                         <p class="text-sm font-medium text-zinc-900">{{ $questionnaire->title }}</p>
                         <p class="text-xs text-zinc-500">{{ $questionnaire->questions_count }} pertanyaan</p>
                     </div>
-                    <a href="{{ route('fill.questionnaires.show', $questionnaire) }}" wire:navigate>
+                    <a href="{{ route('fill.questionnaires.index') }}" wire:navigate>
                         <flux:button size="sm" variant="primary">Isi</flux:button>
                     </a>
                 </div>
@@ -44,7 +45,8 @@
             @forelse ($payload['completed'] as $response)
                 <div class="rounded-lg border border-zinc-200 px-3 py-2">
                     <p class="text-sm font-medium text-zinc-900">{{ $response->questionnaire->title }}</p>
-                    <p class="text-xs text-zinc-500">Disubmit: {{ optional($response->submitted_at)->format('d M Y H:i') }}</p>
+                    <p class="text-xs text-zinc-500">Disubmit: {{ optional($response->submitted_at)->format('d M Y H:i') }}
+                    </p>
                 </div>
             @empty
                 <p class="text-sm text-zinc-500">Belum ada kuisioner yang Anda submit.</p>
