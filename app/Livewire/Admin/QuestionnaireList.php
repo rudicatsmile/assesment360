@@ -18,6 +18,8 @@ class QuestionnaireList extends Component
 
     public string $status = '';
 
+    public string $targetGroup = '';
+
     public function mount(): void
     {
         $this->authorize('viewAny', Questionnaire::class);
@@ -29,6 +31,11 @@ class QuestionnaireList extends Component
     }
 
     public function updatingStatus(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingTargetGroup(): void
     {
         $this->resetPage();
     }
@@ -66,16 +73,18 @@ class QuestionnaireList extends Component
             ->when($this->search !== '', function ($query): void {
                 $query->where(function ($searchQuery): void {
                     $searchQuery
-                        ->where('title', 'like', '%'.$this->search.'%')
-                        ->orWhere('description', 'like', '%'.$this->search.'%');
+                        ->where('title', 'like', '%' . $this->search . '%')
+                        ->orWhere('description', 'like', '%' . $this->search . '%');
                 });
             })
-            ->when($this->status !== '', fn ($query) => $query->where('status', $this->status))
+            ->when($this->status !== '', fn($query) => $query->where('status', $this->status))
+            ->when($this->targetGroup !== '', fn($query) => $query->whereHas('targets', fn($q) => $q->where('target_group', $this->targetGroup)))
             ->latest()
             ->paginate(10);
 
         return view('livewire.admin.questionnaire-list', [
             'questionnaires' => $questionnaires,
+            'targetGroupOptions' => Questionnaire::targetGroupOptions(),
         ]);
     }
 }

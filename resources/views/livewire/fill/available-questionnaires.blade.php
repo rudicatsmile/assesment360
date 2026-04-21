@@ -138,6 +138,61 @@
 
             $wire.openSubmitAllConfirmation();
         },
+        validateBeforeNext() {
+            if (this.timeExpired) return;
+            this.clearValidationState();
+
+            const root = this.$root;
+            const blocks = Array.from(root.querySelectorAll('[data-question-block]'));
+
+            blocks.forEach((block) => {
+                const isRequired = block.dataset.required === '1';
+                if (!isRequired) return;
+
+                const questionId = Number(block.dataset.questionId || 0);
+                const questionType = String(block.dataset.questionType || '');
+                const questionLabel = String(block.dataset.questionLabel || '').trim();
+                const questionnaireTitle = String(block.dataset.questionnaireTitle || '').trim();
+                const displayName = (questionnaireTitle !== '' ? questionnaireTitle + ' - ' : '') + (questionLabel !== '' ? questionLabel : 'Pertanyaan ' + block.dataset.questionNumber);
+
+                const hasSelectedRadio = block.querySelector('input[type=radio]:checked') !== null;
+                const hasCheckedBox = block.querySelector('input[type=checkbox]:checked') !== null;
+                const hasSelectedDropdown = Array.from(block.querySelectorAll('select')).some((el) => String(el.value || '').trim() !== '');
+                const essayTextareas = Array.from(block.querySelectorAll('textarea[data-essay-input]'));
+                const hasEssayText = essayTextareas.some((el) => String(el.value || '').trim() !== '');
+                const hasText = Array.from(block.querySelectorAll('textarea, input[type=text], input[type=email], input[type=number], input:not([type])'))
+                    .some((el) => String(el.value || '').trim() !== '');
+
+                let isAnswered = false;
+                if (questionType === 'single_choice') {
+                    isAnswered = hasSelectedRadio || hasCheckedBox || hasSelectedDropdown;
+                } else if (questionType === 'essay') {
+                    isAnswered = hasEssayText;
+                } else if (questionType === 'combined') {
+                    isAnswered = (hasSelectedRadio || hasCheckedBox || hasSelectedDropdown) && hasText;
+                } else {
+                    isAnswered = hasSelectedRadio || hasCheckedBox || hasSelectedDropdown || hasText;
+                }
+
+                if (!isAnswered) {
+                    this.invalidQuestionIds.push(questionId);
+                    this.validationErrors.push(displayName + ' belum diisi.');
+                    if (questionType === 'essay') {
+                        this.invalidEssayQuestionIds.push(questionId);
+                    }
+                }
+            });
+
+            if (this.validationErrors.length > 0) {
+                this.$nextTick(() => {
+                    const panel = document.getElementById('global-validation-errors');
+                    panel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                });
+                return;
+            }
+
+            $wire.nextQuestionnaire();
+        },
     }" x-init="$nextTick(() => { initTimer(); checkNextButton(); })" x-on:livewire:morph="setTimeout(() => {
         const timerEl = document.getElementById('timer-remaining-seconds');
         if (timerEl) {
@@ -323,9 +378,61 @@
 
     {{-- Already Submitted Notice --}}
     @if ($totalFillable === 0 && $submittedCount > 0)
-        <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
-            <h3 class="text-lg font-semibold text-emerald-800">Semua kuisioner sudah dikirim!</h3>
-            <p class="mt-2 text-sm text-emerald-700">Anda sudah mengirim semua kuisioner yang tersedia.</p>
+        <div class="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4" x-data="{ show: false }"
+            x-init="$nextTick(() => show = true)" x-show="show" x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+            style="display:none;">
+            <div class="w-full max-w-md rounded-2xl bg-white p-0 shadow-2xl overflow-hidden">
+                {{-- Header with gradient --}}
+                <div class="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-5 text-white">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold">Kuisioner Berhasil Dikirim!</h3>
+                            <p class="text-sm text-emerald-100">Semua jawaban Anda telah tersimpan</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Body --}}
+                <div class="px-6 py-5 space-y-4">
+                    <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                        <div class="flex items-start gap-3">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                                <svg class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-emerald-800">Akses Terkunci</p>
+                                <p class="mt-1 text-sm text-emerald-700">Kuisioner yang sudah dikirim <strong>tidak dapat
+                                        diakses atau diubah lagi</strong>. Pastikan semua jawaban sudah benar sebelum
+                                    mengirim.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        <p class="text-sm text-zinc-500">Total kuisioner terkirim: <strong
+                                class="text-zinc-700">{{ $submittedCount }}</strong></p>
+                    </div>
+                </div>
+
+                {{-- Footer --}}
+                <div class="border-t border-zinc-100 bg-zinc-50 px-6 py-4">
+                    <a href="{{ route('role.dashboard') }}" wire:navigate>
+                        <flux:button variant="primary" class="w-full">Kembali ke Dashboard</flux:button>
+                    </a>
+                </div>
+            </div>
         </div>
     @endif
 
@@ -565,8 +672,7 @@
                             Submit Semua
                         </flux:button>
                     @else
-                        <flux:button variant="primary" icon="arrow-right" wire:click="nextQuestionnaire"
-                            x-bind:disabled="!nextButtonEnabled">
+                        <flux:button variant="primary" icon="arrow-right" @click="validateBeforeNext()">
                             Selanjutnya
                         </flux:button>
                     @endif
@@ -581,8 +687,20 @@
             <div class="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-5 shadow-xl">
                 <h3 class="text-base font-semibold text-zinc-900">Konfirmasi Submit Semua</h3>
                 <p class="mt-2 text-sm text-zinc-600">
-                    Pastikan jawaban sudah benar. Setelah submit, Anda tidak dapat mengubah jawaban lagi.
+                    Pastikan jawaban sudah benar. Setelah submit, Anda <strong>tidak dapat mengakses atau mengubah</strong>
+                    kuisioner lagi.
                 </p>
+
+                <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    <div class="flex items-start gap-2">
+                        <svg class="mt-0.5 h-4 w-4 shrink-0 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                        <span><strong>Perhatian:</strong> Tindakan ini tidak dapat dibatalkan!</span>
+                    </div>
+                </div>
 
                 <div class="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700">
                     <div>Total kuisioner: {{ $totalFillable }}</div>
@@ -600,12 +718,17 @@
     @endif
 
     {{-- Toast Notification --}}
-    <div x-show="showToast" x-transition.opacity.duration.200ms
-        class="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-white shadow-lg"
-        :class="toastType === 'success' ? 'bg-emerald-600' : 'bg-sky-700'" role="status" aria-live="polite"
-        aria-atomic="true" style="display: none;">
-        <span x-show="toastType === 'success'" aria-hidden="true">&#10003;</span>
-        <span x-show="toastType !== 'success'" aria-hidden="true">&#8635;</span>
+    <div x-show="showToast" x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 -translate-y-3" x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 -translate-y-3"
+        class="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl px-5 py-3.5 text-sm font-semibold text-white shadow-2xl ring-1 ring-white/10"
+        :class="toastType === 'success' ? 'bg-emerald-600' : (toastType === 'error' ? 'bg-red-600' : 'bg-sky-700')"
+        role="alert" aria-live="assertive" aria-atomic="true" style="display: none;">
+        <span x-show="toastType === 'success'" aria-hidden="true" class="text-lg">&#10003;</span>
+        <span x-show="toastType === 'error'" aria-hidden="true" class="text-lg">&#9888;</span>
+        <span x-show="toastType !== 'success' && toastType !== 'error'" aria-hidden="true"
+            class="text-lg">&#8635;</span>
         <span x-text="toastMessage"></span>
     </div>
 </div>

@@ -19,24 +19,29 @@
     <div class="grid gap-3 rounded-xl border border-zinc-200 bg-white p-4 md:grid-cols-3">
         <label class="space-y-1 text-sm text-zinc-700">
             <span class="font-medium">Cari Kuisioner</span>
-            <input
-                type="text"
-                wire:model.live.debounce.300ms="search"
-                placeholder="Judul atau deskripsi..."
-                class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
-            >
+            <input type="text" wire:model.live.debounce.300ms="search" placeholder="Judul atau deskripsi..."
+                class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none">
         </label>
 
         <label class="space-y-1 text-sm text-zinc-700">
             <span class="font-medium">Status</span>
-            <select
-                wire:model.live="status"
-                class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
-            >
+            <select wire:model.live="status"
+                class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none">
                 <option value="">Semua Status</option>
                 <option value="draft">Draft</option>
                 <option value="active">Active</option>
                 <option value="closed">Closed</option>
+            </select>
+        </label>
+
+        <label class="space-y-1 text-sm text-zinc-700">
+            <span class="font-medium">Target Group</span>
+            <select wire:model.live="targetGroup"
+                class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none">
+                <option value="">Semua Target Group</option>
+                @foreach ($targetGroupOptions as $option)
+                    <option value="{{ $option['slug'] }}">{{ $option['name'] }}</option>
+                @endforeach
             </select>
         </label>
     </div>
@@ -63,7 +68,8 @@
                             </td>
                             <td class="px-4 py-3 text-zinc-700">
                                 {{ $questionnaire->start_date?->format('d M Y H:i') }}<br>
-                                <span class="text-xs text-zinc-500">s/d {{ $questionnaire->end_date?->format('d M Y H:i') }}</span>
+                                <span class="text-xs text-zinc-500">s/d
+                                    {{ $questionnaire->end_date?->format('d M Y H:i') }}</span>
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex flex-wrap gap-1">
@@ -93,33 +99,21 @@
                                     </a>
 
                                     @if ($questionnaire->status !== 'active')
-                                        <flux:button
-                                            size="xs"
-                                            variant="primary"
-                                            wire:click="publish({{ $questionnaire->id }})"
-                                            wire:confirm="Publish kuisioner ini?"
-                                        >
+                                        <flux:button size="xs" variant="primary" wire:click="publish({{ $questionnaire->id }})"
+                                            wire:confirm="Publish kuisioner ini?">
                                             Publish
                                         </flux:button>
                                     @endif
 
                                     @if ($questionnaire->status !== 'closed')
-                                        <flux:button
-                                            size="xs"
-                                            variant="filled"
-                                            wire:click="close({{ $questionnaire->id }})"
-                                            wire:confirm="Tutup kuisioner ini?"
-                                        >
+                                        <flux:button size="xs" variant="filled" wire:click="close({{ $questionnaire->id }})"
+                                            wire:confirm="Tutup kuisioner ini?">
                                             Close
                                         </flux:button>
                                     @endif
 
-                                    <flux:button
-                                        size="xs"
-                                        variant="danger"
-                                        wire:click="delete({{ $questionnaire->id }})"
-                                        wire:confirm="Hapus kuisioner ini?"
-                                    >
+                                    <flux:button size="xs" variant="danger" wire:click="delete({{ $questionnaire->id }})"
+                                        wire:confirm="Hapus kuisioner ini?">
                                         Delete
                                     </flux:button>
                                 </div>

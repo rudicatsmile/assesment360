@@ -187,10 +187,39 @@ class AvailableQuestionnaires extends Component
             $this->persistAllDrafts();
         }
 
+        $currentId = $this->questionnaireIds[$this->currentIndex] ?? null;
+        if ($currentId !== null && !$this->isQuestionnaireComplete($currentId)) {
+            return;
+        }
+
         $max = count($this->questionnaireIds) - 1;
         if ($this->currentIndex < $max) {
             $this->currentIndex++;
         }
+    }
+
+    private function isQuestionnaireComplete(int $questionnaireId): bool
+    {
+        $questions = Question::where('questionnaire_id', $questionnaireId)->orderBy('order')->get();
+        foreach ($questions as $question) {
+            $isRequired = $question->is_required || in_array($question->type, ['essay', 'combined'], true);
+            if (!$isRequired) {
+                continue;
+            }
+
+            $answer = $this->answers[$question->id] ?? ['answer_option_id' => null, 'essay_answer' => ''];
+            $isAnswered = match ($question->type) {
+                'single_choice' => $answer['answer_option_id'] !== null,
+                'essay' => trim($answer['essay_answer'] ?? '') !== '',
+                'combined' => $answer['answer_option_id'] !== null && trim($answer['essay_answer'] ?? '') !== '',
+                default => false,
+            };
+
+            if (!$isAnswered) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public function previousQuestionnaire(): void
@@ -662,14 +691,14 @@ class AvailableQuestionnaires extends Component
 
         $this->confirmSubmitAll = false;
         $this->dirtyQuestionIds = [];
+        $this->questionnaireIds = [];
 
         if ($isAutoSubmit) {
             $this->timeExpired = true;
             session()->flash('error', 'Batas waktu pengisian kuisioner telah habis. Jawaban yang sudah diisi telah dikirim secara otomatis.');
         } else {
-            $count = collect($this->questionnaireMeta)
-                ->filter(fn(array $meta): bool => $meta['status'] === 'submitted')
-                ->count();
+            $this->timeExpired = true;
+            $count = count($this->allQuestionnaireIds);
             session()->flash('success', "Semua {$count} kuisioner berhasil dikirim!");
         }
     }
