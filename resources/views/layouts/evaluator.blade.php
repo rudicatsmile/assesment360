@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,11 +17,13 @@
     @fluxAppearance
     @livewireStyles
 </head>
+
 <body class="min-h-screen bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
     @php
         $role = auth()->user()?->roleSlug();
         $dashboardPath = (string) (config("rbac.dashboard_paths.{$role}") ?? '/fill/questionnaires');
         $dashboardRoute = url($dashboardPath);
+        $isFillingQuestionnaire = request()->routeIs('fill.questionnaires.index');
     @endphp
 
     <div class="mx-auto max-w-5xl p-4 md:p-6">
@@ -28,8 +31,7 @@
 
         <header
             class="mb-6 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-            x-data="{ dark: document.documentElement.classList.contains('dark') }"
-        >
+            x-data="{ dark: document.documentElement.classList.contains('dark') }">
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <p class="text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Dashboard Penilai</p>
@@ -39,38 +41,47 @@
                     </p>
                 </div>
                 <div class="flex flex-wrap items-center justify-end gap-2">
-                    <a href="{{ route('fill.questionnaires.index') }}" wire:navigate>
-                        <flux:button variant="ghost" icon="clipboard-document-list">Kuisioner Saya</flux:button>
-                    </a>
+                    <span @class(['opacity-50 pointer-events-none' => $isFillingQuestionnaire])>
+                        <a href="{{ route('fill.questionnaires.index') }}" wire:navigate>
+                            <flux:button variant="ghost" icon="clipboard-document-list">Kuisioner Saya</flux:button>
+                        </a>
+                    </span>
 
-                    <a href="{{ $dashboardRoute }}" wire:navigate>
-                        <flux:button variant="ghost" icon="clock">Riwayat Pengisian</flux:button>
-                    </a>
-                    <a href="{{ route('profile') }}" wire:navigate>
-                        <flux:button variant="ghost" icon="user-circle">Profil</flux:button>
-                    </a>
-                    <flux:button
-                        variant="outline"
-                        icon="moon"
-                        x-on:click="
+                    <span @class(['opacity-50 pointer-events-none' => $isFillingQuestionnaire])>
+                        <a href="{{ $dashboardRoute }}" wire:navigate>
+                            <flux:button variant="ghost" icon="clock">Riwayat Pengisian</flux:button>
+                        </a>
+                    </span>
+
+                    <span @class(['opacity-50 pointer-events-none' => $isFillingQuestionnaire])>
+                        <a href="{{ route('profile') }}" wire:navigate>
+                            <flux:button variant="ghost" icon="user-circle">Profil</flux:button>
+                        </a>
+                    </span>
+
+                    <flux:button variant="outline" icon="moon" x-on:click="
                             dark = !dark;
                             document.documentElement.classList.toggle('dark', dark);
                             localStorage.setItem('kepsakeval-theme', dark ? 'dark' : 'light');
-                        "
-                    >
+                        ">
                         Dark
                     </flux:button>
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <flux:button type="submit" variant="danger" icon="arrow-right-start-on-rectangle">Logout</flux:button>
-                    </form>
+
+                    <span @class(['opacity-50 pointer-events-none' => $isFillingQuestionnaire])>
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <flux:button type="submit" variant="danger" icon="arrow-right-start-on-rectangle">Logout
+                            </flux:button>
+                        </form>
+                    </span>
                 </div>
             </div>
         </header>
 
         {{ $slot }}
 
-        <footer class="mt-8 border-t border-zinc-200 pt-4 text-center text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+        <footer
+            class="mt-8 border-t border-zinc-200 pt-4 text-center text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
             {{ config('app.name', 'KepsekEval') }} - {{ config('app.copyright', 'Yayasan Al-Wathoniyah 9') }}
         </footer>
     </div>
@@ -78,4 +89,5 @@
     @fluxScripts
     @livewireScripts
 </body>
+
 </html>
