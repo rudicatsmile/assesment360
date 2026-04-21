@@ -90,15 +90,12 @@
             const root = this.$root;
             const blocks = Array.from(root.querySelectorAll('[data-question-block]'));
 
-            blocks.forEach((block) => {
+            for (const block of blocks) {
                 const isRequired = block.dataset.required === '1';
-                if (!isRequired) return;
+                if (!isRequired) continue;
 
                 const questionId = Number(block.dataset.questionId || 0);
                 const questionType = String(block.dataset.questionType || '');
-                const questionLabel = String(block.dataset.questionLabel || '').trim();
-                const questionnaireTitle = String(block.dataset.questionnaireTitle || '').trim();
-                const displayName = (questionnaireTitle !== '' ? questionnaireTitle + ' - ' : '') + (questionLabel !== '' ? questionLabel : 'Pertanyaan ' + block.dataset.questionNumber);
 
                 const hasSelectedRadio = block.querySelector('input[type=radio]:checked') !== null;
                 const hasCheckedBox = block.querySelector('input[type=checkbox]:checked') !== null;
@@ -121,17 +118,20 @@
 
                 if (!isAnswered) {
                     this.invalidQuestionIds.push(questionId);
-                    this.validationErrors.push(displayName + ' belum diisi.');
+                    this.validationErrors.push('Pertanyaan wajib belum terisi. Silakan isi pertanyaan yang ditandai.');
                     if (questionType === 'essay') {
                         this.invalidEssayQuestionIds.push(questionId);
                     }
+                    break;
                 }
-            });
+            }
 
             if (this.validationErrors.length > 0) {
                 this.$nextTick(() => {
-                    const panel = document.getElementById('global-validation-errors');
-                    panel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    const firstInvalid = document.getElementById('q-' + this.invalidQuestionIds[0]);
+                    if (firstInvalid) {
+                        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                 });
                 return;
             }
@@ -145,15 +145,12 @@
             const root = this.$root;
             const blocks = Array.from(root.querySelectorAll('[data-question-block]'));
 
-            blocks.forEach((block) => {
+            for (const block of blocks) {
                 const isRequired = block.dataset.required === '1';
-                if (!isRequired) return;
+                if (!isRequired) continue;
 
                 const questionId = Number(block.dataset.questionId || 0);
                 const questionType = String(block.dataset.questionType || '');
-                const questionLabel = String(block.dataset.questionLabel || '').trim();
-                const questionnaireTitle = String(block.dataset.questionnaireTitle || '').trim();
-                const displayName = (questionnaireTitle !== '' ? questionnaireTitle + ' - ' : '') + (questionLabel !== '' ? questionLabel : 'Pertanyaan ' + block.dataset.questionNumber);
 
                 const hasSelectedRadio = block.querySelector('input[type=radio]:checked') !== null;
                 const hasCheckedBox = block.querySelector('input[type=checkbox]:checked') !== null;
@@ -176,17 +173,20 @@
 
                 if (!isAnswered) {
                     this.invalidQuestionIds.push(questionId);
-                    this.validationErrors.push(displayName + ' belum diisi.');
+                    this.validationErrors.push('Pertanyaan wajib belum terisi. Silakan isi pertanyaan yang ditandai.');
                     if (questionType === 'essay') {
                         this.invalidEssayQuestionIds.push(questionId);
                     }
+                    break;
                 }
-            });
+            }
 
             if (this.validationErrors.length > 0) {
                 this.$nextTick(() => {
-                    const panel = document.getElementById('global-validation-errors');
-                    panel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    const firstInvalid = document.getElementById('q-' + this.invalidQuestionIds[0]);
+                    if (firstInvalid) {
+                        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                 });
                 return;
             }
@@ -485,12 +485,7 @@
     {{-- Global Validation Errors Panel --}}
     <div id="global-validation-errors" x-show="validationErrors.length > 0" x-transition.opacity.duration.200ms
         class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" style="display:none;">
-        <p class="font-semibold">Masih ada pertanyaan wajib yang belum terisi:</p>
-        <ul class="mt-2 list-disc space-y-1 pl-5">
-            <template x-for="(error, idx) in validationErrors" :key="idx">
-                <li x-text="error"></li>
-            </template>
-        </ul>
+        <p class="font-semibold" x-text="validationErrors[0]"></p>
     </div>
 
     {{-- Current Questionnaire Content --}}
