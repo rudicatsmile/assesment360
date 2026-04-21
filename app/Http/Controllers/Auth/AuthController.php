@@ -59,28 +59,27 @@ class AuthController extends Controller
         }
 
         $validated = $request->validate([
-            'country_code' => ['required', 'regex:/^\+\d{1,4}$/'],
-            'phone_number' => ['required', 'regex:/^[0-9]{6,15}$/'],
+            'phone_number' => ['required', 'regex:/^0[0-9]{6,14}$/'],
         ], [
-            'country_code.regex' => 'Kode negara tidak valid. Contoh: +62',
-            'phone_number.regex' => 'Format nomor telepon tidak valid.',
+            'phone_number.regex' => 'Format nomor telepon tidak valid. Gunakan format 08xxxxxxxxxx.',
         ]);
 
-        $phoneE164 = $this->normalizePhone($validated['country_code'], $validated['phone_number']);
-        $user = $this->findUserByPhone($phoneE164, $validated['country_code'], $validated['phone_number']);
+        $countryCode = '+62';
+        $phoneE164 = $this->normalizePhone($countryCode, $validated['phone_number']);
+        $user = $this->findUserByPhone($phoneE164, $countryCode, $validated['phone_number']);
 
         if (!$user || !$user->is_active) {
             Log::warning('auth.phone_login.invalid_number', ['phone' => $phoneE164]);
 
             return back()
-                ->withInput($request->only('country_code', 'phone_number'))
+                ->withInput($request->only('phone_number'))
                 ->with('error', 'Nomor telepon tidak ditemukan atau tidak aktif.');
         }
 
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $verification = PhoneLoginVerification::query()->create([
             'user_id' => $user->id,
-            'country_code' => $validated['country_code'],
+            'country_code' => $countryCode,
             'phone_e164' => $phoneE164,
             'verification_code_hash' => Hash::make($code),
             'attempt_count' => 0,
@@ -103,7 +102,7 @@ class AuthController extends Controller
             ]);
 
             return back()
-                ->withInput($request->only('country_code', 'phone_number'))
+                ->withInput($request->only('phone_number'))
                 ->with('error', 'Gagal mengirim kode verifikasi. Silakan coba lagi.');
         }
 
@@ -116,7 +115,6 @@ class AuthController extends Controller
         session([
             'phone_login_verification_id' => $verification->id,
             'phone_login_masked' => $this->maskPhone($phoneE164),
-            'phone_login_country_code' => $validated['country_code'],
             'phone_login_number' => $validated['phone_number'],
         ]);
 
@@ -243,7 +241,6 @@ class AuthController extends Controller
         session()->forget([
             'phone_login_verification_id',
             'phone_login_masked',
-            'phone_login_country_code',
             'phone_login_number',
         ]);
     }
