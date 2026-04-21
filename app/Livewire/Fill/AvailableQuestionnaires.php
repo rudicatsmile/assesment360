@@ -549,8 +549,11 @@ class AvailableQuestionnaires extends Component
         $this->fillingStartedAt = $user->filling_started_at?->toIso8601String();
         $this->showStartConfirmation = false;
 
-        // Dispatch browser event so Alpine.js re-initializes the countdown timer
-        $this->dispatch('start-timer');
+        // Dispatch browser event with remaining seconds so Alpine.js timer starts
+        // reliably without depending on DOM hidden-input state after morph.
+        $deadline = CarbonImmutable::parse($this->fillingStartedAt)->addMinutes($this->timeLimitMinutes);
+        $remainingSeconds = max(0, (int) now()->diffInSeconds($deadline, false));
+        $this->dispatch('start-timer', remainingSeconds: $remainingSeconds);
     }
 
     /**

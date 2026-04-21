@@ -8,6 +8,7 @@
         nextButtonEnabled: {{ $currentQuestionnaireComplete ? 'true' : 'false' }},
         timeExpired: {{ $timeExpired ? 'true' : 'false' }},
         timerInterval: null,
+        hasTimeLimit: {{ ($timeLimitInfo !== null) ? 'true' : 'false' }},
         remainingSeconds: {{ $timeLimitInfo['remaining_seconds'] ?? 0 }},
         initTimer() {
             // Clear any existing interval to avoid duplicates on Livewire re-render
@@ -15,26 +16,26 @@
                 clearInterval(this.timerInterval);
                 this.timerInterval = null;
             }
-            @if($timeLimitInfo && !$timeExpired)
-                if (this.remainingSeconds > 0) {
-                    this.timerInterval = setInterval(() => {
-                        this.remainingSeconds = this.remainingSeconds - 1;
-                        // Also sync to hidden input so Livewire morph can restore correct value
-                        const el = document.getElementById('timer-remaining-seconds');
-                        if (el) el.value = this.remainingSeconds;
-                        if (this.remainingSeconds <= 0) {
-                            this.remainingSeconds = 0;
-                            this.timeExpired = true;
-                            clearInterval(this.timerInterval);
-                            this.timerInterval = null;
-                            $wire.autoSubmitOnTimeExpired();
-                        }
-                    }, 1000);
-                } else {
-                    this.timeExpired = true;
-                    $wire.autoSubmitOnTimeExpired();
-                }
-            @endif
+
+            // Check conditions at runtime (client-side) instead of server-render time
+            if (this.remainingSeconds > 0 && !this.timeExpired) {
+                this.timerInterval = setInterval(() => {
+                    this.remainingSeconds = this.remainingSeconds - 1;
+                    // Also sync to hidden input so Livewire morph can restore correct value
+                    const el = document.getElementById('timer-remaining-seconds');
+                    if (el) el.value = this.remainingSeconds;
+                    if (this.remainingSeconds <= 0) {
+                        this.remainingSeconds = 0;
+                        this.timeExpired = true;
+                        clearInterval(this.timerInterval);
+                        this.timerInterval = null;
+                        $wire.autoSubmitOnTimeExpired();
+                    }
+                }, 1000);
+            } else if (this.hasTimeLimit && this.remainingSeconds <= 0 && !this.timeExpired) {
+                this.timeExpired = true;
+                $wire.autoSubmitOnTimeExpired();
+            }
         },
         formatTime(seconds) {
             const h = Math.floor(seconds / 3600);
@@ -139,7 +140,10 @@
         },
     }" x-init="$nextTick(() => { initTimer(); checkNextButton(); })" x-on:livewire:morph="setTimeout(() => {
         const timerEl = document.getElementById('timer-remaining-seconds');
-        if (timerEl) remainingSeconds = parseInt(timerEl.value, 10) || 0;
+        if (timerEl) {
+            remainingSeconds = parseInt(timerEl.value, 10) || 0;
+            hasTimeLimit = remainingSeconds > 0;
+        }
         checkNextButton();
     }, 50)" @autosave-status.window="
         toastMessage = $event.detail.message;
@@ -148,6 +152,11 @@
         setTimeout(() => showToast = false, 2500);
     " @start-timer.window="
         $nextTick(() => {
+            hasTimeLimit = true;
+            remainingSeconds = $event.detail[0]
+                || (document.getElementById('timer-remaining-seconds')?.value
+                    ? parseInt(document.getElementById('timer-remaining-seconds').value, 10)
+                    : 0);
             initTimer();
             checkNextButton();
         });
@@ -532,18 +541,16 @@
                 </div>
 
                 {{-- Center: Timer Display --}}
-                @if ($timeLimitInfo)
-                    <div x-show="!timeExpired" class="flex items-center gap-2">
-                        <div class="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold shadow-sm"
-                            :class="remainingSeconds <= 300 ? 'bg-red-100 text-red-700 ring-2 ring-red-300 animate-pulse' : (remainingSeconds <= 600 ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-300' : 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200')">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                            </svg>
-                            <span x-text="formatTime(remainingSeconds)"></span>
-                        </div>
+                <div x-show="!timeExpired && hasTimeLimit" x-cloak class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold shadow-sm"
+                        :class="remainingSeconds <= 300 ? 'bg-red-100 text-red-700 ring-2 ring-red-300 animate-pulse' : (remainingSeconds <= 600 ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-300' : 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200')">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        </svg>
+                        <span x-text="formatTime(remainingSeconds)"></span>
                     </div>
-                @endif
+                </div>
 
                 {{-- Right side: Save Draft + Next/Submit --}}
                 <div class="flex items-center gap-2">

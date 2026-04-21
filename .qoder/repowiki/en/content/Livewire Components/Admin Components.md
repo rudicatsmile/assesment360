@@ -10,6 +10,7 @@
 - [QuestionnaireForm.php](file://app/Livewire/Admin/QuestionnaireForm.php)
 - [QuestionnaireList.php](file://app/Livewire/Admin/QuestionnaireList.php)
 - [QuestionnaireAssignment.php](file://app/Livewire/Admin/QuestionnaireAssignment.php)
+- [AvailableQuestionnaires.php](file://app/Livewire/Fill/AvailableQuestionnaires.php)
 - [admin-dashboard.blade.php](file://resources/views/livewire/admin/admin-dashboard.blade.php)
 - [department-directory.blade.php](file://resources/views/livewire/admin/department-directory.blade.php)
 - [user-directory.blade.php](file://resources/views/livewire/admin/user-directory.blade.php)
@@ -25,6 +26,7 @@
 - [Question.php](file://app/Models/Question.php)
 - [AnswerOption.php](file://app/Models/AnswerOption.php)
 - [QuestionnaireTargets.php](file://app/Models/QuestionnaireTarget.php)
+- [Response.php](file://app/Models/Response.php)
 - [QuestionnaireScorer.php](file://app/Services/QuestionnaireScorer.php)
 - [DepartmentAnalyticsService.php](file://app/Services/DepartmentAnalyticsService.php)
 - [EnsureUserIsAdmin.php](file://app/Http/Middleware/EnsureUserIsAdmin.php)
@@ -40,7 +42,16 @@
 - [UpdateQuestionRequest.php](file://app/Http/Requests/UpdateQuestionRequest.php)
 - [rbac.php](file://config/rbac.php)
 - [admin.blade.php](file://resources/views/layouts/admin.blade.php)
+- [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Enhanced UserDirectory component with comprehensive time limit management capabilities
+- Added individual user time limit configuration with hours and minutes components
+- Implemented user fill session reset functionality for administrators
+- Integrated time-based access control with questionnaire filling system
+- Updated database schema to support time limit tracking and session management
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -55,17 +66,17 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the admin-focused Livewire components that power the assessment platform. It covers the admin dashboard, department management, user administration, role management, and questionnaire lifecycle management (creation, editing, assignment, analytics). It also explains component state management, form handling, validation, real-time updates, integration with admin layouts and navigation, security considerations, data filtering, and bulk operations.
+This document describes the admin-focused Livewire components that power the assessment platform. It covers the admin dashboard, department management, user administration, role management, and questionnaire lifecycle management (creation, editing, assignment, analytics). The UserDirectory component has been significantly enhanced with time limit management capabilities, allowing administrators to set individual time limits for users, reset user fill sessions, and manage time-based access controls. It also explains component state management, form handling, validation, real-time updates, integration with admin layouts and navigation, security considerations, data filtering, and bulk operations.
 
 ## Project Structure
-The admin components are organized under the Livewire Admin namespace and paired with Blade views. They integrate with middleware for role-based access control and leverage Laravel requests for validation.
+The admin components are organized under the Livewire Admin namespace and paired with Blade views. They integrate with middleware for role-based access control and leverage Laravel requests for validation. The UserDirectory component now includes advanced time limit management features integrated with the questionnaire filling system.
 
 ```mermaid
 graph TB
-subgraph "Livewire Admin Components"
+subgraph "Enhanced Livewire Admin Components"
 AD["AdminDashboard"]
 DDir["DepartmentDirectory"]
-UDir["UserDirectory"]
+UDir["UserDirectory<br/>+ Time Limit Management"]
 RDir["RoleDirectory"]
 QForm["QuestionnaireForm"]
 QList["QuestionnaireList"]
@@ -75,21 +86,25 @@ end
 subgraph "Blade Views"
 VAD["admin-dashboard.blade.php"]
 VDD["department-directory.blade.php"]
-VUD["user-directory.blade.php"]
+VUD["user-directory.blade.php<br/>+ Time Limit UI"]
 VRD["role-directory.blade.php"]
 VQF["questionnaire-form.blade.php"]
 VQL["questionnaire-list.blade.php"]
 VQA["questionnaire-assignment.blade.php"]
 VQM["question-manager.blade.php"]
 end
-subgraph "Models"
+subgraph "Models & Database"
 MDept["Departement"]
 MRole["Role"]
-MUser["User"]
+MUser["User<br/>+ time_limit_minutes<br/>+ filling_started_at"]
 MQ["Questionnaire"]
 MQst["Question"]
 MOpt["AnswerOption"]
 MTgt["QuestionnaireTarget"]
+MResp["Response<br/>+ status field"]
+end
+subgraph "Fill System Integration"
+AQ["AvailableQuestionnaires<br/>+ Time Limit Logic"]
 end
 AD --> VAD
 DDir --> VDD
@@ -109,30 +124,22 @@ QMgr --> MQst
 QMgr --> MOpt
 QForm --> MTgt
 QAssign --> MTgt
+UDir --> MResp
+AQ --> MResp
+AQ --> MUser
 ```
 
 **Diagram sources**
-- [AdminDashboard.php:15-136](file://app/Livewire/Admin/AdminDashboard.php#L15-L136)
-- [DepartmentDirectory.php:12-162](file://app/Livewire/Admin/DepartmentDirectory.php#L12-L162)
-- [UserDirectory.php:16-353](file://app/Livewire/Admin/UserDirectory.php#L16-L353)
-- [RoleDirectory.php:11-156](file://app/Livewire/Admin/RoleDirectory.php#L11-L156)
-- [QuestionnaireForm.php:14-132](file://app/Livewire/Admin/QuestionnaireForm.php#L14-L132)
-- [QuestionnaireList.php:11-81](file://app/Livewire/Admin/QuestionnaireList.php#L11-L81)
-- [QuestionnaireAssignment.php:10-90](file://app/Livewire/Admin/QuestionnaireAssignment.php#L10-L90)
-- [QuestionManager.php:15-281](file://app/Livewire/Admin/QuestionManager.php#L15-L281)
-- [admin-dashboard.blade.php:1-51](file://resources/views/livewire/admin/admin-dashboard.blade.php#L1-L51)
-- [department-directory.blade.php:1-98](file://resources/views/livewire/admin/department-directory.blade.php#L1-L98)
-- [user-directory.blade.php:1-171](file://resources/views/livewire/admin/user-directory.blade.php#L1-L171)
-- [role-directory.blade.php:1-105](file://resources/views/livewire/admin/role-directory.blade.php#L1-L105)
-- [questionnaire-form.blade.php:1-149](file://resources/views/livewire/admin/questionnaire-form.blade.php#L1-L149)
-- [questionnaire-list.blade.php:1-144](file://resources/views/livewire/admin/questionnaire-list.blade.php#L1-L144)
-- [questionnaire-assignment.blade.php:1-37](file://resources/views/livewire/admin/questionnaire-assignment.blade.php#L1-L37)
-- [question-manager.blade.php:1-188](file://resources/views/livewire/admin/question-manager.blade.php#L1-L188)
+- [UserDirectory.php:18-61](file://app/Livewire/Admin/UserDirectory.php#L18-L61)
+- [user-directory.blade.php:78-98](file://resources/views/livewire/admin/user-directory.blade.php#L78-L98)
+- [AvailableQuestionnaires.php:152-165](file://app/Livewire/Fill/AvailableQuestionnaires.php#L152-L165)
+- [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php:14-16](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php#L14-L16)
+- [Response.php:16-27](file://app/Models/Response.php#L16-L27)
 
 **Section sources**
 - [AdminDashboard.php:15-136](file://app/Livewire/Admin/AdminDashboard.php#L15-L136)
 - [DepartmentDirectory.php:12-162](file://app/Livewire/Admin/DepartmentDirectory.php#L12-L162)
-- [UserDirectory.php:16-353](file://app/Livewire/Admin/UserDirectory.php#L16-L353)
+- [UserDirectory.php:16-420](file://app/Livewire/Admin/UserDirectory.php#L16-L420)
 - [RoleDirectory.php:11-156](file://app/Livewire/Admin/RoleDirectory.php#L11-L156)
 - [QuestionnaireForm.php:14-132](file://app/Livewire/Admin/QuestionnaireForm.php#L14-L132)
 - [QuestionnaireList.php:11-81](file://app/Livewire/Admin/QuestionnaireList.php#L11-L81)
@@ -142,7 +149,7 @@ QAssign --> MTgt
 ## Core Components
 - AdminDashboard: Aggregates and caches overview metrics for active questionnaires, participation rate, respondents, average scores, and role-based breakdowns.
 - DepartmentDirectory: CRUD for departments with search, pagination, sorting, and validation.
-- UserDirectory: Full user administration with filters, sorting, password handling, and role/department resolution.
+- UserDirectory: **Enhanced** Full user administration with filters, sorting, password handling, role/department resolution, and comprehensive time limit management including individual user time limits and session reset capabilities.
 - RoleDirectory: Role management with validation and alias-aware persistence.
 - QuestionnaireForm: Creates/edit questionnaires, manages targets, and redirects to edit page after save.
 - QuestionnaireList: Lists questionnaires with search, status filter, and actions (publish/close/delete).
@@ -152,7 +159,7 @@ QAssign --> MTgt
 **Section sources**
 - [AdminDashboard.php:20-135](file://app/Livewire/Admin/AdminDashboard.php#L20-L135)
 - [DepartmentDirectory.php:35-161](file://app/Livewire/Admin/DepartmentDirectory.php#L35-L161)
-- [UserDirectory.php:56-352](file://app/Livewire/Admin/UserDirectory.php#L56-L352)
+- [UserDirectory.php:56-420](file://app/Livewire/Admin/UserDirectory.php#L56-L420)
 - [RoleDirectory.php:28-155](file://app/Livewire/Admin/RoleDirectory.php#L28-L155)
 - [QuestionnaireForm.php:40-131](file://app/Livewire/Admin/QuestionnaireForm.php#L40-L131)
 - [QuestionnaireList.php:21-80](file://app/Livewire/Admin/QuestionnaireList.php#L21-L80)
@@ -160,54 +167,43 @@ QAssign --> MTgt
 - [QuestionManager.php:35-280](file://app/Livewire/Admin/QuestionManager.php#L35-L280)
 
 ## Architecture Overview
-The admin components follow a layered pattern:
-- Presentation: Blade views bind Livewire component properties and event handlers.
-- State: Livewire component properties manage UI state and form data.
-- Validation: Request classes define strict validation rules for forms.
-- Persistence: Eloquent models encapsulate data access and relationships.
+The admin components follow a layered pattern with enhanced time limit management integration:
+- Presentation: Blade views bind Livewire component properties and event handlers, including time limit configuration UI.
+- State: Livewire component properties manage UI state, form data, and time limit configurations.
+- Validation: Request classes define strict validation rules for forms including time limit inputs.
+- Persistence: Eloquent models encapsulate data access, relationships, and time limit tracking.
 - Security: Middleware and authorization gates enforce role-based access.
 - Caching: Dashboard metrics are cached to reduce database load.
+- **Enhanced Integration**: User time limits integrate with the questionnaire filling system for real-time access control.
 
 ```mermaid
 graph TB
-UI["Blade Views"] --> LW["Livewire Components"]
+UI["Blade Views<br/>+ Time Limit UI"] --> LW["Livewire Components<br/>+ Time Limit Logic"]
 LW --> AUTH["Authorization & Middleware"]
-LW --> REQ["Validation Requests"]
+LW --> REQ["Validation Requests<br/>+ Time Limit Validation"]
 LW --> SVC["Services (optional)"]
-LW --> DB["Eloquent Models"]
+LW --> DB["Eloquent Models<br/>+ Time Limit Fields"]
 DB --> CACHE["Cache Layer"]
+DB --> FILL["Fill System<br/>+ Session Timer"]
 AUTH --> RBAC["RBAC Config"]
+FILL --> TIME["Time Limit Logic<br/>+ Session Management"]
 ```
 
 **Diagram sources**
-- [admin-dashboard.blade.php:1-51](file://resources/views/livewire/admin/admin-dashboard.blade.php#L1-L51)
-- [department-directory.blade.php:1-98](file://resources/views/livewire/admin/department-directory.blade.php#L1-L98)
-- [user-directory.blade.php:1-171](file://resources/views/livewire/admin/user-directory.blade.php#L1-L171)
-- [role-directory.blade.php:1-105](file://resources/views/livewire/admin/role-directory.blade.php#L1-L105)
-- [questionnaire-form.blade.php:1-149](file://resources/views/livewire/admin/questionnaire-form.blade.php#L1-L149)
-- [questionnaire-list.blade.php:1-144](file://resources/views/livewire/admin/questionnaire-list.blade.php#L1-L144)
-- [questionnaire-assignment.blade.php:1-37](file://resources/views/livewire/admin/questionnaire-assignment.blade.php#L1-L37)
-- [question-manager.blade.php:1-188](file://resources/views/livewire/admin/question-manager.blade.php#L1-L188)
+- [user-directory.blade.php:78-98](file://resources/views/livewire/admin/user-directory.blade.php#L78-L98)
+- [UserDirectory.php:131-193](file://app/Livewire/Admin/UserDirectory.php#L131-L193)
+- [AvailableQuestionnaires.php:152-165](file://app/Livewire/Fill/AvailableQuestionnaires.php#L152-L165)
+- [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php:14-16](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php#L14-L16)
+
+**Section sources**
 - [AdminDashboard.php:11-135](file://app/Livewire/Admin/AdminDashboard.php#L11-L135)
 - [DepartmentDirectory.php:15-161](file://app/Livewire/Admin/DepartmentDirectory.php#L15-L161)
-- [UserDirectory.php:19-352](file://app/Livewire/Admin/UserDirectory.php#L19-L352)
+- [UserDirectory.php:19-420](file://app/Livewire/Admin/UserDirectory.php#L19-L420)
 - [RoleDirectory.php:14-155](file://app/Livewire/Admin/RoleDirectory.php#L14-L155)
 - [QuestionnaireForm.php:17-131](file://app/Livewire/Admin/QuestionnaireForm.php#L17-L131)
 - [QuestionnaireList.php:14-80](file://app/Livewire/Admin/QuestionnaireList.php#L14-L80)
 - [QuestionnaireAssignment.php:12-90](file://app/Livewire/Admin/QuestionnaireAssignment.php#L12-L90)
 - [QuestionManager.php:18-280](file://app/Livewire/Admin/QuestionManager.php#L18-L280)
-- [EnsureUserIsAdmin.php](file://app/Http/Middleware/EnsureUserIsAdmin.php)
-- [EnsureUserHasRole.php](file://app/Http/Middleware/EnsureUserHasRole.php)
-- [RedirectByRole.php](file://app/Http/Middleware/RedirectByRole.php)
-- [StoreDepartementRequest.php](file://app/Http/Requests/StoreDepartementRequest.php)
-- [UpdateDepartementRequest.php](file://app/Http/Requests/UpdateDepartementRequest.php)
-- [StoreUserRequest.php](file://app/Http/Requests/StoreUserRequest.php)
-- [UpdateUserRequest.php](file://app/Http/Requests/UpdateUserRequest.php)
-- [StoreQuestionnaireRequest.php](file://app/Http/Requests/StoreQuestionnaireRequest.php)
-- [UpdateQuestionnaireRequest.php](file://app/Http/Requests/UpdateQuestionnaireRequest.php)
-- [StoreQuestionRequest.php](file://app/Http/Requests/StoreQuestionRequest.php)
-- [UpdateQuestionRequest.php](file://app/Http/Requests/UpdateQuestionRequest.php)
-- [rbac.php](file://config/rbac.php)
 
 ## Detailed Component Analysis
 
@@ -278,36 +274,34 @@ ResetForm --> Render
 - [UpdateDepartementRequest.php](file://app/Http/Requests/UpdateDepartementRequest.php)
 
 ### UserDirectory
-- Purpose: Full user administration with filters, sorting, and role/department resolution.
-- State: Tracks search, role/status/department/phone filters, pagination, and form fields.
-- Validation: Email uniqueness, phone regex, password rules, role exists, department exists.
-- Actions: Create/update (with optional password), delete with self-protection, and resolve legacy role slugs.
+- Purpose: **Enhanced** Full user administration with filters, sorting, password handling, role/department resolution, and comprehensive time limit management.
+- State: Tracks search, role/status/department/phone filters, pagination, form fields, and time limit components (hours and minutes).
+- Validation: Email uniqueness, phone regex, password rules, role exists, department exists, time limit validation.
+- Actions: Create/update (with optional password), delete with self-protection, time limit configuration, and session reset functionality.
+- **New Features**: Individual user time limit configuration, session reset capability, time-based access control integration.
 
 ```mermaid
 sequenceDiagram
-participant U as "User"
+participant U as "Administrator"
 participant C as "UserDirectory"
 participant DB as "Database"
-U->>C : "Filter/search/sort"
-C->>DB : "Query users with filters and joins"
-DB-->>C : "Paginated users with role/department"
-U->>C : "Submit form"
-C->>C : "Validate rules/messages"
-alt "Edit"
-C->>DB : "Update user fields"
-else "Create"
-C->>DB : "Create user with hashed password"
-end
-C-->>U : "Flash success and redirect/reset"
+U->>C : "Configure time limit"
+C->>C : "Convert hours + minutes to total minutes"
+C->>DB : "Save time_limit_minutes to user"
+U->>C : "Reset user session"
+C->>DB : "Set filling_started_at = null"
+C->>DB : "Update all submitted responses to draft"
+C-->>U : "Flash success with revert count"
 ```
 
 **Diagram sources**
-- [UserDirectory.php:113-172](file://app/Livewire/Admin/UserDirectory.php#L113-L172)
-- [user-directory.blade.php:108-169](file://resources/views/livewire/admin/user-directory.blade.php#L108-L169)
+- [UserDirectory.php:131-193](file://app/Livewire/Admin/UserDirectory.php#L131-L193)
+- [UserDirectory.php:221-245](file://app/Livewire/Admin/UserDirectory.php#L221-L245)
+- [user-directory.blade.php:78-98](file://resources/views/livewire/admin/user-directory.blade.php#L78-L98)
 
 **Section sources**
-- [UserDirectory.php:56-352](file://app/Livewire/Admin/UserDirectory.php#L56-L352)
-- [user-directory.blade.php:1-171](file://resources/views/livewire/admin/user-directory.blade.php#L1-L171)
+- [UserDirectory.php:56-420](file://app/Livewire/Admin/UserDirectory.php#L56-L420)
+- [user-directory.blade.php:1-234](file://resources/views/livewire/admin/user-directory.blade.php#L1-L234)
 - [StoreUserRequest.php](file://app/Http/Requests/StoreUserRequest.php)
 - [UpdateUserRequest.php](file://app/Http/Requests/UpdateUserRequest.php)
 
@@ -477,30 +471,25 @@ Cleanup --> Success["Flash success and reset form"]
 - Validation is centralized in request classes.
 - Security is enforced via middleware and authorization gates.
 - Configuration-driven behavior (RBAC) influences component logic.
+- **Enhanced Integration**: User time limits integrate with the questionnaire filling system for real-time access control.
 
 ```mermaid
 graph LR
-LW["Livewire Components"] --> M["Models"]
-LW --> RQ["Validation Requests"]
+LW["Livewire Components<br/>+ Time Limit Logic"] --> M["Models<br/>+ Time Limit Fields"]
+LW --> RQ["Validation Requests<br/>+ Time Limit Validation"]
 LW --> MW["Middleware"]
 LW --> CFG["RBAC Config"]
-M --> DB["Database"]
+M --> DB["Database<br/>+ Time Limit Schema"]
+M --> FILL["Fill System<br/>+ Session Timer"]
 RQ --> DB
 MW --> RBAC["RBAC Policy"]
+FILL --> TIME["Time Limit Logic<br/>+ Session Management"]
 ```
 
 **Diagram sources**
-- [AdminDashboard.php:5-12](file://app/Livewire/Admin/AdminDashboard.php#L5-L12)
-- [DepartmentDirectory.php:5-10](file://app/Livewire/Admin/DepartmentDirectory.php#L5-L10)
-- [UserDirectory.php:5-14](file://app/Livewire/Admin/UserDirectory.php#L5-L14)
-- [RoleDirectory.php:5-9](file://app/Livewire/Admin/RoleDirectory.php#L5-L9)
-- [QuestionnaireForm.php:5-12](file://app/Livewire/Admin/QuestionnaireForm.php#L5-L12)
-- [QuestionnaireList.php:5-9](file://app/Livewire/Admin/QuestionnaireList.php#L5-L9)
-- [QuestionnaireAssignment.php:5-8](file://app/Livewire/Admin/QuestionnaireAssignment.php#L5-L8)
-- [QuestionManager.php:5-13](file://app/Livewire/Admin/QuestionManager.php#L5-L13)
-- [EnsureUserIsAdmin.php](file://app/Http/Middleware/EnsureUserIsAdmin.php)
-- [EnsureUserHasRole.php](file://app/Http/Middleware/EnsureUserHasRole.php)
-- [rbac.php](file://config/rbac.php)
+- [UserDirectory.php:131-193](file://app/Livewire/Admin/UserDirectory.php#L131-L193)
+- [AvailableQuestionnaires.php:152-165](file://app/Livewire/Fill/AvailableQuestionnaires.php#L152-L165)
+- [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php:14-16](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php#L14-L16)
 
 **Section sources**
 - [AdminDashboard.php:5-12](file://app/Livewire/Admin/AdminDashboard.php#L5-L12)
@@ -521,8 +510,7 @@ MW --> RBAC["RBAC Policy"]
 - Efficient queries: Components use eager loading and selective field retrieval.
 - Debounced live updates: Inputs use debounced binding to minimize server round trips.
 - Bulk operations: Deletion safeguards prevent accidental mass deletions; alias normalization avoids redundant writes.
-
-[No sources needed since this section provides general guidance]
+- **Enhanced**: Time limit calculations are performed efficiently using simple arithmetic operations and database queries.
 
 ## Troubleshooting Guide
 - Validation errors: Review request classes for precise validation messages and rules.
@@ -530,6 +518,7 @@ MW --> RBAC["RBAC Policy"]
 - Target group assignment: Verify RBAC aliases and availability; ensure at least one target remains selected.
 - Soft deletes: Some delete actions are soft deletes; confirm model behavior and restore procedures.
 - Logging: Components log significant changes; review logs for audit trails.
+- **New Issues**: Time limit configuration errors: Verify that hours and minutes inputs are properly validated and converted to total minutes.
 
 **Section sources**
 - [StoreDepartementRequest.php](file://app/Http/Requests/StoreDepartementRequest.php)
@@ -545,9 +534,7 @@ MW --> RBAC["RBAC Policy"]
 - [RedirectByRole.php](file://app/Http/Middleware/RedirectByRole.php)
 
 ## Conclusion
-The admin components provide a cohesive, secure, and efficient interface for managing departments, users, roles, and questionnaires. They emphasize real-time UX with Livewire, robust validation via request classes, strong authorization via middleware and policies, and configurable behavior through RBAC settings.
-
-[No sources needed since this section summarizes without analyzing specific files]
+The admin components provide a cohesive, secure, and efficient interface for managing departments, users, roles, and questionnaires. They emphasize real-time UX with Livewire, robust validation via request classes, strong authorization via middleware and policies, and configurable behavior through RBAC settings. **The UserDirectory component has been significantly enhanced with comprehensive time limit management capabilities**, allowing administrators to set individual time limits for users, reset user fill sessions, and manage time-based access controls, integrating seamlessly with the questionnaire filling system.
 
 ## Appendices
 
@@ -555,10 +542,12 @@ The admin components provide a cohesive, secure, and efficient interface for man
 - Live bindings: Many inputs use live binding with debouncing to balance responsiveness and performance.
 - Events: Components emit and listen to events (e.g., target-groups-updated) to synchronize state across panels.
 - Flash messages: Success/error feedback is surfaced via session flash messages.
+- **Enhanced**: Time limit inputs use live debounced binding for real-time conversion and validation.
 
 **Section sources**
 - [questionnaire-form.blade.php:109-121](file://resources/views/livewire/admin/questionnaire-form.blade.php#L109-L121)
 - [questionnaire-assignment.blade.php:6-11](file://resources/views/livewire/admin/questionnaire-assignment.blade.php#L6-L11)
+- [user-directory.blade.php:82-94](file://resources/views/livewire/admin/user-directory.blade.php#L82-L94)
 
 ### Integration with Admin Layouts and Navigation
 - Layouts: Components declare the admin layout to ensure consistent navigation and styling.
@@ -574,17 +563,56 @@ The admin components provide a cohesive, secure, and efficient interface for man
 - Password handling: Passwords are hashed during create/update.
 - Self-protection: Deleting self is prevented in user management.
 - Logging: Administrative actions are logged for auditability.
+- **Enhanced**: Time limit management includes proper validation and sanitization of time inputs.
 
 **Section sources**
 - [EnsureUserIsAdmin.php](file://app/Http/Middleware/EnsureUserIsAdmin.php)
 - [EnsureUserHasRole.php](file://app/Http/Middleware/EnsureUserHasRole.php)
 - [UserDirectory.php:174-182](file://app/Livewire/Admin/UserDirectory.php#L174-L182)
+- [UserDirectory.php:221-245](file://app/Livewire/Admin/UserDirectory.php#L221-L245)
 
 ### Data Filtering and Bulk Operations
 - Filtering: Users, roles, and questionnaires support multiple filters and sorting.
 - Bulk operations: While individual actions are exposed, bulk operations are not explicitly implemented in the reviewed components.
+- **Enhanced**: UserDirectory supports time limit filtering and management through individual user configuration.
 
 **Section sources**
-- [UserDirectory.php:286-351](file://app/Livewire/Admin/UserDirectory.php#L286-L351)
+- [UserDirectory.php:286-420](file://app/Livewire/Admin/UserDirectory.php#L286-L420)
 - [RoleDirectory.php:137-155](file://app/Livewire/Admin/RoleDirectory.php#L137-L155)
 - [QuestionnaireList.php:61-80](file://app/Livewire/Admin/QuestionnaireList.php#L61-L80)
+
+### Time Limit Management Features
+**New Section**: The UserDirectory component now includes comprehensive time limit management capabilities:
+
+#### Time Limit Configuration
+- **Individual User Limits**: Administrators can set custom time limits for each user using hours and minutes components.
+- **Real-time Conversion**: Hours and minutes are automatically converted to total minutes for storage.
+- **Flexible Input**: Empty fields indicate no time limit, while values are validated and sanitized.
+- **Display Integration**: Time limits are displayed in human-readable format (hours and minutes) throughout the interface.
+
+#### Session Management
+- **Session Reset**: Administrators can reset user fill sessions to allow users to retake questionnaires.
+- **Automatic Status Recovery**: Submitted responses are automatically reverted to draft status when sessions are reset.
+- **Timer Control**: The filling_started_at timestamp controls when the time limit countdown begins.
+
+#### Database Integration
+- **Schema Enhancement**: New columns added to users table: `time_limit_minutes` and `filling_started_at`.
+- **Data Persistence**: Time limits are stored as total minutes for efficient calculation and comparison.
+- **Session Tracking**: Filling sessions are tracked per user for accurate time limit enforcement.
+
+#### Frontend Implementation
+- **Dual Input Fields**: Separate hour and minute input fields with validation constraints.
+- **Live Calculation**: Real-time display of total minutes equivalent to entered hours/minutes.
+- **Conditional Display**: Time limit information is shown in user listings with appropriate formatting.
+- **Session Controls**: Reset buttons appear when users have active sessions or submitted responses.
+
+**Section sources**
+- [UserDirectory.php:53-57](file://app/Livewire/Admin/UserDirectory.php#L53-L57)
+- [UserDirectory.php:112-120](file://app/Livewire/Admin/UserDirectory.php#L112-L120)
+- [UserDirectory.php:151](file://app/Livewire/Admin/UserDirectory.php#L151)
+- [UserDirectory.php:179](file://app/Livewire/Admin/UserDirectory.php#L179)
+- [UserDirectory.php:221-245](file://app/Livewire/Admin/UserDirectory.php#L221-L245)
+- [user-directory.blade.php:78-98](file://resources/views/livewire/admin/user-directory.blade.php#L78-L98)
+- [user-directory.blade.php:196-213](file://resources/views/livewire/admin/user-directory.blade.php#L196-L213)
+- [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php:14-16](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php#L14-L16)
+- [AvailableQuestionnaires.php:152-165](file://app/Livewire/Fill/AvailableQuestionnaires.php#L152-L165)

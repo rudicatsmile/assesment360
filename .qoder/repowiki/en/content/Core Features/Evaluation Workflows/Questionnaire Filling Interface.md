@@ -11,63 +11,77 @@
 - [AnswerOption.php](file://app/Models/AnswerOption.php)
 - [Response.php](file://app/Models/Response.php)
 - [Answer.php](file://app/Models/Answer.php)
+- [User.php](file://app/Models/User.php)
 - [QuestionnaireScorer.php](file://app/Services/QuestionnaireScorer.php)
 - [TeacherDashboard.php](file://app/Livewire/Fill/TeacherDashboard.php)
 - [StaffDashboard.php](file://app/Livewire/Fill/StaffDashboard.php)
 - [ParentDashboard.php](file://app/Livewire/Fill/ParentDashboard.php)
 - [HasEvaluatorDashboardMetrics.php](file://app/Livewire/Fill/Concerns/HasEvaluatorDashboardMetrics.php)
+- [2026_04_21_003136_add_time_limit_to_questionnaires_table.php](file://database/migrations/2026_04_21_003136_add_time_limit_to_questionnaires_table.php)
+- [2026_04_21_003142_add_started_at_to_responses_table.php](file://database/migrations/2026_04_21_003142_add_started_at_to_responses_table.php)
+- [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php)
 - [features.php](file://config/features.php)
 - [web.php](file://routes/web.php)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Complete rewrite of navigation system documentation to reflect transformation from grouped questionnaire display to streamlined single-questionnaire step-based navigation
-- Updated core components documentation to focus on AvailableQuestionnaires component with new $questionnaireIds/$allQuestionnaireIds arrays and $dirtyQuestionIds tracking system
-- Revised autosave and draft management documentation to cover the new progressive questionnaire navigation model
-- Updated progress tracking documentation to reflect enhanced monitoring across multiple questionnaires
-- Removed documentation for grouped questionnaire system and simplified architecture explanations
-- Enhanced validation mechanisms documentation for the new single-questionnaire step-based approach
+- Enhanced documentation to reflect comprehensive time-based questionnaire completion system
+- Updated core components documentation to include session management, time limit display, and automatic submission features
+- Added detailed coverage of time limit initialization, countdown timers, and session status indicators
+- Expanded navigation system documentation to include time-expired scenarios and automatic submission handling
+- Updated autosave and draft management documentation to integrate with time-based constraints
+- Enhanced progress tracking documentation to include time-based analytics and session status
+- Added comprehensive coverage of the start confirmation popup and session timer integration
 
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [System Architecture](#system-architecture)
 3. [Core Components](#core-components)
-4. [Single Questionnaire Step-Based Navigation](#single-questionnaire-step-based-navigation)
-5. [Navigation and User Experience](#navigation-and-user-experience)
-6. [Question Types and Input Handling](#question-types-and-input-handling)
-7. [Validation and Error Handling](#validation-and-error-handling)
-8. [Autosave and Draft Management](#autosave-and-draft-management)
-9. [Progress Tracking and Analytics](#progress-tracking-and-analytics)
-10. [Submission and Finalization](#submission-and-finalization)
-11. [Dashboard Components](#dashboard-components)
-12. [Accessibility and Mobile Responsiveness](#accessibility-and-mobile-responsiveness)
-13. [Performance Considerations](#performance-considerations)
-14. [Troubleshooting Guide](#troubleshooting-guide)
-15. [Conclusion](#conclusion)
+4. [Time-Based Questionnaire Completion System](#time-based-questionnaire-completion-system)
+5. [Single Questionnaire Step-Based Navigation](#single-questionnaire-step-based-navigation)
+6. [Navigation and User Experience](#navigation-and-user-experience)
+7. [Question Types and Input Handling](#question-types-and-input-handling)
+8. [Validation and Error Handling](#validation-and-error-handling)
+9. [Autosave and Draft Management](#autosave-and-draft-management)
+10. [Progress Tracking and Analytics](#progress-tracking-and-analytics)
+11. [Submission and Finalization](#submission-and-finalization)
+12. [Dashboard Components](#dashboard-components)
+13. [Accessibility and Mobile Responsiveness](#accessibility-and-mobile-responsiveness)
+14. [Performance Considerations](#performance-considerations)
+15. [Troubleshooting Guide](#troubleshooting-guide)
+16. [Conclusion](#conclusion)
 
 ## Introduction
-This document describes the interactive questionnaire filling interface used by evaluators to complete assessment forms through a streamlined single-questionnaire step-based navigation system. The interface features progressive questionnaire navigation, autosave functionality, step indicators, and comprehensive validation mechanisms. It covers step-by-step navigation, question types (single choice, essay, combined), validation mechanisms, autosave and draft management, progress tracking, UI components, keyboard shortcuts, accessibility, and mobile responsiveness. The interface is built with Laravel Livewire and Blade, styled with Tailwind CSS and Flux UI components.
+This document describes the interactive questionnaire filling interface used by evaluators to complete assessment forms through a streamlined single-questionnaire step-based navigation system with comprehensive time-based completion capabilities. The interface features progressive questionnaire navigation, autosave functionality, step indicators, time limit management, automatic submission when time expires, and comprehensive validation mechanisms. It covers step-by-step navigation, question types (single choice, essay, combined), validation mechanisms, autosave and draft management, progress tracking, time-based session management, UI components, keyboard shortcuts, accessibility, and mobile responsiveness. The interface is built with Laravel Livewire and Blade, styled with Tailwind CSS and Flux UI components.
 
 ## System Architecture
-The questionnaire filling system operates through a single-questionnaire step-based navigation approach that streamlines the user experience by focusing on one questionnaire at a time while maintaining cross-questionnaire progress tracking:
+The questionnaire filling system operates through a single-questionnaire step-based navigation approach with integrated time-based completion that streamlines the user experience by focusing on one questionnaire at a time while maintaining cross-questionnaire progress tracking and time constraints:
 
 ```mermaid
 graph TB
+subgraph "Time-Based Session Management"
+AQ["AvailableQuestionnaires<br/>(Session Timer & Auto-Submit)"]
+AQV["available-questionnaires.blade.php<br/>(Timer Integration)"]
+ST["Session Timer<br/>(Client-Side + Server-Side)"]
+TE["Time Expiration<br/>(Auto-Submit)"]
+end
 subgraph "Single Questionnaire Step-Based Navigation"
-AQ["AvailableQuestionnaires<br/>(Progressive Navigation)"]
-AQV["available-questionnaires.blade.php<br/>(Step-Based View)"]
+AQ --> AQV
+AQ --> ST
+AQ --> TE
 end
 subgraph "Individual Questionnaire Mode"
 WF["QuestionnaireFill<br/>(Single Question View)"]
 QF["questionnaire-fill.blade.php<br/>(Single Question View)"]
 end
 subgraph "Shared Components"
-QN["Questionnaire"]
+QN["Questionnaire<br/>(time_limit_minutes)"]
 QT["Question"]
 AO["AnswerOption"]
-RP["Response"]
+RP["Response<br/>(started_at)"]
 AN["Answer"]
+US["User<br/>(time_limit_minutes, filling_started_at)"]
 SC["QuestionnaireScorer"]
 end
 subgraph "Routing"
@@ -79,8 +93,7 @@ SD["StaffDashboard"]
 PD["ParentDashboard"]
 METRICS["HasEvaluatorDashboardMetrics"]
 end
-AQ --> AQV
-WF --> QF
+AQ --> US
 AQ --> QN
 WF --> QN
 AQ --> RP
@@ -98,10 +111,12 @@ PD --> METRICS
 ```
 
 **Diagram sources**
-- [AvailableQuestionnaires.php:18-670](file://app/Livewire/Fill/AvailableQuestionnaires.php#L18-L670)
-- [available-questionnaires.blade.php:1-488](file://resources/views/livewire/fill/available-questionnaires.blade.php#L1-L488)
+- [AvailableQuestionnaires.php:18-677](file://app/Livewire/Fill/AvailableQuestionnaires.php#L18-L677)
+- [available-questionnaires.blade.php:1-613](file://resources/views/livewire/fill/available-questionnaires.blade.php#L1-L613)
+- [Questionnaire.php:23](file://app/Models/Questionnaire.php#L23)
+- [Response.php:19](file://app/Models/Response.php#L19)
+- [User.php:26-27](file://app/Models/User.php#L26-L27)
 - [QuestionnaireFill.php:19-515](file://app/Livewire/Fill/QuestionnaireFill.php#L19-L515)
-- [questionnaire-fill.blade.php:1-402](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L1-L402)
 - [TeacherDashboard.php:10-23](file://app/Livewire/Fill/TeacherDashboard.php#L10-L23)
 - [StaffDashboard.php:10-23](file://app/Livewire/Fill/StaffDashboard.php#L10-L23)
 - [ParentDashboard.php:10-23](file://app/Livewire/Fill/ParentDashboard.php#L10-L23)
@@ -113,14 +128,15 @@ PD --> METRICS
 - [web.php:149-160](file://routes/web.php#L149-L160)
 
 ## Core Components
-The system consists of two main components that work together to provide a streamlined questionnaire filling experience:
+The system consists of two main components that work together to provide a streamlined questionnaire filling experience with comprehensive time-based completion capabilities:
 
 ### AvailableQuestionnaires Component
 - **Progressive Navigation**: Manages multiple questionnaires through step-based navigation with $questionnaireIds/$allQuestionnaireIds arrays
 - **Enhanced Tracking**: Implements $dirtyQuestionIds tracking system for efficient autosave operations
 - **Cross-Questionnaire Progress**: Provides overall progress tracking across all fillable questionnaires
-- **Time Limit Management**: Handles time-expired scenarios with automatic submission
-- **Step Indicators**: Visual step markers showing current position in questionnaire sequence
+- **Time Limit Management**: Handles time-expired scenarios with automatic submission and session status indicators
+- **Session Timer Integration**: Manages user-level time limits and session start/end times
+- **Step Indicators**: Visual step markers showing current position in questionnaire sequence with time-based status
 
 ### QuestionnaireFill Component
 - **Single Question Focus**: Provides focused, distraction-free question answering for individual questionnaires
@@ -142,19 +158,73 @@ The system consists of two main components that work together to provide a strea
 - [ParentDashboard.php:10-23](file://app/Livewire/Fill/ParentDashboard.php#L10-L23)
 - [HasEvaluatorDashboardMetrics.php:9-73](file://app/Livewire/Fill/Concerns/HasEvaluatorDashboardMetrics.php#L9-L73)
 
+## Time-Based Questionnaire Completion System
+The system implements a comprehensive time-based completion mechanism that manages user sessions, enforces time limits, and handles automatic submission when time expires:
+
+### Session Management and Time Limits
+- **User-Level Time Limits**: Configured through user.time_limit_minutes property with null indicating no time limit
+- **Session Start Tracking**: Managed via user.filling_started_at timestamp for session lifecycle
+- **Questionnaire-Level Time Limits**: Optional per-questionnaire time limits via questionnaire.time_limit_minutes
+- **Session Timer Initialization**: Automatic timer setup with start confirmation popup for first-time sessions
+
+### Time Limit Display and Countdown
+- **Comprehensive Timer Display**: Visual countdown timer with color-coded warnings as expiration approaches
+- **Dynamic Time Formatting**: Hours:minutes:seconds display with automatic formatting
+- **Session Status Indicators**: Real-time status updates showing remaining time and session state
+- **Warning System**: Color-coded timer with amber for 10+ minutes remaining, red for 5 minutes or less
+
+### Automatic Submission and Time Expiration
+- **Automatic Time-Expired Detection**: Client-side and server-side time limit checking
+- **Auto-Submit on Expiration**: Automatic submission of all completed questionnaires when time runs out
+- **Session Locking**: Form locking mechanism preventing further modifications after expiration
+- **Graceful Degradation**: Smooth handling of time expiration with user-friendly notifications
+
+```mermaid
+flowchart TD
+Start(["User Access Questionnaires"]) --> Load["Load Questionnaire Arrays"]
+Load --> CheckSession["Check Session Timer Setup"]
+CheckSession --> ShowStartPopup{"First Time Session?"}
+ShowStartPopup --> |Yes| ShowPopup["Show Start Confirmation Popup"]
+ShowStartPopup --> |No| InitTimer["Initialize Session Timer"]
+ShowPopup --> UserConfirm["User Confirms Start"]
+UserConfirm --> StartTimer["Start Session Timer"]
+StartTimer --> InitTimer
+InitTimer --> DisplayTimer["Display Countdown Timer"]
+DisplayTimer --> Tick["Timer Tick (Every Second)"]
+Tick --> CheckExpiry{"Time Expired?"}
+CheckExpiry --> |No| Continue["Continue Normal Operation"]
+CheckExpiry --> |Yes| AutoSubmit["Auto-Submit All Responses"]
+AutoSubmit --> LockForm["Lock Form for Editing"]
+LockForm --> ShowExpired["Show Time Expired Notification"]
+Continue --> DisplayTimer
+```
+
+**Diagram sources**
+- [AvailableQuestionnaires.php:528-583](file://app/Livewire/Fill/AvailableQuestionnaires.php#L528-L583)
+- [AvailableQuestionnaires.php:253-260](file://app/Livewire/Fill/AvailableQuestionnaires.php#L253-L260)
+- [available-questionnaires.blade.php:13-39](file://resources/views/livewire/fill/available-questionnaires.blade.php#L13-L39)
+
+**Section sources**
+- [AvailableQuestionnaires.php:47-58](file://app/Livewire/Fill/AvailableQuestionnaires.php#L47-L58)
+- [AvailableQuestionnaires.php:528-583](file://app/Livewire/Fill/AvailableQuestionnaires.php#L528-L583)
+- [available-questionnaires.blade.php:188-298](file://resources/views/livewire/fill/available-questionnaires.blade.php#L188-L298)
+- [available-questionnaires.blade.php:300-322](file://resources/views/livewire/fill/available-questionnaires.blade.php#L300-L322)
+
 ## Single Questionnaire Step-Based Navigation
-The system implements a streamlined step-based navigation approach that focuses on one questionnaire at a time while maintaining cross-questionnaire awareness:
+The system implements a streamlined step-based navigation approach that focuses on one questionnaire at a time while maintaining cross-questionnaire awareness and integrating with the time-based completion system:
 
 ### Progressive Questionnaire Management
 - **Ordered Questionnaire Arrays**: $questionnaireIds contains fillable questionnaire IDs, $allQuestionnaireIds includes all questionnaires
 - **Current Index Tracking**: $currentIndex (0-based) manages position within the fillable questionnaire sequence
 - **Step-by-Step Navigation**: Previous/Next buttons with automatic draft saving and validation
 - **Direct Access**: Step indicators allow jumping to any questionnaire in the sequence
+- **Time-Expired Navigation Control**: Navigation disabled when time has expired
 
 ### Enhanced State Management
 - **Dirty Question Tracking**: $dirtyQuestionIds array efficiently tracks which questions have unsaved changes
 - **Cross-Questionnaire Persistence**: Maintains separate responses for each questionnaire with selective autosave
 - **Time Limit Integration**: Automatic time-expired detection with deadline calculation and auto-submission
+- **Session Status Awareness**: Navigation and UI elements respond to session timer state
 
 ```mermaid
 flowchart TD
@@ -181,19 +251,22 @@ Next --> Display
 - [available-questionnaires.blade.php:144-196](file://resources/views/livewire/fill/available-questionnaires.blade.php#L144-L196)
 
 ## Navigation and User Experience
-The system provides intuitive step-based navigation with enhanced user experience features:
+The system provides intuitive step-based navigation with enhanced user experience features including comprehensive time-based completion capabilities:
 
 ### Step-Based Navigation
 - **Visual Step Indicators**: Dots showing current, visited, and upcoming questionnaires with clear visual hierarchy
 - **Progressive Loading**: Only loads current questionnaire questions to optimize performance
 - **Automatic Draft Saving**: Persists changes when navigating between questionnaires
 - **Boundary Management**: Prevents navigation beyond questionnaire array bounds
+- **Time-Expired Navigation Control**: Navigation disabled when time has expired
 
 ### Enhanced User Experience Features
-- **Time Limit Visualization**: Countdown timer with color-coded warnings as expiration approaches
+- **Time Limit Visualization**: Comprehensive countdown timer with color-coded warnings as expiration approaches
+- **Start Confirmation Popup**: First-time session confirmation with time limit explanation
 - **Validation Feedback**: Real-time validation with error highlighting and scroll positioning
 - **Responsive Design**: Adapts to different screen sizes with horizontal scrolling for step indicators
 - **Accessibility Support**: Keyboard navigation and screen reader compatibility
+- **Session Status Indicators**: Clear visual indicators showing session state and remaining time
 
 ```mermaid
 sequenceDiagram
@@ -201,12 +274,15 @@ participant U as "User"
 participant N as "Navigation System"
 participant V as "Validation"
 participant A as "Autosave"
+participant T as "Timer"
 U->>N : Click Step Indicator
 N->>A : Persist Current Draft
 A->>N : Confirm Save
 N->>N : Update Current Index
 N->>V : Validate Required Fields
 V->>N : Return Validation Result
+N->>T : Check Time Limit
+T->>N : Time Remaining/Expired
 N->>U : Update UI with New Questionnaire
 ```
 
@@ -221,22 +297,25 @@ N->>U : Update UI with New Questionnaire
 - [available-questionnaires.blade.php:198-212](file://resources/views/livewire/fill/available-questionnaires.blade.php#L198-L212)
 
 ## Question Types and Input Handling
-The system supports three question types with specialized input handling optimized for the step-based navigation:
+The system supports three question types with specialized input handling optimized for the step-based navigation and time-based completion:
 
 ### Single Choice Questions
 - **Radio Button Interface**: Exclusive selection with immediate validation
 - **Required Field Handling**: Enforced selection for required questions
 - **Option Scoring**: Automatic score calculation based on selected option
+- **Time-Expired Input Control**: Disabled input when time has expired
 
 ### Essay Questions
 - **Textarea Input**: Multi-line text input with character limits
 - **Live Validation**: Real-time validation with character counter
 - **Debounced Updates**: Input debouncing to optimize performance
+- **Time-Expired Input Control**: Disabled input when time has expired
 
 ### Combined Questions
 - **Dual Input System**: Radio button selection followed by essay explanation
 - **Conditional Display**: Essay field appears only after option selection
 - **Comprehensive Validation**: Both selection and explanation required
+- **Time-Expired Input Control**: Disabled input when time has expired
 
 ```mermaid
 classDiagram
@@ -246,6 +325,7 @@ class Question {
 +string type
 +bool is_required
 +int order
++int time_limit_minutes
 }
 class AnswerOption {
 +int id
@@ -262,15 +342,32 @@ class Answer {
 +string essay_answer
 +int calculated_score
 }
+class User {
++int time_limit_minutes
++datetime filling_started_at
+}
+class Response {
++int id
++int questionnaire_id
++int user_id
++datetime started_at
++datetime submitted_at
++string status
+}
 Question "1" o-- "many" AnswerOption : "has many"
 Answer "belongs to" Question : "question_id"
 Answer "belongs to" AnswerOption : "answer_option_id"
+Response "belongs to" Questionnaire : "questionnaire_id"
+Response "belongs to" User : "user_id"
+Answer "belongs to" Response : "response_id"
 ```
 
 **Diagram sources**
 - [Question.php:16-26](file://app/Models/Question.php#L16-L26)
 - [AnswerOption.php:15-21](file://app/Models/AnswerOption.php#L15-L21)
 - [Answer.php:15-22](file://app/Models/Answer.php#L15-L22)
+- [User.php:26-27](file://app/Models/User.php#L26-L27)
+- [Response.php:19](file://app/Models/Response.php#L19)
 
 **Section sources**
 - [available-questionnaires.blade.php:283-377](file://resources/views/livewire/fill/available-questionnaires.blade.php#L283-L377)
@@ -278,29 +375,34 @@ Answer "belongs to" AnswerOption : "answer_option_id"
 - [questionnaire-fill.blade.php:196-283](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L196-L283)
 
 ## Validation and Error Handling
-The system implements comprehensive validation at both individual question and cross-questionnaire levels:
+The system implements comprehensive validation at both individual question and cross-questionnaire levels with integrated time-based completion:
 
 ### Per-Question Validation
 - **Individual Question Validation**: Validates current question immediately on change
 - **Real-time Feedback**: Visual highlighting and error messages for invalid inputs
 - **Type-Specific Rules**: Different validation rules based on question type
+- **Time-Expired Validation Control**: Validation bypassed when time has expired
 
 ### Cross-Questionnaire Validation
 - **Global Validation**: Validates all required questions across all fillable questionnaires
 - **Step Validation**: Ensures each questionnaire has valid responses before proceeding
 - **Error Aggregation**: Collects and displays all validation errors in a unified panel
+- **Time-Expired Validation Prevention**: Validation prevented when time has expired
 
 ### Error Handling Mechanisms
 - **Automatic Focus**: Automatically focuses on first invalid question
 - **Scroll Positioning**: Scrolls to invalid questions for better user experience
 - **Persistent Error States**: Maintains error states until corrections are made
+- **Session Status Error Handling**: Graceful handling of time expiration errors
 
 ```mermaid
 flowchart TD
 Validate["Validate All Questionnaires"] --> CheckRequired{"Check Required Fields"}
 CheckRequired --> |Invalid| Focus["Focus First Invalid Question"]
 Focus --> ShowErrors["Display Error Panel"]
-CheckRequired --> |Valid| Proceed["Proceed to Next Questionnaire"]
+CheckRequired --> |Valid| CheckTime{"Time Expired?"}
+CheckTime --> |Yes| Prevent["Prevent Further Actions"]
+CheckTime --> |No| Proceed["Proceed to Next Questionnaire"]
 ShowErrors --> Wait["Wait for User Correction"]
 Wait --> Validate
 ```
@@ -315,22 +417,25 @@ Wait --> Validate
 - [questionnaire-fill.blade.php:102-115](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L102-L115)
 
 ## Autosave and Draft Management
-The enhanced autosave system provides robust draft persistence optimized for the step-based navigation model:
+The enhanced autosave system provides robust draft persistence optimized for the step-based navigation model with integrated time-based completion:
 
 ### Progressive Autosave System
 - **Navigation-Based Autosave**: Primary autosave triggered on navigation actions with $dirtyQuestionIds tracking
 - **Manual Save Option**: Users can manually trigger autosave at any time
 - **Efficient Persistence**: Only persists questions with actual answers, removing empty entries
+- **Time-Expired Autosave Control**: Autosave prevented when time has expired
 
 ### Cross-Questionnaire Draft Management
 - **Individual Response Tracking**: Each questionnaire maintains its own response state
 - **Batch Processing**: Efficiently processes multiple questionnaires during autosave
 - **Status Management**: Maintains draft status with timestamps for audit trails
+- **Session-Aware Draft Persistence**: Respects session timer and time limit constraints
 
 ### Draft Persistence Logic
 - **Selective Persistence**: Only persists questions with actual answers
 - **Empty Answer Cleanup**: Removes entries when both answer option and essay are empty
 - **Time Limit Integration**: Automatically handles time-expired scenarios with forced submission
+- **Session Timer Coordination**: Coordinates with session timer for optimal autosave timing
 
 ```mermaid
 sequenceDiagram
@@ -341,6 +446,7 @@ U->>C : Change Answer
 C->>C : Mark Question as Dirty
 U->>C : Navigate to Next Questionnaire
 C->>C : Check Dirty Questions
+C->>C : Check Time Limit
 C->>D : Persist All Draft Answers
 D->>C : Confirm Save
 C->>U : Show Success Toast
@@ -356,23 +462,26 @@ C->>U : Show Success Toast
 - [QuestionnaireFill.php:146-154](file://app/Livewire/Fill/QuestionnaireFill.php#L146-L154)
 
 ## Progress Tracking and Analytics
-The system provides comprehensive progress tracking across multiple questionnaires with real-time updates:
+The system provides comprehensive progress tracking across multiple questionnaires with real-time updates and integrated time-based analytics:
 
 ### Cross-Questionnaire Metrics
 - **Overall Progress**: Tracks answered vs total questions across all fillable questionnaires
 - **Required Question Tracking**: Separates required from optional questions with completion percentages
 - **Percentage Calculation**: Real-time progress percentage computation across all questionnaires
 - **Time Limit Monitoring**: Visual countdown timers with color-coded warnings
+- **Session Status Tracking**: Real-time session state and remaining time display
 
 ### Individual Questionnaire Metrics
 - **Question-Level Progress**: Tracks answered vs total questions for current questionnaire
 - **Required Question Tracking**: Separates required from optional questions
 - **Percentage Calculation**: Real-time progress percentage computation
+- **Time-Based Progress**: Progress tracking integrated with session timer
 
 ### Dashboard Integration
 - **Role-Based Metrics**: Different metrics for teachers, staff, and parents
 - **Submission Status**: Tracks completed vs pending questionnaire submissions
 - **Time-Based Analytics**: Completion timing and response patterns
+- **Session Statistics**: Time limit utilization and session effectiveness metrics
 
 ```mermaid
 flowchart TD
@@ -381,6 +490,9 @@ Count --> Answered["Count Answered Questions"]
 Answered --> Required["Identify Required Questions"]
 Required --> Calculate["Calculate Progress Percentage"]
 Calculate --> Display["Display Progress Metrics"]
+Display --> CheckTime["Check Session Timer"]
+CheckTime --> UpdateTimer["Update Timer Display"]
+UpdateTimer --> Display
 ```
 
 **Diagram sources**
@@ -393,23 +505,26 @@ Calculate --> Display["Display Progress Metrics"]
 - [QuestionnaireFill.php:252-299](file://app/Livewire/Fill/QuestionnaireFill.php#L252-L299)
 
 ## Submission and Finalization
-The submission process is streamlined with enhanced validation and user confirmation:
+The submission process is streamlined with enhanced validation, user confirmation, and comprehensive time-based completion handling:
 
 ### Cross-Questionnaire Submission
 - **Bulk Submission**: Submits all fillable questionnaires simultaneously with validation
 - **Cross-Questionnaire Validation**: Validates all required questions across all questionnaires
 - **Individual Response Creation**: Creates separate responses for each questionnaire
+- **Time-Expired Submission Handling**: Automatic submission when time expires
 
 ### Finalization Process
 - **Confirmation Dialog**: Shows summary of all responses before final submission
 - **Transaction Processing**: Uses database transactions for data integrity
 - **Success Feedback**: Provides clear success messages and navigation options
 - **Time Limit Handling**: Automatic submission when time expires with appropriate messaging
+- **Session Status Update**: Updates session timer and status indicators
 
 ### Single Questionnaire Submission
 - **Individual Questionnaire Finalization**: Direct submission of one questionnaire
 - **Immediate Validation**: Validates all required questions before submission
 - **Score Calculation**: Calculates scores for all answered questions
+- **Time-Expired Single Submission**: Handles single questionnaire submission with time constraints
 
 ```mermaid
 sequenceDiagram
@@ -418,6 +533,7 @@ participant C as "Component"
 participant D as "Database"
 U->>C : Click Submit All
 C->>C : Validate All Questionnaires
+C->>C : Check Time Limit
 C->>D : Update Response Status
 loop For Each Questionnaire
 C->>D : Upsert Answer with Score
@@ -436,23 +552,25 @@ C->>U : Show Thank You Message
 - [QuestionnaireFill.php:172-245](file://app/Livewire/Fill/QuestionnaireFill.php#L172-L245)
 
 ## Dashboard Components
-The system includes role-specific dashboards with comprehensive metrics:
+The system includes role-specific dashboards with comprehensive metrics and time-based completion analytics:
 
 ### Dashboard Architecture
 - **Trait-Based Implementation**: Uses HasEvaluatorDashboardMetrics trait for common functionality
 - **Role-Based Filtering**: Filters questionnaires based on user roles and aliases
 - **Metric Aggregation**: Provides statistics for available, completed, and active questionnaires
+- **Time-Based Analytics**: Integrates time limit and session completion metrics
 
 ### Dashboard Features
-- **Available Questionnaires List**: Shows questionnaires eligible for the current user
-- **Completed Questionnaires**: Lists previously submitted questionnaires
+- **Available Questionnaires List**: Shows questionnaires eligible for the current user with time limit information
+- **Completed Questionnaires**: Lists previously submitted questionnaires with completion timestamps
 - **Statistics Display**: Shows counts for active questionnaires, available to fill, and completed total
 - **Navigation Integration**: Direct links to questionnaire filling interfaces
+- **Session Status Display**: Shows current session state and remaining time
 
 ### Role-Specific Dashboards
-- **Teacher Dashboard**: Metrics tailored for educational staff
-- **Staff Dashboard**: Administrative staff questionnaire management
-- **Parent Dashboard**: Parent portal for student-related questionnaires
+- **Teacher Dashboard**: Metrics tailored for educational staff with time-based completion analytics
+- **Staff Dashboard**: Administrative staff questionnaire management with session tracking
+- **Parent Dashboard**: Parent portal for student-related questionnaires with time limit awareness
 
 **Section sources**
 - [TeacherDashboard.php:10-23](file://app/Livewire/Fill/TeacherDashboard.php#L10-L23)
@@ -461,70 +579,86 @@ The system includes role-specific dashboards with comprehensive metrics:
 - [HasEvaluatorDashboardMetrics.php:9-73](file://app/Livewire/Fill/Concerns/HasEvaluatorDashboardMetrics.php#L9-L73)
 
 ## Accessibility and Mobile Responsiveness
-The interface is designed with accessibility and mobile usability in mind:
+The interface is designed with accessibility and mobile usability in mind, including comprehensive time-based completion features:
 
 ### Accessibility Features
-- **Keyboard Navigation**: Full keyboard support for all interactive elements
-- **Screen Reader Support**: Proper ARIA attributes and semantic HTML
-- **Focus Management**: Logical tab order and focus indication
-- **Color Contrast**: High contrast ratios for text and interactive elements
+- **Keyboard Navigation**: Full keyboard support for all interactive elements including timer controls
+- **Screen Reader Support**: Proper ARIA attributes and semantic HTML for timer and session status
+- **Focus Management**: Logical tab order and focus indication for timer display and controls
+- **Color Contrast**: High contrast ratios for text and interactive elements, especially for time warnings
+- **Time-Expired Accessibility**: Special handling for time-expired state with clear accessibility cues
 
 ### Mobile Responsiveness
-- **Adaptive Layouts**: Responsive grid systems adapt to different screen sizes
-- **Touch-Friendly Controls**: Appropriately sized touch targets for mobile devices
-- **Horizontal Scrolling**: Step indicators adapt to narrow screens
-- **Performance Optimization**: Optimized rendering for mobile browsers
+- **Adaptive Layouts**: Responsive grid systems adapt to different screen sizes with timer display adjustments
+- **Touch-Friendly Controls**: Appropriately sized touch targets for mobile devices including timer controls
+- **Horizontal Scrolling**: Step indicators adapt to narrow screens with timer display optimization
+- **Performance Optimization**: Optimized rendering for mobile browsers with timer efficiency
+- **Time Display Optimization**: Timer display adapts to small screens with clear readability
 
 ### User Experience Enhancements
-- **Toast Notifications**: Non-intrusive status updates with appropriate timing
-- **Loading States**: Visual feedback during autosave and submission operations
-- **Error Communication**: Clear error messages with actionable guidance
-- **Progress Visualization**: Intuitive progress indicators and completion tracking
+- **Toast Notifications**: Non-intrusive status updates with appropriate timing including time limit warnings
+- **Loading States**: Visual feedback during autosave and submission operations with timer synchronization
+- **Error Communication**: Clear error messages with actionable guidance including time expiration notifications
+- **Progress Visualization**: Intuitive progress indicators and completion tracking with time-based updates
+- **Session Status Communication**: Clear communication of session state and remaining time to users
 
 **Section sources**
 - [available-questionnaires.blade.php:472-487](file://resources/views/livewire/fill/available-questionnaires.blade.php#L472-L487)
 - [questionnaire-fill.blade.php:387-401](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L387-L401)
 
 ## Performance Considerations
-The system is optimized for efficient operation across multiple scenarios:
+The system is optimized for efficient operation across multiple scenarios with integrated time-based completion:
 
 ### Rendering Optimization
-- **Component-Level Rendering**: Only renders visible components and current questionnaire
-- **Lazy Loading**: Questionnaires are loaded as needed based on user navigation
-- **Efficient Data Structures**: Optimized data structures for questionnaire and answer management
+- **Component-Level Rendering**: Only renders visible components and current questionnaire with timer display
+- **Lazy Loading**: Questionnaires are loaded as needed based on user navigation with timer efficiency
+- **Efficient Data Structures**: Optimized data structures for questionnaire and answer management with time limit tracking
+- **Timer Efficiency**: Client-side timer optimization to minimize performance impact
 
 ### Database Performance
-- **Batch Operations**: Efficient batch processing for autosave and submission operations
-- **Query Optimization**: Optimized queries for loading questionnaires and responses
-- **Connection Pooling**: Proper database connection management for concurrent users
+- **Batch Operations**: Efficient batch processing for autosave and submission operations with time-based constraints
+- **Query Optimization**: Optimized queries for loading questionnaires and responses with time limit filtering
+- **Connection Pooling**: Proper database connection management for concurrent users with timer synchronization
+- **Session Data Optimization**: Efficient handling of user session data and time limit information
 
 ### Memory Management
-- **State Cleanup**: Automatic cleanup of unused state data
-- **Event Management**: Efficient event handling for autosave and validation
-- **Resource Optimization**: Minimized memory footprint for large questionnaire sets
+- **State Cleanup**: Automatic cleanup of unused state data including timer state and session information
+- **Event Management**: Efficient event handling for autosave, validation, and timer operations
+- **Resource Optimization**: Minimized memory footprint for large questionnaire sets with timer efficiency
+- **Timer Resource Management**: Optimized timer resource usage to prevent memory leaks
 
 ## Troubleshooting Guide
-Common issues and their solutions:
+Common issues and their solutions with comprehensive time-based completion troubleshooting:
 
 ### Access and Authentication Issues
 - **Cannot Access Questionnaires**: Verify user role matches questionnaire target groups
 - **Permission Denied**: Check RBAC configuration and role aliases for proper access
 - **Session Timeout**: Ensure user authentication is maintained throughout the session
+- **Time Limit Not Applied**: Verify user.time_limit_minutes is properly configured
 
 ### Navigation Problems
 - **Step Navigation Not Working**: Verify autosave completes successfully before navigation
 - **Questionnaire Jump Issues**: Check that questionnaire IDs are properly mapped in arrays
 - **Progress Tracking Errors**: Validate that progress calculations account for all question types
+- **Timer Not Starting**: Check that session timer initialization completes successfully
 
 ### Autosave and Draft Issues
 - **Autosave Not Triggering**: Ensure navigation events are firing correctly
 - **Draft Not Saved**: Verify that answers meet validation criteria before autosave
 - **Data Loss**: Check that database transactions are completing successfully
+- **Time-Expired Autosave Issues**: Verify that autosave respects time limit constraints
 
 ### Validation and Submission Problems
 - **Validation Errors**: Review validation error messages and fix required fields
 - **Submission Failures**: Check database connectivity and transaction status
 - **Score Calculation Issues**: Verify that scoring logic matches expected outcomes
+- **Time-Expired Submission Issues**: Check that auto-submit functionality works correctly
+
+### Time-Based Completion Issues
+- **Timer Not Displaying**: Verify that timeLimitInfo is properly computed and passed to the view
+- **Time Expiration Not Detected**: Check that checkTimeExpiry function executes correctly
+- **Auto-Submit Not Working**: Verify that autoSubmitOnTimeExpired function triggers submission
+- **Session Timer Issues**: Check that initializeSessionTimer and confirmStart functions work correctly
 
 **Section sources**
 - [AvailableQuestionnaires.php:56-60](file://app/Livewire/Fill/AvailableQuestionnaires.php#L56-L60)
@@ -532,4 +666,4 @@ Common issues and their solutions:
 - [questionnaire-fill.blade.php:102-115](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L102-L115)
 
 ## Conclusion
-The streamlined questionnaire filling interface provides a comprehensive, accessible, and responsive solution for evaluator assessment through progressive step-based navigation. The system's transformation from grouped questionnaire display to single-questionnaire step-based navigation delivers an excellent user experience with robust autosave functionality, comprehensive validation, and rich progress tracking across all device types and user roles. The modular design ensures maintainability and extensibility for future enhancements while providing efficient performance optimization for large-scale questionnaire management.
+The streamlined questionnaire filling interface provides a comprehensive, accessible, and responsive solution for evaluator assessment through progressive step-based navigation with integrated time-based completion capabilities. The system's transformation from grouped questionnaire display to single-questionnaire step-based navigation delivers an excellent user experience with robust autosave functionality, comprehensive validation, rich progress tracking, and sophisticated time-based session management across all device types and user roles. The enhanced time-based completion system provides seamless session management, automatic submission handling, and comprehensive timer integration that ensures reliable and efficient questionnaire completion. The modular design ensures maintainability and extensibility for future enhancements while providing efficient performance optimization for large-scale questionnaire management with time-based constraints.
