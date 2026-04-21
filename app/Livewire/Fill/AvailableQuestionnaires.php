@@ -16,10 +16,21 @@ use Livewire\Component;
 #[Layout('layouts.evaluator')]
 class AvailableQuestionnaires extends Component
 {
-    /** @var array<string, array{label: string, slug: string, questionnaire_ids: list<int>}> */
-    public array $groups = [];
+    /**
+     * Ordered list of fillable questionnaire IDs (excludes already submitted).
+     *
+     * @var list<int>
+     */
+    public array $questionnaireIds = [];
 
-    /** @var array<int, array{status: string, response_id: int|null, title: string, description: string, start_date: string|null, end_date: string|null, questions_count: int}> */
+    /**
+     * Ordered list of ALL questionnaire IDs (includes submitted).
+     *
+     * @var list<int>
+     */
+    public array $allQuestionnaireIds = [];
+
+    /** @var array<int, array{status: string, response_id: int|null, title: string, description: string, start_date: string|null, end_date: string|null, questions_count: int, target_label: string}> */
     public array $questionnaireMeta = [];
 
     /** @var array<int|string, array{answer_option_id: int|null, essay_answer: string}> */
@@ -32,28 +43,39 @@ class AvailableQuestionnaires extends Component
     /** @var array<int, bool> */
     public array $dirtyQuestionIds = [];
 
-    /** @var array<int, int> questionId => questionnaireId mapping */
-    public array $questionToQuestionnaire = [];
+    /** 0-based index into questionnaireIds (the fillable list) */
+    public int $currentIndex = 0;
 
     public function mount(): void
     {
-        $this->loadGroupedQuestionnaires();
+        $this->loadQuestionnaires();
     }
 
     public function render()
     {
-        $allQuestions = $this->getAllQuestionsGrouped();
+        $currentId = $this->questionnaireIds[$this->currentIndex] ?? null;
+        $currentMeta = $currentId !== null ? ($this->questionnaireMeta[$currentId] ?? null) : null;
+        $currentQuestions = collect();
 
+        if ($currentId !== null && $currentMeta !== null && $currentMeta['status'] !== 'submitted') {
+            $currentQuestions = Question::where('questionnaire_id', $currentId)
+                ->with('answerOptions')
+                ->orderBy('order')
+                ->get();
+        }
+
+        // Overall progress across ALL fillable questionnaires
         $totalQuestions = 0;
         $answeredCount = 0;
         $requiredQuestionCount = 0;
         $answeredRequiredCount = 0;
 
-        foreach ($allQuestions as $questionnaireId => $questions) {
-            $meta = $this->questionnaireMeta[$questionnaireId] ?? null;
-            if (!$meta || $meta['status'] === 'submitted') {
+        foreach ($this->questionnaireMeta as $qId => $meta) {
+            if ($meta['status'] === 'submitted') {
                 continue;
             }
+
+            $questions = Question::where('questionnaire_id', $qId)->orderBy('order')->get();
 
             foreach ($questions as $question) {
                 $totalQuestions++;
@@ -84,24 +106,56 @@ class AvailableQuestionnaires extends Component
             ? (int) round(($answeredCount / $totalQuestions) * 100)
             : 0;
 
-        $fillableQuestionnaireCount = collect($this->questionnaireMeta)
-            ->filter(fn(array $meta): bool => $meta['status'] !== 'submitted')
-            ->count();
-
-        $submittedCount = collect($this->questionnaireMeta)
-            ->filter(fn(array $meta): bool => $meta['status'] === 'submitted')
-            ->count();
+        $totalFillable = count($this->questionnaireIds);
+        $submittedCount = count($this->allQuestionnaireIds) - $totalFillable;
+        $isLast = $this->currentIndex >= $totalFillable - 1;
 
         return view('livewire.fill.available-questionnaires', [
-            'allQuestions' => $allQuestions,
+            'currentId' => $currentId,
+            'currentMeta' => $currentMeta,
+            'currentQuestions' => $currentQuestions,
+            'totalFillable' => $totalFillable,
+            'isLast' => $isLast,
             'totalQuestions' => $totalQuestions,
             'answeredCount' => $answeredCount,
             'progressPercent' => $progressPercent,
             'requiredQuestionCount' => $requiredQuestionCount,
             'answeredRequiredCount' => $answeredRequiredCount,
-            'fillableQuestionnaireCount' => $fillableQuestionnaireCount,
             'submittedCount' => $submittedCount,
         ]);
+    }
+
+    public function nextQuestionnaire(): void
+    {
+        if (!empty($this->dirtyQuestionIds)) {
+            $this->persistAllDrafts();
+        }
+
+        $max = count($this->questionnaireIds) - 1;
+        if ($this->currentIndex < $max) {
+            $this->currentIndex++;
+        }
+    }
+
+    public function previousQuestionnaire(): void
+    {
+        if (!empty($this->dirtyQuestionIds)) {
+            $this->persistAllDrafts();
+        }
+
+        if ($this->currentIndex > 0) {
+            $this->currentIndex--;
+        }
+    }
+
+    public function goToQuestionnaire(int $index): void
+    {
+        if (!empty($this->dirtyQuestionIds)) {
+            $this->persistAllDrafts();
+        }
+
+        $max = count($this->questionnaireIds) - 1;
+        $this->currentIndex = max(0, min($index, $max));
     }
 
     public function updatedAnswers(mixed $value, string $key): void
@@ -208,30 +262,7 @@ class AvailableQuestionnaires extends Component
         session()->flash('success', "Semua {$count} kuisioner berhasil dikirim!");
     }
 
-    /**
-     * @return array<int, \Illuminate\Database\Eloquent\Collection<int, Question>>
-     */
-    private function getAllQuestionsGrouped(): array
-    {
-        $fillableIds = collect($this->questionnaireMeta)
-            ->filter(fn(array $meta): bool => $meta['status'] !== 'submitted')
-            ->keys()
-            ->all();
-
-        if ($fillableIds === []) {
-            return [];
-        }
-
-        $questions = Question::whereIn('questionnaire_id', $fillableIds)
-            ->with('answerOptions')
-            ->orderBy('order')
-            ->get()
-            ->groupBy('questionnaire_id');
-
-        return $questions->all();
-    }
-
-    private function loadGroupedQuestionnaires(): void
+    private function loadQuestionnaires(): void
     {
         $user = Auth::user();
         $roleSlug = $user?->roleSlug() ?? '';
@@ -250,24 +281,16 @@ class AvailableQuestionnaires extends Component
             ->get();
 
         $roleLabels = (array) config('rbac.role_labels', []);
-        $this->groups = [];
         $this->questionnaireMeta = [];
+        $this->questionnaireIds = [];
+        $this->allQuestionnaireIds = [];
 
         foreach ($questionnaires as $questionnaire) {
             $matchedTarget = $questionnaire->targets
                 ->whereIn('target_group', $targetGroups)
                 ->first()?->target_group ?? 'other';
 
-            if (!isset($this->groups[$matchedTarget])) {
-                $label = $roleLabels[$matchedTarget] ?? ucfirst(str_replace('_', ' ', $matchedTarget));
-                $this->groups[$matchedTarget] = [
-                    'label' => $label,
-                    'slug' => $matchedTarget,
-                    'questionnaire_ids' => [],
-                ];
-            }
-
-            $this->groups[$matchedTarget]['questionnaire_ids'][] = $questionnaire->id;
+            $targetLabel = $roleLabels[$matchedTarget] ?? ucfirst(str_replace('_', ' ', $matchedTarget));
 
             $response = Response::query()
                 ->where('questionnaire_id', $questionnaire->id)
@@ -282,6 +305,12 @@ class AvailableQuestionnaires extends Component
                 $responseId = $response->id;
             }
 
+            $this->allQuestionnaireIds[] = $questionnaire->id;
+
+            if ($status !== 'submitted') {
+                $this->questionnaireIds[] = $questionnaire->id;
+            }
+
             $this->questionnaireMeta[$questionnaire->id] = [
                 'status' => $status,
                 'response_id' => $responseId,
@@ -290,16 +319,17 @@ class AvailableQuestionnaires extends Component
                 'start_date' => $questionnaire->start_date?->format('d M Y H:i'),
                 'end_date' => $questionnaire->end_date?->format('d M Y H:i'),
                 'questions_count' => $questionnaire->questions_count,
+                'target_label' => $targetLabel,
             ];
         }
 
+        $this->currentIndex = 0;
         $this->loadAllAnswers();
     }
 
     private function loadAllAnswers(): void
     {
         $this->answers = [];
-        $this->questionToQuestionnaire = [];
 
         foreach ($this->questionnaireMeta as $questionnaireId => $meta) {
             if ($meta['status'] === 'submitted') {
@@ -315,7 +345,6 @@ class AvailableQuestionnaires extends Component
                     'answer_option_id' => null,
                     'essay_answer' => '',
                 ];
-                $this->questionToQuestionnaire[$question->id] = $questionnaireId;
             }
 
             $responseId = $meta['response_id'] ?? null;
@@ -345,22 +374,14 @@ class AvailableQuestionnaires extends Component
 
         $user = Auth::user();
 
-        // Group dirty question IDs by their questionnaire
-        $dirtyByQuestionnaire = [];
-        foreach ($this->dirtyQuestionIds as $questionId => $isDirty) {
-            if (!$isDirty) {
-                continue;
-            }
+        // Get all question IDs grouped by their questionnaire
+        $allQuestions = Question::whereIn('id', array_keys($this->dirtyQuestionIds))
+            ->select(['id', 'questionnaire_id'])
+            ->get()
+            ->groupBy('questionnaire_id');
 
-            $qId = $this->questionToQuestionnaire[$questionId] ?? null;
-            if ($qId === null) {
-                continue;
-            }
-
-            $dirtyByQuestionnaire[$qId][] = (int) $questionId;
-        }
-
-        foreach ($dirtyByQuestionnaire as $questionnaireId => $questionIds) {
+        foreach ($allQuestions as $questionnaireId => $questions) {
+            $questionIds = $questions->pluck('id')->map(fn($id) => (int) $id)->all();
             $this->persistDraftForQuestions($questionnaireId, $questionIds, $user);
         }
 

@@ -18,6 +18,12 @@
 - [resources/views/components/session-toast.blade.php](file://resources/views/components/session-toast.blade.php)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Removed reference to questionnaire navigation fix documentation as it has been removed from the docs/ directory
+- Updated troubleshooting section to remove references to questionnaire navigation issues
+- Clarified that navigation issues have been resolved through comprehensive system implementation
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -32,6 +38,8 @@
 
 ## Introduction
 This document explains the dashboard navigation system and layout architecture across the application. It covers role-based navigation patterns, menu structures, and layout templates used by administrators and evaluators. It also documents the middleware-driven redirection system, navigation state management, and responsive design patterns. Finally, it outlines customization options for menu items, navigation permissions, and layout modifications tailored to different user roles.
+
+**Updated** Removed mention of questionnaire navigation fix documentation as it has been removed from the repository.
 
 ## Project Structure
 The navigation and layout system spans routing, middleware, configuration, Blade layouts, and Livewire components:
@@ -117,7 +125,7 @@ PDASH --> METRICS
 ## Architecture Overview
 The navigation and layout architecture follows a centralized role-aware flow:
 - Root route checks authentication and redirects to a role-aware dashboard endpoint.
-- The role redirection middleware resolves the user’s role slug and redirects to the configured dashboard path.
+- The role redirection middleware resolves the user's role slug and redirects to the configured dashboard path.
 - Admin and evaluator routes are gated by dedicated middleware ensuring access based on role slugs.
 - Layouts encapsulate navigation menus and UI shell; Livewire components render page content within these shells.
 
@@ -152,7 +160,7 @@ LW-->>U : Rendered page content
 
 ### Role-Based Redirection System
 - Central endpoint: A dedicated route named for role-aware dashboard resolution.
-- Middleware logic: Extracts current user, checks if the current route matches the role dashboard route, and redirects to a path determined by the user’s role slug.
+- Middleware logic: Extracts current user, checks if the current route matches the role dashboard route, and redirects to a path determined by the user's role slug.
 - Fallback path: Defaults to a questionnaire listing route if no role-specific path exists.
 
 ```mermaid
@@ -391,12 +399,14 @@ PD --> TRAIT
   - Verify role slug resolution and dashboard paths in configuration.
   - Confirm the role redirection middleware is applied to the role dashboard route.
 - Access denied errors:
-  - Ensure the user’s role slug is included in the required slugs for the target route.
+  - Ensure the user's role slug is included in the required slugs for the target route.
   - Check gate middleware aliases and RBAC configuration.
 - Navigation not highlighting:
   - Confirm route names match the active route checks used in layouts.
 - Dark mode not persisting:
   - Verify theme toggle logic updates local storage and applies the correct root class.
+- Questionnaire navigation issues:
+  - **Updated** Navigation issues have been resolved through comprehensive system implementation. If experiencing questionnaire navigation problems, verify that the latest version is deployed and check for any custom overrides that might interfere with the standard navigation flow.
 
 **Section sources**
 - [config/rbac.php:49-62](file://config/rbac.php#L49-L62)
@@ -407,6 +417,8 @@ PD --> TRAIT
 
 ## Conclusion
 The dashboard navigation and layout system integrates routing, middleware, configuration, and Blade layouts to deliver a role-aware, accessible, and responsive experience. Administrators and evaluators navigate through clearly defined sections with permission gates and role-based redirection. The shared metrics trait and layout templates enable consistent dashboards across roles while allowing customization through configuration and conditional rendering.
+
+**Updated** The questionnaire navigation issues have been comprehensively resolved through system improvements, eliminating the need for separate documentation on navigation fixes.
 
 ## Appendices
 - Configuration keys relevant to navigation:

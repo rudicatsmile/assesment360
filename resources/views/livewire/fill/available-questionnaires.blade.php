@@ -93,22 +93,54 @@
         </div>
     @endif
 
-    {{-- Global Progress Summary --}}
-    @if ($totalQuestions > 0)
+    {{-- Already Submitted Notice --}}
+    @if ($totalFillable === 0 && $submittedCount > 0)
+        <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
+            <h3 class="text-lg font-semibold text-emerald-800">Semua kuisioner sudah dikirim!</h3>
+            <p class="mt-2 text-sm text-emerald-700">Anda sudah mengirim semua kuisioner yang tersedia.</p>
+        </div>
+    @endif
+
+    {{-- Step Navigation & Progress --}}
+    @if ($totalFillable > 0)
         <div class="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-            <div class="flex items-center justify-between gap-4">
-                <div>
-                    <p class="text-sm font-semibold text-zinc-800">Progress Keseluruhan</p>
-                    <p class="text-xs text-zinc-500">
-                        {{ $answeredCount }} dari {{ $totalQuestions }} pertanyaan terisi
-                        &middot; Wajib: {{ $answeredRequiredCount }} / {{ $requiredQuestionCount }}
-                    </p>
-                </div>
-                <div class="text-right">
-                    <span class="text-2xl font-bold text-zinc-900">{{ $progressPercent }}%</span>
-                </div>
+            {{-- Questionnaire step dots --}}
+            <div class="flex items-center gap-2 overflow-x-auto pb-1">
+                @for ($i = 0; $i < $totalFillable; $i++)
+                    @php
+                        $stepId = $questionnaireIds[$i] ?? null;
+                        $stepMeta = $stepId !== null ? ($questionnaireMeta[$stepId] ?? null) : null;
+                        $stepTitle = $stepMeta ? $stepMeta['title'] : '';
+                        $isCurrent = $i === $currentIndex;
+                        $isVisited = $i < $currentIndex;
+                    @endphp
+                    <button
+                        type="button"
+                        wire:click="goToQuestionnaire({{ $i }})"
+                        class="flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition {{ $isCurrent ? 'border-zinc-900 bg-zinc-900 text-white' : ($isVisited ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50') }}"
+                    >
+                        @if ($isVisited)
+                            <span class="text-emerald-600">&#10003;</span>
+                        @else
+                            <span class="flex h-5 w-5 items-center justify-center rounded-full {{ $isCurrent ? 'bg-white text-zinc-900' : 'bg-zinc-200 text-zinc-600' }} text-xs font-bold">
+                                {{ $i + 1 }}
+                            </span>
+                        @endif
+                        <span class="max-w-[120px] truncate">{{ $stepTitle }}</span>
+                    </button>
+                @endfor
             </div>
-            <div class="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-zinc-200">
+
+            {{-- Overall Progress --}}
+            <div class="mt-3 flex items-center justify-between gap-4">
+                <p class="text-xs text-zinc-500">
+                    Kuisioner {{ $currentIndex + 1 }} dari {{ $totalFillable }}
+                    &middot; {{ $answeredCount }}/{{ $totalQuestions }} pertanyaan terisi
+                    &middot; Wajib: {{ $answeredRequiredCount }}/{{ $requiredQuestionCount }}
+                </p>
+                <span class="text-sm font-bold {{ $progressPercent >= 100 ? 'text-emerald-600' : 'text-zinc-900' }}">{{ $progressPercent }}%</span>
+            </div>
+            <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-zinc-200">
                 <div
                     class="h-full rounded-full transition-all duration-300 {{ $progressPercent >= 100 ? 'bg-emerald-600' : 'bg-zinc-800' }}"
                     style="width: {{ $progressPercent }}%;"
@@ -125,7 +157,7 @@
         class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
         style="display:none;"
     >
-        <p class="font-semibold">Masih ada pertanyaan wajib yang belum terisi di seluruh kuisioner:</p>
+        <p class="font-semibold">Masih ada pertanyaan wajib yang belum terisi:</p>
         <ul class="mt-2 list-disc space-y-1 pl-5">
             <template x-for="(error, idx) in validationErrors" :key="idx">
                 <li x-text="error"></li>
@@ -133,226 +165,193 @@
         </ul>
     </div>
 
-    {{-- Already Submitted Notice --}}
-    @if ($fillableQuestionnaireCount === 0 && $submittedCount > 0)
-        <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
-            <h3 class="text-lg font-semibold text-emerald-800">Semua kuisioner sudah dikirim!</h3>
-            <p class="mt-2 text-sm text-emerald-700">Anda sudah mengirim semua kuisioner yang tersedia.</p>
-        </div>
-    @endif
-
-    {{-- Grouped Questionnaires (Always Expanded) --}}
-    @forelse ($groups as $slug => $group)
-        <section class="space-y-3">
-            {{-- Group Header --}}
-            <div class="flex items-center gap-3">
-                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-900 text-xs font-bold text-white">
-                    {{ substr($group['label'], 0, 1) }}
-                </div>
-                <div>
-                    <h3 class="text-base font-semibold text-zinc-900">{{ $group['label'] }}</h3>
-                    <p class="text-xs text-zinc-500">{{ count($group['questionnaire_ids']) }} kuisioner</p>
-                </div>
-            </div>
-
-            {{-- All Questionnaires in Group --}}
-            <div class="space-y-4 pl-2 border-l-2 border-zinc-200 ml-4">
-                @foreach ($group['questionnaire_ids'] as $id)
-                    @php
-                        $meta = $questionnaireMeta[$id];
-                        $isSubmitted = $meta['status'] === 'submitted';
-                        $questions = $allQuestions[$id] ?? collect();
-                    @endphp
-
-                    {{-- Already Submitted: Read-only summary --}}
-                    @if ($isSubmitted)
-                        <div class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
-                            <div class="flex items-start justify-between gap-2">
-                                <div>
-                                    <h4 class="text-base font-semibold text-zinc-900">{{ $meta['title'] }}</h4>
-                                    @if ($meta['description'])
-                                        <p class="mt-1 text-sm text-zinc-600">{{ $meta['description'] }}</p>
-                                    @endif
-                                </div>
-                                <span class="shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">Sudah Dikirim</span>
+    {{-- Current Questionnaire Content --}}
+    @if ($currentMeta)
+        <section class="space-y-4">
+            {{-- Questionnaire Header --}}
+            <div class="rounded-xl border border-zinc-200 bg-white shadow-sm">
+                <div class="border-b border-zinc-100 p-4">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <div class="mb-1 flex items-center gap-2">
+                                <span class="rounded bg-zinc-900 px-2 py-0.5 text-xs font-bold text-white">{{ $currentIndex + 1 }}</span>
+                                <span class="text-xs text-zinc-500">{{ $currentMeta['target_label'] }}</span>
                             </div>
-                        </div>
-                    @else
-                        {{-- Fillable Questionnaire --}}
-                        <div class="rounded-xl border border-zinc-200 bg-white shadow-sm">
-                            {{-- Questionnaire Header --}}
-                            <div class="border-b border-zinc-100 p-4">
-                                <div class="flex items-start justify-between gap-2">
-                                    <div>
-                                        <h4 class="text-lg font-semibold text-zinc-900">{{ $meta['title'] }}</h4>
-                                        @if ($meta['description'])
-                                            <p class="mt-1 text-sm text-zinc-600">{{ $meta['description'] }}</p>
-                                        @endif
-                                    </div>
-                                    <span class="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">Perlu Diisi</span>
-                                </div>
-                            </div>
-
-                            {{-- Questions --}}
-                            @if ($questions->count() > 0)
-                                <div class="space-y-4 p-4">
-                                    @foreach ($questions as $index => $question)
-                                        @php
-                                            $isRequiredQuestion = $question->is_required || in_array($question->type, ['essay', 'combined'], true);
-                                        @endphp
-                                        <section
-                                            id="q-{{ $question->id }}"
-                                            wire:key="q-{{ $question->id }}"
-                                            data-question-block
-                                            data-question-id="{{ $question->id }}"
-                                            data-question-number="{{ $index + 1 }}"
-                                            data-question-label="{{ trim($question->question_text) }}"
-                                            data-question-type="{{ $question->type }}"
-                                            data-questionnaire-title="{{ $meta['title'] }}"
-                                            data-required="{{ $isRequiredQuestion ? '1' : '0' }}"
-                                            x-on:input="invalidQuestionIds = invalidQuestionIds.filter(v => v !== {{ $question->id }})"
-                                            x-on:change="invalidQuestionIds = invalidQuestionIds.filter(v => v !== {{ $question->id }}); invalidEssayQuestionIds = invalidEssayQuestionIds.filter(v => v !== {{ $question->id }})"
-                                            :class="invalidQuestionIds.includes({{ $question->id }}) ? 'ring-2 ring-rose-400 bg-rose-50/60' : ''"
-                                            class="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 transition"
-                                        >
-                                            <div class="flex items-center gap-2">
-                                                <span class="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                                                    Pertanyaan {{ $index + 1 }}
-                                                </span>
-                                                <span class="text-xs text-zinc-400">|</span>
-                                                <span class="text-xs text-zinc-500">{{ $question->type }}</span>
-                                                @if ($isRequiredQuestion)
-                                                    <span class="rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700">Wajib</span>
-                                                @else
-                                                    <span class="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-500">Opsional</span>
-                                                @endif
-                                            </div>
-
-                                            <h3 class="text-sm font-semibold text-zinc-900">{{ $question->question_text }}</h3>
-
-                                            {{-- Single Choice --}}
-                                            @if ($question->type === 'single_choice')
-                                                <div class="space-y-2">
-                                                    @foreach ($question->answerOptions as $option)
-                                                        <label class="flex cursor-pointer items-start gap-2 text-sm text-zinc-700">
-                                                            <input
-                                                                type="radio"
-                                                                wire:model.live="answers.{{ $question->id }}.answer_option_id"
-                                                                name="question_{{ $question->id }}"
-                                                                value="{{ $option->id }}"
-                                                                class="mt-0.5 border-zinc-300"
-                                                            >
-                                                            <span>{{ $option->option_text }}</span>
-                                                        </label>
-                                                    @endforeach
-                                                    @error("answers.$question->id.answer_option_id")
-                                                        <p class="text-xs text-red-600">{{ $message }}</p>
-                                                    @enderror
-                                                </div>
-                                            @endif
-
-                                            {{-- Essay --}}
-                                            @if ($question->type === 'essay')
-                                                <div class="space-y-2">
-                                                    <textarea
-                                                        data-essay-input
-                                                        wire:model.live.debounce.250ms="answers.{{ $question->id }}.essay_answer"
-                                                        rows="3"
-                                                        maxlength="2000"
-                                                        class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
-                                                        placeholder="Tulis jawaban Anda..."
-                                                        x-on:input="if (String($el.value || '').trim() !== '') { invalidEssayQuestionIds = invalidEssayQuestionIds.filter(v => v !== {{ $question->id }}); invalidQuestionIds = invalidQuestionIds.filter(v => v !== {{ $question->id }}) }"
-                                                    ></textarea>
-                                                    <div class="text-xs text-zinc-500">
-                                                        {{ strlen($answers[$question->id]['essay_answer'] ?? '') }} / 2000 karakter
-                                                    </div>
-                                                    <p
-                                                        x-show="invalidEssayQuestionIds.includes({{ $question->id }})"
-                                                        class="text-xs text-rose-700"
-                                                        style="display:none;"
-                                                    >
-                                                        Jawaban untuk pertanyaan esai ini masih kosong. Silakan isi terlebih dahulu.
-                                                    </p>
-                                                    @error("answers.$question->id.essay_answer")
-                                                        <p class="text-xs text-red-600">{{ $message }}</p>
-                                                    @enderror
-                                                </div>
-                                            @endif
-
-                                            {{-- Combined --}}
-                                            @if ($question->type === 'combined')
-                                                <div class="space-y-3">
-                                                    <div class="space-y-2">
-                                                        @foreach ($question->answerOptions as $option)
-                                                            <label class="flex cursor-pointer items-start gap-2 text-sm text-zinc-700">
-                                                                <input
-                                                                    type="radio"
-                                                                    wire:model.live="answers.{{ $question->id }}.answer_option_id"
-                                                                    name="question_combined_{{ $question->id }}"
-                                                                    value="{{ $option->id }}"
-                                                                    class="mt-0.5 border-zinc-300"
-                                                                >
-                                                                <span>{{ $option->option_text }}</span>
-                                                            </label>
-                                                        @endforeach
-                                                        @error("answers.$question->id.answer_option_id")
-                                                            <p class="text-xs text-red-600">{{ $message }}</p>
-                                                        @enderror
-                                                    </div>
-
-                                                    @if (($answers[$question->id]['answer_option_id'] ?? null) !== null)
-                                                        <div class="space-y-2">
-                                                            <textarea
-                                                                wire:model.live.debounce.250ms="answers.{{ $question->id }}.essay_answer"
-                                                                rows="3"
-                                                                maxlength="2000"
-                                                                class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
-                                                                placeholder="Tuliskan alasan Anda..."
-                                                            ></textarea>
-                                                            <div class="text-xs text-zinc-500">
-                                                                {{ strlen($answers[$question->id]['essay_answer'] ?? '') }} / 2000 karakter
-                                                            </div>
-                                                            @error("answers.$question->id.essay_answer")
-                                                                <p class="text-xs text-red-600">{{ $message }}</p>
-                                                            @enderror
-                                                        </div>
-                                                    @else
-                                                        <p class="text-xs text-zinc-500">Pilih opsi jawaban terlebih dahulu untuk menampilkan area alasan.</p>
-                                                    @endif
-                                                </div>
-                                            @endif
-                                        </section>
-                                    @endforeach
-                                </div>
-                            @else
-                                <div class="p-4 text-sm text-zinc-500">
-                                    Tidak ada pertanyaan pada kuisioner ini.
-                                </div>
+                            <h3 class="text-lg font-semibold text-zinc-900">{{ $currentMeta['title'] }}</h3>
+                            @if ($currentMeta['description'])
+                                <p class="mt-1 text-sm text-zinc-600">{{ $currentMeta['description'] }}</p>
                             @endif
                         </div>
-                    @endif
-                @endforeach
+                        <span class="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">Perlu Diisi</span>
+                    </div>
+                </div>
+
+                {{-- Questions --}}
+                @if ($currentQuestions->count() > 0)
+                    <div class="space-y-4 p-4">
+                        @foreach ($currentQuestions as $index => $question)
+                            @php
+                                $isRequiredQuestion = $question->is_required || in_array($question->type, ['essay', 'combined'], true);
+                            @endphp
+                            <section
+                                id="q-{{ $question->id }}"
+                                wire:key="q-{{ $question->id }}"
+                                data-question-block
+                                data-question-id="{{ $question->id }}"
+                                data-question-number="{{ $index + 1 }}"
+                                data-question-label="{{ trim($question->question_text) }}"
+                                data-question-type="{{ $question->type }}"
+                                data-questionnaire-title="{{ $currentMeta['title'] }}"
+                                data-required="{{ $isRequiredQuestion ? '1' : '0' }}"
+                                x-on:input="invalidQuestionIds = invalidQuestionIds.filter(v => v !== {{ $question->id }})"
+                                x-on:change="invalidQuestionIds = invalidQuestionIds.filter(v => v !== {{ $question->id }}); invalidEssayQuestionIds = invalidEssayQuestionIds.filter(v => v !== {{ $question->id }})"
+                                :class="invalidQuestionIds.includes({{ $question->id }}) ? 'ring-2 ring-rose-400 bg-rose-50/60' : ''"
+                                class="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 transition"
+                            >
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                                        Pertanyaan {{ $index + 1 }}
+                                    </span>
+                                    <span class="text-xs text-zinc-400">|</span>
+                                    <span class="text-xs text-zinc-500">{{ $question->type }}</span>
+                                    @if ($isRequiredQuestion)
+                                        <span class="rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700">Wajib</span>
+                                    @else
+                                        <span class="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-500">Opsional</span>
+                                    @endif
+                                </div>
+
+                                <h3 class="text-sm font-semibold text-zinc-900">{{ $question->question_text }}</h3>
+
+                                {{-- Single Choice --}}
+                                @if ($question->type === 'single_choice')
+                                    <div class="space-y-2">
+                                        @foreach ($question->answerOptions as $option)
+                                            <label class="flex cursor-pointer items-start gap-2 text-sm text-zinc-700">
+                                                <input
+                                                    type="radio"
+                                                    wire:model.live="answers.{{ $question->id }}.answer_option_id"
+                                                    name="question_{{ $question->id }}"
+                                                    value="{{ $option->id }}"
+                                                    class="mt-0.5 border-zinc-300"
+                                                >
+                                                <span>{{ $option->option_text }}</span>
+                                            </label>
+                                        @endforeach
+                                        @error("answers.$question->id.answer_option_id")
+                                            <p class="text-xs text-red-600">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+                                @endif
+
+                                {{-- Essay --}}
+                                @if ($question->type === 'essay')
+                                    <div class="space-y-2">
+                                        <textarea
+                                            data-essay-input
+                                            wire:model.live.debounce.250ms="answers.{{ $question->id }}.essay_answer"
+                                            rows="3"
+                                            maxlength="2000"
+                                            class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                                            placeholder="Tulis jawaban Anda..."
+                                            x-on:input="if (String($el.value || '').trim() !== '') { invalidEssayQuestionIds = invalidEssayQuestionIds.filter(v => v !== {{ $question->id }}); invalidQuestionIds = invalidQuestionIds.filter(v => v !== {{ $question->id }}) }"
+                                        ></textarea>
+                                        <div class="text-xs text-zinc-500">
+                                            {{ strlen($answers[$question->id]['essay_answer'] ?? '') }} / 2000 karakter
+                                        </div>
+                                        <p
+                                            x-show="invalidEssayQuestionIds.includes({{ $question->id }})"
+                                            class="text-xs text-rose-700"
+                                            style="display:none;"
+                                        >
+                                            Jawaban untuk pertanyaan esai ini masih kosong. Silakan isi terlebih dahulu.
+                                        </p>
+                                        @error("answers.$question->id.essay_answer")
+                                            <p class="text-xs text-red-600">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+                                @endif
+
+                                {{-- Combined --}}
+                                @if ($question->type === 'combined')
+                                    <div class="space-y-3">
+                                        <div class="space-y-2">
+                                            @foreach ($question->answerOptions as $option)
+                                                <label class="flex cursor-pointer items-start gap-2 text-sm text-zinc-700">
+                                                    <input
+                                                        type="radio"
+                                                        wire:model.live="answers.{{ $question->id }}.answer_option_id"
+                                                        name="question_combined_{{ $question->id }}"
+                                                        value="{{ $option->id }}"
+                                                        class="mt-0.5 border-zinc-300"
+                                                    >
+                                                    <span>{{ $option->option_text }}</span>
+                                                </label>
+                                            @endforeach
+                                            @error("answers.$question->id.answer_option_id")
+                                                <p class="text-xs text-red-600">{{ $message }}</p>
+                                            @enderror
+                                        </div>
+
+                                        @if (($answers[$question->id]['answer_option_id'] ?? null) !== null)
+                                            <div class="space-y-2">
+                                                <textarea
+                                                    wire:model.live.debounce.250ms="answers.{{ $question->id }}.essay_answer"
+                                                    rows="3"
+                                                    maxlength="2000"
+                                                    class="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                                                    placeholder="Tuliskan alasan Anda..."
+                                                ></textarea>
+                                                <div class="text-xs text-zinc-500">
+                                                    {{ strlen($answers[$question->id]['essay_answer'] ?? '') }} / 2000 karakter
+                                                </div>
+                                                @error("answers.$question->id.essay_answer")
+                                                    <p class="text-xs text-red-600">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+                                        @else
+                                            <p class="text-xs text-zinc-500">Pilih opsi jawaban terlebih dahulu untuk menampilkan area alasan.</p>
+                                        @endif
+                                    </div>
+                                @endif
+                            </section>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="p-4 text-sm text-zinc-500">
+                        Tidak ada pertanyaan pada kuisioner ini.
+                    </div>
+                @endif
             </div>
         </section>
-    @empty
+    @elseif ($totalFillable === 0 && $submittedCount === 0)
         <div class="rounded-xl border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-500">
             Tidak ada kuisioner aktif untuk role Anda saat ini.
         </div>
-    @endforelse
+    @endif
 
-    {{-- Single Submit All Bar at Bottom --}}
-    @if ($fillableQuestionnaireCount > 0)
+    {{-- Navigation & Submit Bar --}}
+    @if ($totalFillable > 0)
         <div class="sticky bottom-4 z-40 rounded-xl border border-zinc-200 bg-white p-4 shadow-lg">
             <div class="flex items-center justify-between gap-4">
+                {{-- Back Button --}}
                 <div>
-                    @if ($lastDraftSavedAt)
-                        <p class="text-xs text-zinc-500">Draft tersimpan pada {{ $lastDraftSavedAt }}</p>
+                    @if ($currentIndex > 0)
+                        <flux:button
+                            variant="ghost"
+                            icon="arrow-left"
+                            wire:click="previousQuestionnaire"
+                        >
+                            Kembali
+                        </flux:button>
                     @endif
-                    <p class="text-sm text-zinc-700">
-                        Wajib terisi: <span class="font-semibold">{{ $answeredRequiredCount }}</span> / {{ $requiredQuestionCount }}
-                    </p>
                 </div>
+
+                {{-- Right side: Save Draft + Next/Submit --}}
                 <div class="flex items-center gap-2">
+                    @if ($lastDraftSavedAt)
+                        <span class="text-xs text-zinc-400">Draft tersimpan {{ $lastDraftSavedAt }}</span>
+                    @endif
                     <flux:button
                         variant="outline"
                         size="sm"
@@ -362,13 +361,24 @@
                     >
                         Simpan Draft
                     </flux:button>
-                    <flux:button
-                        variant="primary"
-                        x-on:click.prevent="validateBeforeSubmitAll()"
-                        :disabled="$totalQuestions === 0"
-                    >
-                        Submit Semua
-                    </flux:button>
+
+                    @if ($isLast)
+                        <flux:button
+                            variant="primary"
+                            x-on:click.prevent="validateBeforeSubmitAll()"
+                            :disabled="$totalQuestions === 0"
+                        >
+                            Submit Semua
+                        </flux:button>
+                    @else
+                        <flux:button
+                            variant="primary"
+                            icon="arrow-right"
+                            wire:click="nextQuestionnaire"
+                        >
+                            Selanjutnya
+                        </flux:button>
+                    @endif
                 </div>
             </div>
         </div>
@@ -384,7 +394,7 @@
                 </p>
 
                 <div class="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700">
-                    <div>Total kuisioner: {{ $fillableQuestionnaireCount }}</div>
+                    <div>Total kuisioner: {{ $totalFillable }}</div>
                     <div>Total pertanyaan: {{ $totalQuestions }}</div>
                     <div>Jawaban terisi: {{ $answeredCount }}</div>
                     <div>Wajib terisi: {{ $answeredRequiredCount }} / {{ $requiredQuestionCount }}</div>
