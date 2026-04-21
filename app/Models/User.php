@@ -23,6 +23,8 @@ class User extends Authenticatable
         'department',
         'department_id',
         'is_active',
+        'time_limit_minutes',
+        'filling_started_at',
     ];
 
     protected $hidden = [
@@ -34,6 +36,8 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'is_active' => 'boolean',
+        'time_limit_minutes' => 'integer',
+        'filling_started_at' => 'datetime',
     ];
 
     public function responses(): HasMany

@@ -2,65 +2,65 @@
 
 <cite>
 **Referenced Files in This Document**
-- [QuestionnaireFill.php](file://app/Livewire/Fill/QuestionnaireFill.php)
-- [questionnaire-fill.blade.php](file://resources/views/livewire/fill/questionnaire-fill.blade.php)
 - [AvailableQuestionnaires.php](file://app/Livewire/Fill/AvailableQuestionnaires.php)
 - [available-questionnaires.blade.php](file://resources/views/livewire/fill/available-questionnaires.blade.php)
+- [QuestionnaireFill.php](file://app/Livewire/Fill/QuestionnaireFill.php)
+- [questionnaire-fill.blade.php](file://resources/views/livewire/fill/questionnaire-fill.blade.php)
 - [Questionnaire.php](file://app/Models/Questionnaire.php)
 - [Question.php](file://app/Models/Question.php)
 - [AnswerOption.php](file://app/Models/AnswerOption.php)
 - [Response.php](file://app/Models/Response.php)
 - [Answer.php](file://app/Models/Answer.php)
 - [QuestionnaireScorer.php](file://app/Services/QuestionnaireScorer.php)
-- [evaluator.blade.php](file://resources/views/layouts/evaluator.blade.php)
+- [TeacherDashboard.php](file://app/Livewire/Fill/TeacherDashboard.php)
+- [StaffDashboard.php](file://app/Livewire/Fill/StaffDashboard.php)
+- [ParentDashboard.php](file://app/Livewire/Fill/ParentDashboard.php)
+- [HasEvaluatorDashboardMetrics.php](file://app/Livewire/Fill/Concerns/HasEvaluatorDashboardMetrics.php)
 - [features.php](file://config/features.php)
 - [web.php](file://routes/web.php)
-- [HasEvaluatorDashboardMetrics.php](file://app/Livewire/Fill/Concerns/HasEvaluatorDashboardMetrics.php)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Added comprehensive documentation for the new grouped questionnaire system
-- Enhanced autosave and draft management documentation with improved persistence logic
-- Updated navigation system documentation to cover both single questionnaire and grouped modes
-- Expanded progress tracking documentation to include cross-group metrics
-- Added new dashboard components documentation for teacher, staff, and parent roles
-- Enhanced validation mechanisms documentation with global validation for grouped systems
-- Updated autosave functionality documentation with heartbeat and manual trigger methods
+- Complete rewrite of navigation system documentation to reflect transformation from grouped questionnaire display to streamlined single-questionnaire step-based navigation
+- Updated core components documentation to focus on AvailableQuestionnaires component with new $questionnaireIds/$allQuestionnaireIds arrays and $dirtyQuestionIds tracking system
+- Revised autosave and draft management documentation to cover the new progressive questionnaire navigation model
+- Updated progress tracking documentation to reflect enhanced monitoring across multiple questionnaires
+- Removed documentation for grouped questionnaire system and simplified architecture explanations
+- Enhanced validation mechanisms documentation for the new single-questionnaire step-based approach
 
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [System Architecture](#system-architecture)
 3. [Core Components](#core-components)
-4. [Grouped Questionnaire System](#grouped-questionnaire-system)
-5. [Single Questionnaire Mode](#single-questionnaire-mode)
-6. [Navigation and User Experience](#navigation-and-user-experience)
-7. [Question Types and Input Handling](#question-types-and-input-handling)
-8. [Validation and Error Handling](#validation-and-error-handling)
-9. [Autosave and Draft Management](#autosave-and-draft-management)
-10. [Progress Tracking and Analytics](#progress-tracking-and-analytics)
-11. [Submission and Finalization](#submission-and-finalization)
-12. [Dashboard Components](#dashboard-components)
-13. [Accessibility and Mobile Responsiveness](#accessibility-and-mobile-responsiveness)
-14. [Performance Considerations](#performance-considerations)
-15. [Troubleshooting Guide](#troubleshooting-guide)
-16. [Conclusion](#conclusion)
+4. [Single Questionnaire Step-Based Navigation](#single-questionnaire-step-based-navigation)
+5. [Navigation and User Experience](#navigation-and-user-experience)
+6. [Question Types and Input Handling](#question-types-and-input-handling)
+7. [Validation and Error Handling](#validation-and-error-handling)
+8. [Autosave and Draft Management](#autosave-and-draft-management)
+9. [Progress Tracking and Analytics](#progress-tracking-and-analytics)
+10. [Submission and Finalization](#submission-and-finalization)
+11. [Dashboard Components](#dashboard-components)
+12. [Accessibility and Mobile Responsiveness](#accessibility-and-mobile-responsiveness)
+13. [Performance Considerations](#performance-considerations)
+14. [Troubleshooting Guide](#troubleshooting-guide)
+15. [Conclusion](#conclusion)
 
 ## Introduction
-This document describes the enhanced interactive questionnaire filling interface used by evaluators to complete assessment forms. The system now features a dual-mode approach supporting both individual questionnaire filling and grouped questionnaire management. It covers step-by-step navigation, question types (single choice, essay, combined), validation mechanisms, autosave and draft management, progress tracking, UI components, keyboard shortcuts, accessibility, and mobile responsiveness. The interface is built with Laravel Livewire and Blade, styled with Tailwind CSS and Flux UI components.
+This document describes the interactive questionnaire filling interface used by evaluators to complete assessment forms through a streamlined single-questionnaire step-based navigation system. The interface features progressive questionnaire navigation, autosave functionality, step indicators, and comprehensive validation mechanisms. It covers step-by-step navigation, question types (single choice, essay, combined), validation mechanisms, autosave and draft management, progress tracking, UI components, keyboard shortcuts, accessibility, and mobile responsiveness. The interface is built with Laravel Livewire and Blade, styled with Tailwind CSS and Flux UI components.
 
 ## System Architecture
-The questionnaire filling system operates through two primary modes: individual questionnaire mode and grouped questionnaire mode. The architecture integrates Livewire state management with Blade rendering and backend persistence:
+The questionnaire filling system operates through a single-questionnaire step-based navigation approach that streamlines the user experience by focusing on one questionnaire at a time while maintaining cross-questionnaire progress tracking:
 
 ```mermaid
 graph TB
-subgraph "Individual Questionnaire Mode"
-WF["QuestionnaireFill<br/>(Single Questionnaire)"]
-QF["questionnaire-fill.blade.php<br/>(Single Question View)"]
+subgraph "Single Questionnaire Step-Based Navigation"
+AQ["AvailableQuestionnaires<br/>(Progressive Navigation)"]
+AQV["available-questionnaires.blade.php<br/>(Step-Based View)"]
 end
-subgraph "Grouped Questionnaire Mode"
-AQ["AvailableQuestionnaires<br/>(Grouped System)"]
-GQ["available-questionnaires.blade.php<br/>(Grouped View)"]
+subgraph "Individual Questionnaire Mode"
+WF["QuestionnaireFill<br/>(Single Question View)"]
+QF["questionnaire-fill.blade.php<br/>(Single Question View)"]
 end
 subgraph "Shared Components"
 QN["Questionnaire"]
@@ -79,160 +79,149 @@ SD["StaffDashboard"]
 PD["ParentDashboard"]
 METRICS["HasEvaluatorDashboardMetrics"]
 end
+AQ --> AQV
 WF --> QF
-AQ --> GQ
-WF --> QN
 AQ --> QN
-WF --> RP
+WF --> QN
 AQ --> RP
+WF --> RP
 RP --> AN
 QT --> AO
 AN --> AO
-WF --> SC
 AQ --> SC
-RT --> WF
+WF --> SC
 RT --> AQ
+RT --> WF
 TD --> METRICS
 SD --> METRICS
 PD --> METRICS
 ```
 
 **Diagram sources**
+- [AvailableQuestionnaires.php:18-670](file://app/Livewire/Fill/AvailableQuestionnaires.php#L18-L670)
+- [available-questionnaires.blade.php:1-488](file://resources/views/livewire/fill/available-questionnaires.blade.php#L1-L488)
 - [QuestionnaireFill.php:19-515](file://app/Livewire/Fill/QuestionnaireFill.php#L19-L515)
 - [questionnaire-fill.blade.php:1-402](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L1-L402)
-- [AvailableQuestionnaires.php:17-568](file://app/Livewire/Fill/AvailableQuestionnaires.php#L17-L568)
-- [available-questionnaires.blade.php:1-461](file://resources/views/livewire/fill/available-questionnaires.blade.php#L1-L461)
 - [TeacherDashboard.php:10-23](file://app/Livewire/Fill/TeacherDashboard.php#L10-L23)
 - [StaffDashboard.php:10-23](file://app/Livewire/Fill/StaffDashboard.php#L10-L23)
 - [ParentDashboard.php:10-23](file://app/Livewire/Fill/ParentDashboard.php#L10-L23)
 - [HasEvaluatorDashboardMetrics.php:9-73](file://app/Livewire/Fill/Concerns/HasEvaluatorDashboardMetrics.php#L9-L73)
 
 **Section sources**
+- [AvailableQuestionnaires.php:56-60](file://app/Livewire/Fill/AvailableQuestionnaires.php#L56-L60)
 - [QuestionnaireFill.php:44-122](file://app/Livewire/Fill/QuestionnaireFill.php#L44-L122)
-- [AvailableQuestionnaires.php:44-132](file://app/Livewire/Fill/AvailableQuestionnaires.php#L44-L132)
 - [web.php:149-160](file://routes/web.php#L149-L160)
 
 ## Core Components
-The system consists of three main components:
+The system consists of two main components that work together to provide a streamlined questionnaire filling experience:
 
-### Individual Questionnaire Component
-- **QuestionnaireFill**: Manages single questionnaire state, navigation, autosave triggers, validation, and submission
-- **questionnaire-fill.blade.php**: Renders individual questionnaire UI with single-question mode support
-- **Features**: Supports single-question mode toggle, individual progress tracking, and standalone submission
+### AvailableQuestionnaires Component
+- **Progressive Navigation**: Manages multiple questionnaires through step-based navigation with $questionnaireIds/$allQuestionnaireIds arrays
+- **Enhanced Tracking**: Implements $dirtyQuestionIds tracking system for efficient autosave operations
+- **Cross-Questionnaire Progress**: Provides overall progress tracking across all fillable questionnaires
+- **Time Limit Management**: Handles time-expired scenarios with automatic submission
+- **Step Indicators**: Visual step markers showing current position in questionnaire sequence
 
-### Grouped Questionnaire Component
-- **AvailableQuestionnaires**: Manages multiple questionnaires across groups, cross-questionnaire navigation, and bulk operations
-- **available-questionnaires.blade.php**: Renders grouped questionnaire UI with step navigation and global validation
-- **Features**: Group-based organization, cross-questionnaire progress tracking, and bulk submission capabilities
+### QuestionnaireFill Component
+- **Single Question Focus**: Provides focused, distraction-free question answering for individual questionnaires
+- **Step Navigation**: Sequential navigation with previous/next buttons and direct question access
+- **Individual State Management**: Standalone response tracking with independent autosave functionality
+- **Progress Monitoring**: Separate progress tracking for each questionnaire
 
 ### Dashboard Components
 - **TeacherDashboard**, **StaffDashboard**, **ParentDashboard**: Role-specific dashboards with metrics and navigation
 - **HasEvaluatorDashboardMetrics**: Shared trait for dashboard metric calculation
 
 **Section sources**
-- [QuestionnaireFill.php:19-515](file://app/Livewire/Fill/QuestionnaireFill.php#L19-L515)
-- [AvailableQuestionnaires.php:17-568](file://app/Livewire/Fill/AvailableQuestionnaires.php#L17-L568)
+- [AvailableQuestionnaires.php:25-45](file://app/Livewire/Fill/AvailableQuestionnaires.php#L25-L45)
+- [AvailableQuestionnaires.php:53-54](file://app/Livewire/Fill/AvailableQuestionnaires.php#L53-L54)
+- [AvailableQuestionnaires.php:42-42](file://app/Livewire/Fill/AvailableQuestionnaires.php#L42-L42)
+- [QuestionnaireFill.php:21-42](file://app/Livewire/Fill/QuestionnaireFill.php#L21-L42)
 - [TeacherDashboard.php:10-23](file://app/Livewire/Fill/TeacherDashboard.php#L10-L23)
 - [StaffDashboard.php:10-23](file://app/Livewire/Fill/StaffDashboard.php#L10-L23)
 - [ParentDashboard.php:10-23](file://app/Livewire/Fill/ParentDashboard.php#L10-L23)
 - [HasEvaluatorDashboardMetrics.php:9-73](file://app/Livewire/Fill/Concerns/HasEvaluatorDashboardMetrics.php#L9-L73)
 
-## Grouped Questionnaire System
-The grouped questionnaire system organizes multiple questionnaires into logical groups based on user roles and target groups:
+## Single Questionnaire Step-Based Navigation
+The system implements a streamlined step-based navigation approach that focuses on one questionnaire at a time while maintaining cross-questionnaire awareness:
 
-### Group Organization Logic
-- **Automatic Grouping**: Questionnaires are grouped by matched target groups from RBAC configuration
-- **Role-Based Filtering**: Uses role aliases and target group mappings to determine questionnaire eligibility
-- **Dynamic Loading**: Loads only fillable questionnaires for the current user's role
+### Progressive Questionnaire Management
+- **Ordered Questionnaire Arrays**: $questionnaireIds contains fillable questionnaire IDs, $allQuestionnaireIds includes all questionnaires
+- **Current Index Tracking**: $currentIndex (0-based) manages position within the fillable questionnaire sequence
+- **Step-by-Step Navigation**: Previous/Next buttons with automatic draft saving and validation
+- **Direct Access**: Step indicators allow jumping to any questionnaire in the sequence
 
-### Cross-Questionnaire Features
-- **Group Navigation**: Step-by-step navigation across different questionnaire groups
-- **Global Progress Tracking**: Overall progress across all groups and questionnaires
-- **Bulk Operations**: Save drafts and submit all questionnaires at once
-- **Unified Validation**: Validates all required questions across all groups before submission
+### Enhanced State Management
+- **Dirty Question Tracking**: $dirtyQuestionIds array efficiently tracks which questions have unsaved changes
+- **Cross-Questionnaire Persistence**: Maintains separate responses for each questionnaire with selective autosave
+- **Time Limit Integration**: Automatic time-expired detection with deadline calculation and auto-submission
 
 ```mermaid
 flowchart TD
-Start(["User Access Available Questionnaires"]) --> Load["Load Grouped Questionnaires"]
-Load --> Filter["Filter by User Role & Target Groups"]
-Filter --> Group["Organize into Groups"]
-Group --> Display["Display Current Group"]
-Display --> Navigate["Navigate Between Groups"]
-Navigate --> Validate["Validate All Required Questions"]
-Validate --> Submit["Submit All Questionnaires"]
-Submit --> Complete["Show Success Message"]
+Start(["User Access Questionnaires"]) --> Load["Load Questionnaire Arrays"]
+Load --> Filter["Filter Fillable vs All Questionnaires"]
+Filter --> Track["Track Current Index"]
+Track --> Display["Display Current Questionnaire"]
+Display --> Navigate["Step Navigation"]
+Navigate --> Validate["Validate Required Questions"]
+Validate --> Autosave["Persist Draft Changes"]
+Autosave --> Next["Load Next Questionnaire"]
+Next --> Display
 ```
 
 **Diagram sources**
-- [AvailableQuestionnaires.php:294-360](file://app/Livewire/Fill/AvailableQuestionnaires.php#L294-L360)
-- [AvailableQuestionnaires.php:134-165](file://app/Livewire/Fill/AvailableQuestionnaires.php#L134-L165)
-- [AvailableQuestionnaires.php:178-269](file://app/Livewire/Fill/AvailableQuestionnaires.php#L178-L269)
+- [AvailableQuestionnaires.php:234-301](file://app/Livewire/Fill/AvailableQuestionnaires.php#L234-L301)
+- [AvailableQuestionnaires.php:153-184](file://app/Livewire/Fill/AvailableQuestionnaires.php#L153-L184)
+- [AvailableQuestionnaires.php:342-363](file://app/Livewire/Fill/AvailableQuestionnaires.php#L342-L363)
 
 **Section sources**
-- [AvailableQuestionnaires.php:19-568](file://app/Livewire/Fill/AvailableQuestionnaires.php#L19-L568)
-- [available-questionnaires.blade.php:104-150](file://resources/views/livewire/fill/available-questionnaires.blade.php#L104-L150)
-
-## Single Questionnaire Mode
-The single questionnaire mode provides focused, distraction-free question answering:
-
-### Single-Question Display
-- **Focused Interface**: Shows only the current question with minimal surrounding context
-- **Simplified Navigation**: Previous/Next buttons for sequential navigation
-- **Quick Access**: Direct navigation to any question within the questionnaire
-
-### State Management
-- **Individual Response Tracking**: Each questionnaire maintains its own response state
-- **Standalone Autosave**: Independent autosave functionality per questionnaire
-- **Separate Progress**: Progress tracked independently for each questionnaire
-
-**Section sources**
-- [QuestionnaireFill.php:500-513](file://app/Livewire/Fill/QuestionnaireFill.php#L500-L513)
-- [questionnaire-fill.blade.php:289-345](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L289-L345)
-- [features.php:4](file://config/features.php#L4)
+- [AvailableQuestionnaires.php:25-32](file://app/Livewire/Fill/AvailableQuestionnaires.php#L25-L32)
+- [AvailableQuestionnaires.php:53-54](file://app/Livewire/Fill/AvailableQuestionnaires.php#L53-L54)
+- [AvailableQuestionnaires.php:153-184](file://app/Livewire/Fill/AvailableQuestionnaires.php#L153-L184)
+- [available-questionnaires.blade.php:144-196](file://resources/views/livewire/fill/available-questionnaires.blade.php#L144-L196)
 
 ## Navigation and User Experience
-The system provides intuitive navigation across both modes:
+The system provides intuitive step-based navigation with enhanced user experience features:
 
-### Individual Questionnaire Navigation
-- **Sequential Navigation**: Previous/Next buttons with boundary checking
-- **Direct Access**: Quick navigation buttons for direct question jumps
-- **Context Preservation**: Maintains current question context during navigation
-
-### Grouped Questionnaire Navigation
-- **Group-Level Navigation**: Previous/Next group buttons with automatic draft saving
-- **Step Indicators**: Visual step markers showing current position in group sequence
-- **Cross-Group Progress**: Overall progress displayed across all groups
+### Step-Based Navigation
+- **Visual Step Indicators**: Dots showing current, visited, and upcoming questionnaires with clear visual hierarchy
+- **Progressive Loading**: Only loads current questionnaire questions to optimize performance
+- **Automatic Draft Saving**: Persists changes when navigating between questionnaires
+- **Boundary Management**: Prevents navigation beyond questionnaire array bounds
 
 ### Enhanced User Experience Features
-- **Auto-save Triggers**: Automatic save on navigation with manual save option
-- **Validation Feedback**: Real-time validation with error highlighting
-- **Responsive Design**: Adapts to different screen sizes and orientations
+- **Time Limit Visualization**: Countdown timer with color-coded warnings as expiration approaches
+- **Validation Feedback**: Real-time validation with error highlighting and scroll positioning
+- **Responsive Design**: Adapts to different screen sizes with horizontal scrolling for step indicators
+- **Accessibility Support**: Keyboard navigation and screen reader compatibility
 
 ```mermaid
 sequenceDiagram
 participant U as "User"
-participant G as "Grouped System"
-participant I as "Individual System"
-U->>G : Navigate to next group
-G->>G : Auto-save current group
-G->>G : Load next group questions
-G->>U : Update UI with new group
-U->>I : Navigate within questionnaire
-I->>I : Auto-save on navigation
-I->>U : Update current question view
+participant N as "Navigation System"
+participant V as "Validation"
+participant A as "Autosave"
+U->>N : Click Step Indicator
+N->>A : Persist Current Draft
+A->>N : Confirm Save
+N->>N : Update Current Index
+N->>V : Validate Required Fields
+V->>N : Return Validation Result
+N->>U : Update UI with New Questionnaire
 ```
 
 **Diagram sources**
-- [AvailableQuestionnaires.php:134-165](file://app/Livewire/Fill/AvailableQuestionnaires.php#L134-L165)
-- [QuestionnaireFill.php:124-170](file://app/Livewire/Fill/QuestionnaireFill.php#L124-L170)
+- [AvailableQuestionnaires.php:153-184](file://app/Livewire/Fill/AvailableQuestionnaires.php#L153-L184)
+- [AvailableQuestionnaires.php:342-363](file://app/Livewire/Fill/AvailableQuestionnaires.php#L342-L363)
+- [available-questionnaires.blade.php:448-470](file://resources/views/livewire/fill/available-questionnaires.blade.php#L448-L470)
 
 **Section sources**
-- [AvailableQuestionnaires.php:134-165](file://app/Livewire/Fill/AvailableQuestionnaires.php#L134-L165)
-- [QuestionnaireFill.php:124-170](file://app/Livewire/Fill/QuestionnaireFill.php#L124-L170)
-- [questionnaire-fill.blade.php:118-135](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L118-L135)
+- [AvailableQuestionnaires.php:153-184](file://app/Livewire/Fill/AvailableQuestionnaires.php#L153-L184)
+- [available-questionnaires.blade.php:144-196](file://resources/views/livewire/fill/available-questionnaires.blade.php#L144-L196)
+- [available-questionnaires.blade.php:198-212](file://resources/views/livewire/fill/available-questionnaires.blade.php#L198-L212)
 
 ## Question Types and Input Handling
-The system supports three question types with specialized input handling:
+The system supports three question types with specialized input handling optimized for the step-based navigation:
 
 ### Single Choice Questions
 - **Radio Button Interface**: Exclusive selection with immediate validation
@@ -284,21 +273,21 @@ Answer "belongs to" AnswerOption : "answer_option_id"
 - [Answer.php:15-22](file://app/Models/Answer.php#L15-L22)
 
 **Section sources**
-- [questionnaire-fill.blade.php:196-283](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L196-L283)
+- [available-questionnaires.blade.php:283-377](file://resources/views/livewire/fill/available-questionnaires.blade.php#L283-L377)
 - [QuestionnaireFill.php:301-335](file://app/Livewire/Fill/QuestionnaireFill.php#L301-L335)
-- [available-questionnaires.blade.php:257-347](file://resources/views/livewire/fill/available-questionnaires.blade.php#L257-347)
+- [questionnaire-fill.blade.php:196-283](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L196-L283)
 
 ## Validation and Error Handling
-The system implements comprehensive validation at multiple levels:
+The system implements comprehensive validation at both individual question and cross-questionnaire levels:
 
 ### Per-Question Validation
 - **Individual Question Validation**: Validates current question immediately on change
 - **Real-time Feedback**: Visual highlighting and error messages for invalid inputs
 - **Type-Specific Rules**: Different validation rules based on question type
 
-### Global Validation
-- **Cross-Questionnaire Validation**: Validates all required questions across groups
-- **Group-Level Validation**: Ensures all groups have valid responses before submission
+### Cross-Questionnaire Validation
+- **Global Validation**: Validates all required questions across all fillable questionnaires
+- **Step Validation**: Ensures each questionnaire has valid responses before proceeding
 - **Error Aggregation**: Collects and displays all validation errors in a unified panel
 
 ### Error Handling Mechanisms
@@ -308,40 +297,40 @@ The system implements comprehensive validation at multiple levels:
 
 ```mermaid
 flowchart TD
-Validate["Validate All Questions"] --> CheckRequired{"Check Required Fields"}
+Validate["Validate All Questionnaires"] --> CheckRequired{"Check Required Fields"}
 CheckRequired --> |Invalid| Focus["Focus First Invalid Question"]
 Focus --> ShowErrors["Display Error Panel"]
-CheckRequired --> |Valid| Proceed["Proceed to Submission"]
+CheckRequired --> |Valid| Proceed["Proceed to Next Questionnaire"]
 ShowErrors --> Wait["Wait for User Correction"]
 Wait --> Validate
 ```
 
 **Diagram sources**
-- [QuestionnaireFill.php:342-388](file://app/Livewire/Fill/QuestionnaireFill.php#L342-L388)
-- [AvailableQuestionnaires.php:514-554](file://app/Livewire/Fill/AvailableQuestionnaires.php#L514-L554)
+- [AvailableQuestionnaires.php:446-486](file://app/Livewire/Fill/AvailableQuestionnaires.php#L446-L486)
+- [AvailableQuestionnaires.php:204-209](file://app/Livewire/Fill/AvailableQuestionnaires.php#L204-L209)
 
 **Section sources**
-- [QuestionnaireFill.php:301-388](file://app/Livewire/Fill/QuestionnaireFill.php#L301-L388)
-- [available-questionnaires.blade.php:15-68](file://resources/views/livewire/fill/available-questionnaires.blade.php#L15-L68)
+- [AvailableQuestionnaires.php:446-486](file://app/Livewire/Fill/AvailableQuestionnaires.php#L446-L486)
+- [available-questionnaires.blade.php:198-212](file://resources/views/livewire/fill/available-questionnaires.blade.php#L198-L212)
 - [questionnaire-fill.blade.php:102-115](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L102-L115)
 
 ## Autosave and Draft Management
-The enhanced autosave system provides robust draft persistence across both modes:
+The enhanced autosave system provides robust draft persistence optimized for the step-based navigation model:
 
-### Individual Questionnaire Autosave
-- **Navigation-Based Autosave**: Primary autosave triggered on navigation actions
+### Progressive Autosave System
+- **Navigation-Based Autosave**: Primary autosave triggered on navigation actions with $dirtyQuestionIds tracking
 - **Manual Save Option**: Users can manually trigger autosave at any time
-- **Dirty State Tracking**: Tracks which questions have unsaved changes
+- **Efficient Persistence**: Only persists questions with actual answers, removing empty entries
 
-### Grouped Questionnaire Autosave
-- **Group-Level Autosave**: Automatically saves when navigating between groups
-- **Cross-Questionnaire Persistence**: Maintains separate responses for each questionnaire
+### Cross-Questionnaire Draft Management
+- **Individual Response Tracking**: Each questionnaire maintains its own response state
 - **Batch Processing**: Efficiently processes multiple questionnaires during autosave
+- **Status Management**: Maintains draft status with timestamps for audit trails
 
 ### Draft Persistence Logic
 - **Selective Persistence**: Only persists questions with actual answers
 - **Empty Answer Cleanup**: Removes entries when both answer option and essay are empty
-- **Status Management**: Maintains draft status with timestamps for audit trails
+- **Time Limit Integration**: Automatically handles time-expired scenarios with forced submission
 
 ```mermaid
 sequenceDiagram
@@ -350,34 +339,35 @@ participant C as "Component"
 participant D as "Database"
 U->>C : Change Answer
 C->>C : Mark Question as Dirty
-U->>C : Navigate
-C->>C : Trigger Autosave
-C->>D : Persist Draft Answers
+U->>C : Navigate to Next Questionnaire
+C->>C : Check Dirty Questions
+C->>D : Persist All Draft Answers
 D->>C : Confirm Save
 C->>U : Show Success Toast
 ```
 
 **Diagram sources**
-- [QuestionnaireFill.php:146-154](file://app/Livewire/Fill/QuestionnaireFill.php#L146-L154)
-- [AvailableQuestionnaires.php:403-431](file://app/Livewire/Fill/AvailableQuestionnaires.php#L403-L431)
+- [AvailableQuestionnaires.php:186-197](file://app/Livewire/Fill/AvailableQuestionnaires.php#L186-L197)
+- [AvailableQuestionnaires.php:342-363](file://app/Livewire/Fill/AvailableQuestionnaires.php#L342-L363)
 
 **Section sources**
+- [AvailableQuestionnaires.php:186-197](file://app/Livewire/Fill/AvailableQuestionnaires.php#L186-L197)
+- [AvailableQuestionnaires.php:342-444](file://app/Livewire/Fill/AvailableQuestionnaires.php#L342-L444)
 - [QuestionnaireFill.php:146-154](file://app/Livewire/Fill/QuestionnaireFill.php#L146-L154)
-- [QuestionnaireFill.php:408-470](file://app/Livewire/Fill/QuestionnaireFill.php#L408-L470)
-- [AvailableQuestionnaires.php:403-512](file://app/Livewire/Fill/AvailableQuestionnaires.php#L403-L512)
 
 ## Progress Tracking and Analytics
-The system provides comprehensive progress tracking across multiple dimensions:
+The system provides comprehensive progress tracking across multiple questionnaires with real-time updates:
+
+### Cross-Questionnaire Metrics
+- **Overall Progress**: Tracks answered vs total questions across all fillable questionnaires
+- **Required Question Tracking**: Separates required from optional questions with completion percentages
+- **Percentage Calculation**: Real-time progress percentage computation across all questionnaires
+- **Time Limit Monitoring**: Visual countdown timers with color-coded warnings
 
 ### Individual Questionnaire Metrics
-- **Question-Level Progress**: Tracks answered vs total questions
+- **Question-Level Progress**: Tracks answered vs total questions for current questionnaire
 - **Required Question Tracking**: Separates required from optional questions
 - **Percentage Calculation**: Real-time progress percentage computation
-
-### Grouped Questionnaire Metrics
-- **Cross-Group Progress**: Overall progress across all groups and questionnaires
-- **Aggregate Statistics**: Total questions, answered questions, and required completions
-- **Visual Progress Indicators**: Combined progress bars and statistics displays
 
 ### Dashboard Integration
 - **Role-Based Metrics**: Different metrics for teachers, staff, and parents
@@ -386,7 +376,7 @@ The system provides comprehensive progress tracking across multiple dimensions:
 
 ```mermaid
 flowchart TD
-Load["Load Questionnaires"] --> Count["Count Total Questions"]
+Load["Load All Questionnaires"] --> Count["Count Total Questions"]
 Count --> Answered["Count Answered Questions"]
 Answered --> Required["Identify Required Questions"]
 Required --> Calculate["Calculate Progress Percentage"]
@@ -394,40 +384,42 @@ Calculate --> Display["Display Progress Metrics"]
 ```
 
 **Diagram sources**
-- [QuestionnaireFill.php:252-299](file://app/Livewire/Fill/QuestionnaireFill.php#L252-L299)
-- [AvailableQuestionnaires.php:56-95](file://app/Livewire/Fill/AvailableQuestionnaires.php#L56-L95)
+- [AvailableQuestionnaires.php:75-111](file://app/Livewire/Fill/AvailableQuestionnaires.php#L75-L111)
+- [AvailableQuestionnaires.php:252-299](file://app/Livewire/Fill/QuestionnaireFill.php#L252-L299)
 
 **Section sources**
+- [AvailableQuestionnaires.php:75-111](file://app/Livewire/Fill/AvailableQuestionnaires.php#L75-L111)
+- [AvailableQuestionnaires.php:117-119](file://app/Livewire/Fill/AvailableQuestionnaires.php#L117-L119)
 - [QuestionnaireFill.php:252-299](file://app/Livewire/Fill/QuestionnaireFill.php#L252-L299)
-- [AvailableQuestionnaires.php:56-131](file://app/Livewire/Fill/AvailableQuestionnaires.php#L56-L131)
 
 ## Submission and Finalization
-The submission process varies based on the mode:
+The submission process is streamlined with enhanced validation and user confirmation:
 
-### Individual Questionnaire Submission
-- **Single Questionnaire Finalization**: Direct submission of one questionnaire
-- **Immediate Validation**: Validates all required questions before submission
-- **Score Calculation**: Calculates scores for all answered questions
-
-### Grouped Questionnaire Submission
-- **Bulk Submission**: Submits all fillable questionnaires simultaneously
-- **Cross-Questionnaire Validation**: Validates all required questions across groups
+### Cross-Questionnaire Submission
+- **Bulk Submission**: Submits all fillable questionnaires simultaneously with validation
+- **Cross-Questionnaire Validation**: Validates all required questions across all questionnaires
 - **Individual Response Creation**: Creates separate responses for each questionnaire
 
 ### Finalization Process
 - **Confirmation Dialog**: Shows summary of all responses before final submission
 - **Transaction Processing**: Uses database transactions for data integrity
 - **Success Feedback**: Provides clear success messages and navigation options
+- **Time Limit Handling**: Automatic submission when time expires with appropriate messaging
+
+### Single Questionnaire Submission
+- **Individual Questionnaire Finalization**: Direct submission of one questionnaire
+- **Immediate Validation**: Validates all required questions before submission
+- **Score Calculation**: Calculates scores for all answered questions
 
 ```mermaid
 sequenceDiagram
 participant U as "User"
 participant C as "Component"
 participant D as "Database"
-U->>C : Click Submit
-C->>C : Validate All Questions
+U->>C : Click Submit All
+C->>C : Validate All Questionnaires
 C->>D : Update Response Status
-loop For Each Question
+loop For Each Questionnaire
 C->>D : Upsert Answer with Score
 end
 D->>C : Confirm Submission
@@ -435,12 +427,13 @@ C->>U : Show Thank You Message
 ```
 
 **Diagram sources**
-- [QuestionnaireFill.php:193-245](file://app/Livewire/Fill/QuestionnaireFill.php#L193-L245)
-- [AvailableQuestionnaires.php:190-269](file://app/Livewire/Fill/AvailableQuestionnaires.php#L190-L269)
+- [AvailableQuestionnaires.php:216-232](file://app/Livewire/Fill/AvailableQuestionnaires.php#L216-L232)
+- [AvailableQuestionnaires.php:582-668](file://app/Livewire/Fill/AvailableQuestionnaires.php#L582-L668)
 
 **Section sources**
+- [AvailableQuestionnaires.php:204-232](file://app/Livewire/Fill/AvailableQuestionnaires.php#L204-L232)
+- [AvailableQuestionnaires.php:582-668](file://app/Livewire/Fill/AvailableQuestionnaires.php#L582-L668)
 - [QuestionnaireFill.php:172-245](file://app/Livewire/Fill/QuestionnaireFill.php#L172-L245)
-- [AvailableQuestionnaires.php:178-269](file://app/Livewire/Fill/AvailableQuestionnaires.php#L178-L269)
 
 ## Dashboard Components
 The system includes role-specific dashboards with comprehensive metrics:
@@ -479,7 +472,7 @@ The interface is designed with accessibility and mobile usability in mind:
 ### Mobile Responsiveness
 - **Adaptive Layouts**: Responsive grid systems adapt to different screen sizes
 - **Touch-Friendly Controls**: Appropriately sized touch targets for mobile devices
-- **Horizontal Scrolling**: Group navigation adapts to narrow screens
+- **Horizontal Scrolling**: Step indicators adapt to narrow screens
 - **Performance Optimization**: Optimized rendering for mobile browsers
 
 ### User Experience Enhancements
@@ -489,17 +482,16 @@ The interface is designed with accessibility and mobile usability in mind:
 - **Progress Visualization**: Intuitive progress indicators and completion tracking
 
 **Section sources**
+- [available-questionnaires.blade.php:472-487](file://resources/views/livewire/fill/available-questionnaires.blade.php#L472-L487)
 - [questionnaire-fill.blade.php:387-401](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L387-L401)
-- [available-questionnaires.blade.php:445-460](file://resources/views/livewire/fill/available-questionnaires.blade.php#L445-L460)
-- [evaluator.blade.php:26-76](file://resources/views/layouts/evaluator.blade.php#L26-L76)
 
 ## Performance Considerations
 The system is optimized for efficient operation across multiple scenarios:
 
 ### Rendering Optimization
-- **Component-Level Rendering**: Only renders visible components and groups
+- **Component-Level Rendering**: Only renders visible components and current questionnaire
 - **Lazy Loading**: Questionnaires are loaded as needed based on user navigation
-- **Efficient Data Structures**: Optimized data structures for question and answer management
+- **Efficient Data Structures**: Optimized data structures for questionnaire and answer management
 
 ### Database Performance
 - **Batch Operations**: Efficient batch processing for autosave and submission operations
@@ -520,8 +512,8 @@ Common issues and their solutions:
 - **Session Timeout**: Ensure user authentication is maintained throughout the session
 
 ### Navigation Problems
-- **Group Navigation Not Working**: Verify autosave completes successfully before group changes
-- **Question Jump Issues**: Check that question IDs are properly mapped in grouped systems
+- **Step Navigation Not Working**: Verify autosave completes successfully before navigation
+- **Questionnaire Jump Issues**: Check that questionnaire IDs are properly mapped in arrays
 - **Progress Tracking Errors**: Validate that progress calculations account for all question types
 
 ### Autosave and Draft Issues
@@ -535,9 +527,9 @@ Common issues and their solutions:
 - **Score Calculation Issues**: Verify that scoring logic matches expected outcomes
 
 **Section sources**
-- [QuestionnaireFill.php:49-79](file://app/Livewire/Fill/QuestionnaireFill.php#L49-L79)
-- [AvailableQuestionnaires.php:134-165](file://app/Livewire/Fill/AvailableQuestionnaires.php#L134-L165)
+- [AvailableQuestionnaires.php:56-60](file://app/Livewire/Fill/AvailableQuestionnaires.php#L56-L60)
+- [AvailableQuestionnaires.php:153-184](file://app/Livewire/Fill/AvailableQuestionnaires.php#L153-L184)
 - [questionnaire-fill.blade.php:102-115](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L102-L115)
 
 ## Conclusion
-The enhanced questionnaire filling interface provides a comprehensive, accessible, and responsive solution for evaluator assessment. The dual-mode architecture supports both focused individual questionnaire completion and efficient grouped questionnaire management. With robust autosave functionality, comprehensive validation, and rich progress tracking, the system delivers an excellent user experience across all device types and user roles. The modular design ensures maintainability and extensibility for future enhancements.
+The streamlined questionnaire filling interface provides a comprehensive, accessible, and responsive solution for evaluator assessment through progressive step-based navigation. The system's transformation from grouped questionnaire display to single-questionnaire step-based navigation delivers an excellent user experience with robust autosave functionality, comprehensive validation, and rich progress tracking across all device types and user roles. The modular design ensures maintainability and extensibility for future enhancements while providing efficient performance optimization for large-scale questionnaire management.

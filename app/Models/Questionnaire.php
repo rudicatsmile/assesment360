@@ -20,6 +20,7 @@ class Questionnaire extends Model
         'description',
         'start_date',
         'end_date',
+        'time_limit_minutes',
         'status',
         'created_by',
     ];
@@ -27,6 +28,7 @@ class Questionnaire extends Model
     protected $casts = [
         'start_date' => 'datetime',
         'end_date' => 'datetime',
+        'time_limit_minutes' => 'integer',
     ];
 
     public function creator(): BelongsTo

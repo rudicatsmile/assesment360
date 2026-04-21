@@ -16,11 +16,13 @@ class Response extends Model
     protected $fillable = [
         'questionnaire_id',
         'user_id',
+        'started_at',
         'submitted_at',
         'status',
     ];
 
     protected $casts = [
+        'started_at' => 'datetime',
         'submitted_at' => 'datetime',
     ];
 

@@ -7,6 +7,7 @@ use App\Models\Question;
 use App\Models\Questionnaire;
 use App\Models\Response;
 use App\Services\QuestionnaireScorer;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -43,12 +44,26 @@ class AvailableQuestionnaires extends Component
     /** @var array<int, bool> */
     public array $dirtyQuestionIds = [];
 
+    /** Whether the form is locked due to time expiry */
+    public bool $timeExpired = false;
+
+    /** Whether to show the start confirmation popup before beginning */
+    public bool $showStartConfirmation = false;
+
+    /** Timestamp when the fill session started (from user.filling_started_at) */
+    public ?string $fillingStartedAt = null;
+
+    /** Total time limit in minutes (from user.time_limit_minutes) */
+    public ?int $timeLimitMinutes = null;
+
     /** 0-based index into questionnaireIds (the fillable list) */
     public int $currentIndex = 0;
 
     public function mount(): void
     {
         $this->loadQuestionnaires();
+        $this->initializeSessionTimer();
+        $this->checkTimeExpiry();
     }
 
     public function render()
@@ -57,7 +72,7 @@ class AvailableQuestionnaires extends Component
         $currentMeta = $currentId !== null ? ($this->questionnaireMeta[$currentId] ?? null) : null;
         $currentQuestions = collect();
 
-        if ($currentId !== null && $currentMeta !== null && $currentMeta['status'] !== 'submitted') {
+        if ($currentId !== null && $currentMeta !== null && $currentMeta['status'] !== 'submitted' && !$this->timeExpired) {
             $currentQuestions = Question::where('questionnaire_id', $currentId)
                 ->with('answerOptions')
                 ->orderBy('order')
@@ -106,9 +121,48 @@ class AvailableQuestionnaires extends Component
             ? (int) round(($answeredCount / $totalQuestions) * 100)
             : 0;
 
+        // Check if ALL required questions in the CURRENT questionnaire are answered
+        $currentQuestionnaireComplete = false;
+        if ($currentId !== null && $currentQuestions->count() > 0) {
+            $currentComplete = true;
+            foreach ($currentQuestions as $question) {
+                $isRequired = $question->is_required || in_array($question->type, ['essay', 'combined'], true);
+                if (!$isRequired) continue;
+
+                $answer = $this->answers[$question->id] ?? ['answer_option_id' => null, 'essay_answer' => ''];
+                $isAnswered = match ($question->type) {
+                    'single_choice' => $answer['answer_option_id'] !== null,
+                    'essay' => trim($answer['essay_answer'] ?? '') !== '',
+                    'combined' => $answer['answer_option_id'] !== null && trim($answer['essay_answer'] ?? '') !== '',
+                    default => false,
+                };
+
+                if (!$isAnswered) {
+                    $currentComplete = false;
+                    break;
+                }
+            }
+            $currentQuestionnaireComplete = $currentComplete;
+        }
+
         $totalFillable = count($this->questionnaireIds);
         $submittedCount = count($this->allQuestionnaireIds) - $totalFillable;
         $isLast = $this->currentIndex >= $totalFillable - 1;
+
+        // Build session-based time limit info (from user-level settings)
+        // Do NOT build timeLimitInfo when start confirmation popup is showing –
+        // the timer must not tick until the user explicitly clicks "Mulai Sekarang".
+        $timeLimitInfo = null;
+        if (!$this->showStartConfirmation && $this->timeLimitMinutes !== null && $this->fillingStartedAt !== null) {
+            $deadline = CarbonImmutable::parse($this->fillingStartedAt)->addMinutes($this->timeLimitMinutes);
+            $remainingSeconds = max(0, (int) now()->diffInSeconds($deadline, false));
+            $timeLimitInfo = [
+                'deadline' => $deadline->toIso8601String(),
+                'remaining_seconds' => $remainingSeconds,
+                'expired' => $remainingSeconds <= 0,
+                'time_limit_minutes' => $this->timeLimitMinutes,
+            ];
+        }
 
         return view('livewire.fill.available-questionnaires', [
             'currentId' => $currentId,
@@ -122,6 +176,8 @@ class AvailableQuestionnaires extends Component
             'requiredQuestionCount' => $requiredQuestionCount,
             'answeredRequiredCount' => $answeredRequiredCount,
             'submittedCount' => $submittedCount,
+            'timeLimitInfo' => $timeLimitInfo,
+            'currentQuestionnaireComplete' => $currentQuestionnaireComplete,
         ]);
     }
 
@@ -160,6 +216,10 @@ class AvailableQuestionnaires extends Component
 
     public function updatedAnswers(mixed $value, string $key): void
     {
+        if ($this->timeExpired) {
+            return;
+        }
+
         $questionId = (int) explode('.', $key)[0];
         $this->dirtyQuestionIds[$questionId] = true;
     }
@@ -183,83 +243,20 @@ class AvailableQuestionnaires extends Component
 
     public function submitAllFinal(): void
     {
-        $this->validateAllRequired();
+        $this->doSubmitAll(false);
+    }
 
-        $user = Auth::user();
-        $scorer = app(QuestionnaireScorer::class);
-        $timestamp = now();
-
-        foreach ($this->questionnaireMeta as $questionnaireId => $meta) {
-            if ($meta['status'] === 'submitted') {
-                continue;
-            }
-
-            $questions = Question::where('questionnaire_id', $questionnaireId)
-                ->with('answerOptions')
-                ->orderBy('order')
-                ->get();
-
-            $responseId = $meta['response_id'] ?? null;
-
-            if (!$responseId) {
-                $response = Response::create([
-                    'questionnaire_id' => $questionnaireId,
-                    'user_id' => $user->id,
-                    'status' => 'submitted',
-                    'submitted_at' => now(),
-                ]);
-                $responseId = $response->id;
-            } else {
-                Response::where('id', $responseId)->update([
-                    'status' => 'submitted',
-                    'submitted_at' => now(),
-                ]);
-            }
-
-            DB::transaction(function () use ($questions, $responseId, $scorer, $timestamp, $user): void {
-                foreach ($questions as $question) {
-                    $state = $this->answers[$question->id] ?? ['answer_option_id' => null, 'essay_answer' => ''];
-                    $optionId = $this->normalizeOptionId($question, Arr::get($state, 'answer_option_id'));
-                    $essayAnswer = trim((string) Arr::get($state, 'essay_answer', ''));
-                    $essayValue = $essayAnswer !== '' ? $essayAnswer : null;
-
-                    if ($optionId === null && $essayValue === null) {
-                        Answer::where('response_id', $responseId)
-                            ->where('question_id', $question->id)
-                            ->delete();
-
-                        continue;
-                    }
-
-                    Answer::upsert(
-                        [[
-                            'response_id' => $responseId,
-                            'question_id' => $question->id,
-                            'department_id' => $user?->department_id,
-                            'answer_option_id' => $optionId,
-                            'essay_answer' => $essayValue,
-                            'calculated_score' => $scorer->calculateScoreForAnswer($question, $optionId),
-                            'created_at' => $timestamp,
-                            'updated_at' => $timestamp,
-                        ]],
-                        ['response_id', 'question_id'],
-                        ['department_id', 'answer_option_id', 'essay_answer', 'calculated_score', 'updated_at']
-                    );
-                }
-            });
-
-            $this->questionnaireMeta[$questionnaireId]['status'] = 'submitted';
-            $this->questionnaireMeta[$questionnaireId]['response_id'] = $responseId;
+    /**
+     * Called by client-side timer when time expires.
+     * Auto-submits whatever answers have been filled so far.
+     */
+    public function autoSubmitOnTimeExpired(): void
+    {
+        if ($this->timeExpired) {
+            return;
         }
 
-        $this->confirmSubmitAll = false;
-        $this->dirtyQuestionIds = [];
-
-        $count = collect($this->questionnaireMeta)
-            ->filter(fn(array $meta): bool => $meta['status'] === 'submitted')
-            ->count();
-
-        session()->flash('success', "Semua {$count} kuisioner berhasil dikirim!");
+        $this->doSubmitAll(true);
     }
 
     private function loadQuestionnaires(): void
@@ -522,5 +519,155 @@ class AvailableQuestionnaires extends Component
         $exists = $question->answerOptions->contains(fn($option): bool => (int) $option->id === $normalized);
 
         return $exists ? $normalized : null;
+    }
+
+    /**
+     * Initialize the session timer from the authenticated user's time_limit_minutes.
+     * Sets filling_started_at on the user record if not already set.
+     */
+    private function initializeSessionTimer(): void
+    {
+        $user = Auth::user();
+        $this->timeLimitMinutes = $user?->time_limit_minutes;
+        $this->fillingStartedAt = $user?->filling_started_at?->toIso8601String();
+
+        // If user has a time limit and hasn't started yet, show the start confirmation popup
+        // instead of auto-starting the timer. The timer only starts when they confirm.
+        if ($this->timeLimitMinutes !== null && $this->fillingStartedAt === null) {
+            $this->showStartConfirmation = true;
+        }
+    }
+
+    /**
+     * User confirmed to start the fill session – start the timer.
+     */
+    public function confirmStart(): void
+    {
+        $user = Auth::user();
+        $user->update(['filling_started_at' => now()]);
+        $user->refresh();
+        $this->fillingStartedAt = $user->filling_started_at?->toIso8601String();
+        $this->showStartConfirmation = false;
+
+        // Dispatch browser event so Alpine.js re-initializes the countdown timer
+        $this->dispatch('start-timer');
+    }
+
+    /**
+     * User cancelled – redirect back to role-appropriate dashboard.
+     */
+    public function cancelStart()
+    {
+        return redirect()->route('role.dashboard');
+    }
+
+    /**
+     * Check if the session time limit has expired.
+     * If so, auto-submit all answers and lock the form.
+     */
+    private function checkTimeExpiry(): void
+    {
+        if ($this->timeLimitMinutes === null || $this->fillingStartedAt === null) {
+            return;
+        }
+
+        $deadline = CarbonImmutable::parse($this->fillingStartedAt)->addMinutes($this->timeLimitMinutes);
+
+        if (now()->isAfter($deadline)) {
+            $this->timeExpired = true;
+            $this->doSubmitAll(true);
+        }
+    }
+
+    /**
+     * Shared submit logic for both manual and auto-submit.
+     *
+     * @param bool $isAutoSubmit When true, skips validation and forces submit of whatever is filled
+     */
+    private function doSubmitAll(bool $isAutoSubmit): void
+    {
+        if (!$isAutoSubmit) {
+            $this->validateAllRequired();
+        }
+
+        $user = Auth::user();
+        $scorer = app(QuestionnaireScorer::class);
+        $timestamp = now();
+
+        foreach ($this->questionnaireMeta as $questionnaireId => $meta) {
+            if ($meta['status'] === 'submitted') {
+                continue;
+            }
+
+            $questions = Question::where('questionnaire_id', $questionnaireId)
+                ->with('answerOptions')
+                ->orderBy('order')
+                ->get();
+
+            $responseId = $meta['response_id'] ?? null;
+
+            if (!$responseId) {
+                $response = Response::create([
+                    'questionnaire_id' => $questionnaireId,
+                    'user_id' => $user->id,
+                    'status' => 'submitted',
+                    'submitted_at' => now(),
+                ]);
+                $responseId = $response->id;
+            } else {
+                Response::where('id', $responseId)->update([
+                    'status' => 'submitted',
+                    'submitted_at' => now(),
+                ]);
+            }
+
+            DB::transaction(function () use ($questions, $responseId, $scorer, $timestamp, $user): void {
+                foreach ($questions as $question) {
+                    $state = $this->answers[$question->id] ?? ['answer_option_id' => null, 'essay_answer' => ''];
+                    $optionId = $this->normalizeOptionId($question, Arr::get($state, 'answer_option_id'));
+                    $essayAnswer = trim((string) Arr::get($state, 'essay_answer', ''));
+                    $essayValue = $essayAnswer !== '' ? $essayAnswer : null;
+
+                    if ($optionId === null && $essayValue === null) {
+                        Answer::where('response_id', $responseId)
+                            ->where('question_id', $question->id)
+                            ->delete();
+
+                        continue;
+                    }
+
+                    Answer::upsert(
+                        [[
+                            'response_id' => $responseId,
+                            'question_id' => $question->id,
+                            'department_id' => $user?->department_id,
+                            'answer_option_id' => $optionId,
+                            'essay_answer' => $essayValue,
+                            'calculated_score' => $scorer->calculateScoreForAnswer($question, $optionId),
+                            'created_at' => $timestamp,
+                            'updated_at' => $timestamp,
+                        ]],
+                        ['response_id', 'question_id'],
+                        ['department_id', 'answer_option_id', 'essay_answer', 'calculated_score', 'updated_at']
+                    );
+                }
+            });
+
+            $this->questionnaireMeta[$questionnaireId]['status'] = 'submitted';
+            $this->questionnaireMeta[$questionnaireId]['response_id'] = $responseId;
+        }
+
+        $this->confirmSubmitAll = false;
+        $this->dirtyQuestionIds = [];
+
+        if ($isAutoSubmit) {
+            $this->timeExpired = true;
+            session()->flash('error', 'Batas waktu pengisian kuisioner telah habis. Jawaban yang sudah diisi telah dikirim secara otomatis.');
+        } else {
+            $count = collect($this->questionnaireMeta)
+                ->filter(fn(array $meta): bool => $meta['status'] === 'submitted')
+                ->count();
+            session()->flash('success', "Semua {$count} kuisioner berhasil dikirim!");
+        }
     }
 }

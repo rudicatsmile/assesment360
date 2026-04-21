@@ -28,6 +28,8 @@ class QuestionnaireForm extends Component
 
     public string $status = 'draft';
 
+    public ?int $time_limit_minutes = null;
+
     /** @var array<int, string> */
     public array $target_groups = [];
 
@@ -55,6 +57,7 @@ class QuestionnaireForm extends Component
             $this->start_date = $this->questionnaire->start_date?->format('Y-m-d\TH:i') ?? '';
             $this->end_date = $this->questionnaire->end_date?->format('Y-m-d\TH:i') ?? '';
             $this->status = $this->questionnaire->status;
+            $this->time_limit_minutes = $this->questionnaire->time_limit_minutes;
             $this->target_groups = $this->questionnaire
                 ->targets()
                 ->pluck('target_group')
@@ -81,6 +84,7 @@ class QuestionnaireForm extends Component
                 'description' => $data['description'] ?? null,
                 'start_date' => $data['start_date'],
                 'end_date' => $data['end_date'],
+                'time_limit_minutes' => $data['time_limit_minutes'] ?? null,
                 'status' => $data['status'],
             ]);
 
@@ -94,6 +98,7 @@ class QuestionnaireForm extends Component
                 'description' => $data['description'] ?? null,
                 'start_date' => $data['start_date'],
                 'end_date' => $data['end_date'],
+                'time_limit_minutes' => $data['time_limit_minutes'] ?? null,
                 'status' => $data['status'],
                 'created_by' => Auth::id(),
             ]);

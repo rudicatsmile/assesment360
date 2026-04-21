@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Departement;
+use App\Models\Response;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -48,6 +49,12 @@ class UserDirectory extends Component
     public ?string $department_id = '';
 
     public bool $is_active = true;
+
+    /** @var int|null Hours component of time limit */
+    public ?int $time_limit_hours = null;
+
+    /** @var int|null Minutes component of time limit */
+    public ?int $time_limit_minutes = null;
 
     public string $sortBy = 'created_at';
 
@@ -101,6 +108,17 @@ class UserDirectory extends Component
         $this->department_id = $user->department_id ? (string) $user->department_id : '';
         $this->is_active = (bool) $user->is_active;
         $this->password = '';
+
+        // Populate time limit from user's stored minutes
+        $totalMinutes = $user->time_limit_minutes;
+        if ($totalMinutes !== null && $totalMinutes > 0) {
+            $this->time_limit_hours = intdiv($totalMinutes, 60);
+            $this->time_limit_minutes = $totalMinutes % 60;
+        } else {
+            $this->time_limit_hours = null;
+            $this->time_limit_minutes = null;
+        }
+
         $this->showForm = true;
         $this->resetErrorBag();
     }
@@ -130,6 +148,8 @@ class UserDirectory extends Component
             $user->department_id = $validated['department_id'] !== null ? (int) $validated['department_id'] : null;
             $user->department = $this->resolveDepartmentName($validated['department_id']);
             $user->is_active = (bool) $validated['is_active'];
+            $user->time_limit_minutes = $this->resolveTimeLimitMinutes();
+            $user->filling_started_at = $user->filling_started_at; // preserve existing
 
             if (!empty($validated['password'])) {
                 $user->password = Hash::make($validated['password']);
@@ -156,6 +176,7 @@ class UserDirectory extends Component
                 'department_id' => $validated['department_id'] !== null ? (int) $validated['department_id'] : null,
                 'department' => $this->resolveDepartmentName($validated['department_id']),
                 'is_active' => (bool) $validated['is_active'],
+                'time_limit_minutes' => $this->resolveTimeLimitMinutes(),
                 'email_verified_at' => now(),
             ]);
 
@@ -191,6 +212,36 @@ class UserDirectory extends Component
 
         session()->flash('success', 'Pengguna berhasil dihapus (soft delete).');
         $this->resetPage();
+    }
+
+    /**
+     * Reset a user's fill session so they can re-do questionnaires.
+     * Sets filling_started_at to null and reverts all submitted responses to draft.
+     */
+    public function resetUserSession(int $userId): void
+    {
+        $user = User::query()->findOrFail($userId);
+
+        // Reset the fill session timer
+        $user->filling_started_at = null;
+        $user->save();
+
+        // Revert all submitted responses back to draft so questionnaires become fillable again
+        $revertedCount = Response::query()
+            ->where('user_id', $userId)
+            ->where('status', 'submitted')
+            ->update([
+                'status' => 'draft',
+                'submitted_at' => null,
+            ]);
+
+        Log::info('admin.users.reset-session', [
+            'actor_id' => auth()->id(),
+            'target_user_id' => $userId,
+            'responses_reverted' => $revertedCount,
+        ]);
+
+        session()->flash('success', "Sesi pengisian {$user->name} berhasil direset. {$revertedCount} response dikembalikan ke draft.");
     }
 
     /**
@@ -241,7 +292,22 @@ class UserDirectory extends Component
         $this->role_id = '';
         $this->department_id = '';
         $this->is_active = true;
+        $this->time_limit_hours = null;
+        $this->time_limit_minutes = null;
         $this->resetErrorBag();
+    }
+
+    /**
+     * Convert hours + minutes input into total minutes.
+     * Returns null if both are empty (no time limit).
+     */
+    private function resolveTimeLimitMinutes(): ?int
+    {
+        $hours = (int) ($this->time_limit_hours ?? 0);
+        $minutes = (int) ($this->time_limit_minutes ?? 0);
+        $total = ($hours * 60) + $minutes;
+
+        return $total > 0 ? $total : null;
     }
 
     private function resolveDepartmentName(?string $departmentId): ?string
