@@ -13,14 +13,16 @@
 - [config/rbac.php](file://config/rbac.php)
 - [app/Models/User.php](file://app/Models/User.php)
 - [database/migrations/2026_04_17_043615_add_phone_number_to_users_table.php](file://database/migrations/2026_04_17_043615_add_phone_number_to_users_table.php)
+- [resources/views/auth/login.blade.php](file://resources/views/auth/login.blade.php)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Updated phone number validation to reflect simplified Indonesian-only format
-- Modified authentication endpoints documentation to reflect fixed country code '+62'
-- Updated validation rules and error messages to match new Indonesian phone number requirements
-- Enhanced security considerations for Indonesian phone number format
+- Updated phone number validation to enforce Indonesian-only format with fixed '+62' country code
+- Modified authentication endpoints documentation to reflect simplified Indonesian phone number requirements
+- Enhanced validation rules and error messages to match new Indonesian phone number format
+- Updated security considerations for Indonesian phone number format enforcement
+- Added comprehensive documentation for Indonesian phone number format requirements
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -35,7 +37,7 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the authentication system with phone-based login verification and WhatsApp webhook integration. The system has been simplified to support Indonesian phone numbers only, using a fixed country code format. It covers HTTP endpoints, request/response considerations, authentication middleware, security controls, rate limiting, and integration patterns with the WhatsApp Business API. The goal is to provide a clear, actionable guide for developers and operators to implement, test, and maintain the authentication flows.
+This document describes the authentication system with phone-based login verification and WhatsApp webhook integration. The system has been simplified to support Indonesian phone numbers only, using a fixed country code format with '+62'. It covers HTTP endpoints, request/response considerations, authentication middleware, security controls, rate limiting, and integration patterns with the WhatsApp Business API. The goal is to provide a clear, actionable guide for developers and operators to implement, test, and maintain the authentication flows.
 
 ## Project Structure
 The authentication endpoints are defined in the web routes and handled by dedicated controllers. Supporting services and models encapsulate business logic and persistence.
@@ -191,6 +193,7 @@ WH->>DB : "PATCH provider_status by provider_message_id"
 Security and validation:
 - **Updated**: Now enforces Indonesian-only phone number format with regex `/^0[0-9]{6,14}$/`
 - **Updated**: Fixed country code '+62' is automatically applied
+- **Updated**: Simplified validation to ensure compliance with Indonesian telecommunications standards
 - User lookup supports multiple formats to improve usability
 - Verification expires after 5 minutes
 - Maximum 3 attempts per verification session
@@ -468,12 +471,14 @@ The authentication system provides a robust phone-based login flow integrated wi
 - **Updated**: Implement fixed country code '+62' for Indonesian phone numbers only
 
 ### Indonesian Phone Number Format Requirements
-- **Updated**: Must start with '0' followed by 6-14 digits
-- **Updated**: Automatically normalized to '+62' country code
-- **Updated**: Supports all Indonesian mobile network prefixes
+- **Updated**: Must start with '0' followed by 6-14 digits (total length 7-15 characters)
+- **Updated**: Automatically normalized to '+62' country code format
+- **Updated**: Supports all Indonesian mobile network prefixes (081x, 082x, 083x, 085x, etc.)
 - **Updated**: Validation ensures compliance with Indonesian telecommunications standards
+- **Updated**: Simplified validation reduces complexity and improves security by eliminating international format support
 
 **Section sources**
 - [app/Http/Controllers/Auth/AuthController.php:61-65](file://app/Http/Controllers/Auth/AuthController.php#L61-L65)
 - [app/Http/Controllers/Auth/AuthController.php:203-208](file://app/Http/Controllers/Auth/AuthController.php#L203-L208)
 - [database/migrations/2026_04_17_043615_add_phone_number_to_users_table.php:14-16](file://database/migrations/2026_04_17_043615_add_phone_number_to_users_table.php#L14-L16)
+- [resources/views/auth/login.blade.php:107-111](file://resources/views/auth/login.blade.php#L107-L111)

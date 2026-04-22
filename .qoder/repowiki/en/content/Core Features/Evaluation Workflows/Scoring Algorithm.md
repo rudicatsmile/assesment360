@@ -9,6 +9,8 @@
 - [Question.php](file://app/Models/Question.php)
 - [Response.php](file://app/Models/Response.php)
 - [Questionnaire.php](file://app/Models/Questionnaire.php)
+- [QuestionnaireTarget.php](file://app/Models/QuestionnaireTarget.php)
+- [Role.php](file://app/Models/Role.php)
 - [DepartmentAnalyticsService.php](file://app/Services/DepartmentAnalyticsService.php)
 - [DepartmentAnalytics.php](file://app/Livewire/Admin/DepartmentAnalytics.php)
 - [QuestionnaireAnalytics.php](file://app/Livewire/Admin/QuestionnaireAnalytics.php)
@@ -18,19 +20,18 @@
 - [2026_04_16_010242_create_answer_options_table.php](file://database/migrations/2026_04_16_010242_create_answer_options_table.php)
 - [2026_04_16_020000_create_responses_table.php](file://database/migrations/2026_04_16_020000_create_responses_table.php)
 - [2026_04_16_020100_create_answers_table.php](file://database/migrations/2026_04_16_020100_create_answers_table.php)
+- [2026_04_16_010240_create_questionnaire_targets_table.php](file://database/migrations/2026_04_16_010240_create_questionnaire_targets_table.php)
 - [rbac.php](file://config/rbac.php)
 - [07-scoring.md](file://.clinerules/07-scoring.md)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Enhanced analytics capabilities with comprehensive statistical analysis
-- Added detailed respondent breakdown by role with caching mechanisms
-- Implemented overall and group-specific averages computation
-- Integrated question-by-question score distributions with percentage calculations
-- Added detailed answer option distributions with count and percentage metrics
-- Introduced caching strategies for performance optimization
-- Added department-level analytics with role-based and user-level breakdowns
+- Enhanced QuestionnaireScorer.php to dynamically determine target groups from questionnaire relationships instead of using static configuration
+- Added database-driven role label retrieval mechanism for improved flexibility
+- Updated analytics computation to use dynamic role slugs from questionnaire targets
+- Enhanced scoring service architecture with database-backed role management
+- Improved role label resolution with fallback to configuration-based labels
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -39,22 +40,23 @@
 4. [Architecture Overview](#architecture-overview)
 5. [Detailed Component Analysis](#detailed-component-analysis)
 6. [Enhanced Analytics Capabilities](#enhanced-analytics-capabilities)
-7. [Dependency Analysis](#dependency-analysis)
-8. [Performance Considerations](#performance-considerations)
-9. [Troubleshooting Guide](#troubleshooting-guide)
-10. [Conclusion](#conclusion)
-11. [Appendices](#appendices)
+7. [Dynamic Target Group Management](#dynamic-target-group-management)
+8. [Dependency Analysis](#dependency-analysis)
+9. [Performance Considerations](#performance-considerations)
+10. [Troubleshooting Guide](#troubleshooting-guide)
+11. [Conclusion](#conclusion)
+12. [Appendices](#appendices)
 
 ## Introduction
-This document explains the automated scoring algorithm used in questionnaire evaluation with enhanced analytics capabilities. The system now provides comprehensive statistical analysis including respondent breakdown by role, overall and group-specific averages, question-by-question score distributions, and detailed answer option distributions with percentage calculations. It covers how scores are calculated for single-choice, essay, and combined question types, how weighted scoring is applied via answer options, and how aggregated analytics are produced at both questionnaire and department levels. The document also documents the scoring service architecture, calculation precision, performance optimization techniques, and integration with the overall evaluation workflow.
+This document explains the automated scoring algorithm used in questionnaire evaluation with enhanced analytics capabilities and dynamic target group management. The system now provides comprehensive statistical analysis including respondent breakdown by role, overall and group-specific averages, question-by-question score distributions, and detailed answer option distributions with percentage calculations. The enhanced scoring service dynamically determines target groups from questionnaire relationships and retrieves role labels from the database, replacing the previous static configuration approach. It covers how scores are calculated for single-choice, essay, and combined question types, how weighted scoring is applied via answer options, and how aggregated analytics are produced at both questionnaire and department levels. The document also documents the scoring service architecture, calculation precision, performance optimization techniques, and integration with the overall evaluation workflow.
 
 ## Project Structure
-The scoring system spans several model, service, and analytics layers with enhanced statistical capabilities:
-- Data models define the persisted structures for questions, answer options, responses, and answers.
-- The scoring service encapsulates scoring logic and comprehensive analytics computation.
+The scoring system spans several model, service, and analytics layers with enhanced statistical capabilities and dynamic target group management:
+- Data models define the persisted structures for questions, answer options, responses, answers, questionnaires, questionnaire targets, and roles.
+- The scoring service encapsulates scoring logic and comprehensive analytics computation with dynamic target group determination.
 - Department analytics service provides organizational-level insights with role and user breakdowns.
 - The questionnaire fill Livewire component orchestrates submission and triggers scoring during finalization.
-- Analytics components handle caching, visualization, and export functionality.
+- Analytics components handle caching, visualization, and export functionality with dynamic role label resolution.
 
 ```mermaid
 graph TB
@@ -64,6 +66,7 @@ AO["AnswerOption"]
 R["Response"]
 A["Answer"]
 QZ["Questionnaire"]
+QT["QuestionnaireTarget"]
 D["Department"]
 U["User"]
 RO["Role"]
@@ -83,18 +86,25 @@ EC["DepartmentAnalyticsExportController"]
 end
 Q --> AO
 QZ --> Q
+QZ --> QT
+QT --> RO
 R --> A
 A --> Q
 A --> AO
 QZ --> R
-D --> U
+R --> U
 U --> RO
+D --> U
 S --> A
 S --> R
+S --> QZ
+S --> QT
+S --> RO
 DAS --> A
 DAS --> R
 DAS --> U
 DAS --> D
+DAS --> RO
 QA --> S
 DA --> DAS
 EXP --> DAS
@@ -102,7 +112,7 @@ EC --> EXP
 ```
 
 **Diagram sources**
-- [QuestionnaireScorer.php:12-139](file://app/Services/QuestionnaireScorer.php#L12-L139)
+- [QuestionnaireScorer.php:12-150](file://app/Services/QuestionnaireScorer.php#L12-L150)
 - [DepartmentAnalyticsService.php:12-279](file://app/Services/DepartmentAnalyticsService.php#L12-L279)
 - [QuestionnaireFill.php:19-515](file://app/Livewire/Fill/QuestionnaireFill.php#L19-L515)
 - [QuestionnaireAnalytics.php:15-74](file://app/Livewire/Admin/QuestionnaireAnalytics.php#L15-L74)
@@ -111,13 +121,14 @@ EC --> EXP
 - [AnswerOption.php:10-38](file://app/Models/AnswerOption.php#L10-L38)
 - [Question.php:11-43](file://app/Models/Question.php#L11-L43)
 - [Response.php:11-42](file://app/Models/Response.php#L11-L42)
-- [Questionnaire.php:13-131](file://app/Models/Questionnaire.php#L13-L131)
+- [Questionnaire.php:13-133](file://app/Models/Questionnaire.php#L13-L133)
+- [QuestionnaireTarget.php:1-24](file://app/Models/QuestionnaireTarget.php#L1-L24)
+- [Role.php:1-31](file://app/Models/Role.php#L1-L31)
 - [Department.php](file://app/Models/Departement.php)
 - [User.php](file://app/Models/User.php)
-- [Role.php](file://app/Models/Role.php)
 
 **Section sources**
-- [QuestionnaireScorer.php:12-139](file://app/Services/QuestionnaireScorer.php#L12-L139)
+- [QuestionnaireScorer.php:12-150](file://app/Services/QuestionnaireScorer.php#L12-L150)
 - [DepartmentAnalyticsService.php:12-279](file://app/Services/DepartmentAnalyticsService.php#L12-L279)
 - [QuestionnaireFill.php:19-515](file://app/Livewire/Fill/QuestionnaireFill.php#L19-L515)
 - [QuestionnaireAnalytics.php:15-74](file://app/Livewire/Admin/QuestionnaireAnalytics.php#L15-L74)
@@ -126,17 +137,19 @@ EC --> EXP
 - [AnswerOption.php:10-38](file://app/Models/AnswerOption.php#L10-L38)
 - [Question.php:11-43](file://app/Models/Question.php#L11-L43)
 - [Response.php:11-42](file://app/Models/Response.php#L11-L42)
-- [Questionnaire.php:13-131](file://app/Models/Questionnaire.php#L13-L131)
+- [Questionnaire.php:13-133](file://app/Models/Questionnaire.php#L13-L133)
 
 ## Core Components
-- **QuestionnaireScorer**: Central scoring service that computes per-answer scores and produces comprehensive analytics summaries including respondent breakdown, averages, question scores, and detailed distributions.
+- **QuestionnaireScorer**: Central scoring service that computes per-answer scores and produces comprehensive analytics summaries including dynamic target group determination, respondent breakdown by role, averages, question scores, and detailed distributions with role label resolution.
 - **DepartmentAnalyticsService**: Advanced analytics service providing organizational-level insights with role-based and user-level breakdowns, participation rates, and performance metrics.
 - **QuestionnaireFill**: Submission workflow that persists answers and triggers scoring at finalization.
-- **Models**: Question, AnswerOption, Response, Answer, Questionnaire, Department, User, Role define the data schema and relationships.
+- **Models**: Question, AnswerOption, Response, Answer, Questionnaire, QuestionnaireTarget, Role, Department, User define the data schema and relationships with enhanced target group management.
 
 **Enhanced Analytics Features**:
+- Dynamic target group determination from questionnaire relationships
+- Database-driven role label retrieval with fallback mechanisms
 - Comprehensive respondent breakdown by role with caching mechanisms
-- Overall and group-specific averages computation with configurable role slugs
+- Overall and group-specific averages computation with dynamic role slugs
 - Question-by-question score distributions with percentage calculations
 - Detailed answer option distributions including count and percentage metrics
 - Department-level analytics with role and user breakdowns
@@ -148,7 +161,7 @@ EC --> EXP
 - Participation rates are rounded to one decimal place for department analytics
 
 **Section sources**
-- [QuestionnaireScorer.php:14-137](file://app/Services/QuestionnaireScorer.php#L14-L137)
+- [QuestionnaireScorer.php:14-150](file://app/Services/QuestionnaireScorer.php#L14-L150)
 - [DepartmentAnalyticsService.php:14-279](file://app/Services/DepartmentAnalyticsService.php#L14-L279)
 - [QuestionnaireFill.php:193-245](file://app/Livewire/Fill/QuestionnaireFill.php#L193-L245)
 - [Answer.php:15-22](file://app/Models/Answer.php#L15-L22)
@@ -156,7 +169,7 @@ EC --> EXP
 - [Question.php:16-26](file://app/Models/Question.php#L16-L26)
 
 ## Architecture Overview
-The enhanced scoring pipeline integrates UI submission, persistence, comprehensive analytics computation, and advanced reporting capabilities.
+The enhanced scoring pipeline integrates UI submission, persistence, comprehensive analytics computation with dynamic target group management, and advanced reporting capabilities.
 
 ```mermaid
 sequenceDiagram
@@ -176,11 +189,11 @@ WF->>S : "calculateScoreForAnswer(question, optionId)"
 S-->>WF : "calculated_score or null"
 WF->>DB : "Upsert answer with calculated_score"
 end
-WF-->>U : "Submission confirmed"
-U->>QA : "View questionnaire analytics"
-QA->>S : "summarizeQuestionnaire(questionnaire)"
+Note over S,DB : "Dynamic target group determination"
+S->>DB : "Get questionnaire targets (target_group)"
+S->>DB : "Retrieve role labels by slugs"
 S->>DB : "Aggregate averages, distributions, and counts"
-S-->>QA : "Comprehensive analytics payload"
+S-->>QA : "Comprehensive analytics payload with role_labels"
 U->>DA : "View department analytics"
 DA->>DAS : "summarize(department filters)"
 DAS->>DB : "Aggregate department metrics, roles, users"
@@ -189,7 +202,7 @@ DAS-->>DA : "Department analytics with caching"
 
 **Diagram sources**
 - [QuestionnaireFill.php:193-245](file://app/Livewire/Fill/QuestionnaireFill.php#L193-L245)
-- [QuestionnaireScorer.php:33-112](file://app/Services/QuestionnaireScorer.php#L33-L112)
+- [QuestionnaireScorer.php:33-123](file://app/Services/QuestionnaireScorer.php#L33-L123)
 - [DepartmentAnalyticsService.php:20-95](file://app/Services/DepartmentAnalyticsService.php#L20-L95)
 - [QuestionnaireAnalytics.php:27-57](file://app/Livewire/Admin/QuestionnaireAnalytics.php#L27-L57)
 - [DepartmentAnalytics.php:236-269](file://app/Livewire/Admin/DepartmentAnalytics.php#L236-L269)
@@ -199,26 +212,35 @@ DAS-->>DA : "Department analytics with caching"
 ### QuestionnaireScorer
 **Enhanced Responsibilities**:
 - Compute per-answer score from selected answer option
+- Dynamically determine target groups from questionnaire relationships
+- Retrieve role labels from database with fallback mechanisms
 - Produce comprehensive analytics summary including:
   - Respondent breakdown by role with caching support
   - Overall average and per-group averages
   - Question-level averages with response counts
   - Detailed distribution counts and percentages per option
   - Question-by-question score distributions
+  - Dynamic role label resolution
 
 **Enhanced Scoring Method**:
 - For single-choice: returns the score attached to the selected answer option; returns null if no option is selected
 - For essay and combined: essay text is stored but not numerically scored by this service
 
+**Dynamic Target Group Management**:
+- Extracts target groups from questionnaire relationships using `$questionnaire->targets()->pluck('target_group')`
+- Retrieves unique target groups and converts them to values array
+- Uses database-driven role label retrieval with `$roleLabels = Role::query()->whereIn('slug', $roles)->pluck('name', 'slug')->all()`
+
 **Advanced Analytics Computation**:
 - Filters submissions by status "submitted" for all computations
-- Uses configured target role slugs to segment averages and breakdowns
+- Uses dynamic target role slugs from questionnaire relationships to segment averages and breakdowns
 - Computes respondent breakdown by role with distinct user counting
 - Calculates overall averages across all submitted responses
-- Computes group-specific averages for each configured role
+- Computes group-specific averages for each dynamic role
 - Generates question-by-question averages with response counts
 - Creates detailed answer option distributions with counts and percentages
 - Rounds all averages and percentages to specified decimal places
+- Includes role_labels in analytics payload for frontend display
 
 ```mermaid
 classDiagram
@@ -230,6 +252,22 @@ class QuestionnaireScorer {
 +averages array
 +question_scores array
 +distribution array
++role_labels array
+}
+class Questionnaire {
++targets() HasMany
++syncTargetGroups(targetGroups) void
++targetGroups() array
++targetGroupOptions() array
+}
+class QuestionnaireTarget {
++questionnaire() BelongsTo
++target_group string
+}
+class Role {
++users() HasMany
++name string
++slug string
 }
 class Answer {
 +int calculated_score
@@ -257,10 +295,15 @@ Answer --> Question : "belongs to"
 Answer --> AnswerOption : "belongs to"
 Answer --> Response : "belongs to"
 Response --> User : "belongs to"
+Questionnaire --> QuestionnaireTarget : "has many"
+QuestionnaireTarget --> Role : "relates to"
 ```
 
 **Diagram sources**
-- [QuestionnaireScorer.php:12-139](file://app/Services/QuestionnaireScorer.php#L12-L139)
+- [QuestionnaireScorer.php:12-150](file://app/Services/QuestionnaireScorer.php#L12-L150)
+- [Questionnaire.php:39-131](file://app/Models/Questionnaire.php#L39-L131)
+- [QuestionnaireTarget.php:19-23](file://app/Models/QuestionnaireTarget.php#L19-L23)
+- [Role.php:26-30](file://app/Models/Role.php#L26-L30)
 - [Answer.php:10-44](file://app/Models/Answer.php#L10-L44)
 - [AnswerOption.php:10-38](file://app/Models/AnswerOption.php#L10-L38)
 - [Question.php:11-43](file://app/Models/Question.php#L11-L43)
@@ -268,8 +311,10 @@ Response --> User : "belongs to"
 - [User.php](file://app/Models/User.php)
 
 **Section sources**
-- [QuestionnaireScorer.php:14-137](file://app/Services/QuestionnaireScorer.php#L14-L137)
-- [rbac.php:6-11](file://config/rbac.php#L6-L11)
+- [QuestionnaireScorer.php:14-150](file://app/Services/QuestionnaireScorer.php#L14-L150)
+- [Questionnaire.php:39-131](file://app/Models/Questionnaire.php#L39-L131)
+- [QuestionnaireTarget.php:19-23](file://app/Models/QuestionnaireTarget.php#L19-L23)
+- [Role.php:26-30](file://app/Models/Role.php#L26-L30)
 
 ### DepartmentAnalyticsService
 **Advanced Responsibilities**:
@@ -390,11 +435,13 @@ Focus --> Navigate
 - [QuestionnaireFill.php:342-388](file://app/Livewire/Fill/QuestionnaireFill.php#L342-L388)
 
 ### Data Models and Relationships
-The enhanced scoring system relies on the following comprehensive schema:
+The enhanced scoring system relies on the following comprehensive schema with dynamic target group management:
 
 ```mermaid
 erDiagram
 QUESTIONNAIRES ||--o{ QUESTIONS : "contains"
+QUESTIONNAIRES ||--o{ QUESTIONNAIRE_TARGETS : "has many"
+QUESTIONNAIRE_TARGETS ||--o{ ROLES : "relates to"
 QUESTIONS ||--o{ ANSWER_OPTIONS : "has many"
 RESPONSES ||--o{ ANSWERS : "contains"
 RESPONSES ||--o{ DEPARTMENTS : "belongs to"
@@ -402,7 +449,7 @@ QUESTIONS ||--o{ ANSWERS : "answers"
 ANSWER_OPTIONS ||--o{ ANSWERS : "selected by"
 USERS ||--o{ RESPONSES : "submits"
 USERS ||--o{ DEPARTMENTS : "belongs to"
-ROLES ||--o{ USERS : "has"
+USERS ||--o{ ROLES : "has"
 DEPARTMENTS ||--o{ USERS : "contains"
 QUESTIONNAIRES {
 int id PK
@@ -410,6 +457,16 @@ string title
 datetime start_date
 datetime end_date
 string status
+}
+QUESTIONNAIRE_TARGETS {
+int id PK
+int questionnaire_id FK
+string target_group
+}
+ROLES {
+int id PK
+string name
+string slug
 }
 QUESTIONS {
 int id PK
@@ -456,13 +513,6 @@ int department_id FK
 int role_id FK
 boolean is_active
 }
-ROLES {
-int id PK
-string name
-string slug
-int prosentase
-boolean is_active
-}
 ```
 
 **Diagram sources**
@@ -470,12 +520,16 @@ boolean is_active
 - [2026_04_16_010242_create_answer_options_table.php:11-20](file://database/migrations/2026_04_16_010242_create_answer_options_table.php#L11-L20)
 - [2026_04_16_020000_create_responses_table.php:10-22](file://database/migrations/2026_04_16_020000_create_responses_table.php#L10-L22)
 - [2026_04_16_020100_create_answers_table.php:10-22](file://database/migrations/2026_04_16_020100_create_answers_table.php#L10-L22)
+- [2026_04_16_010240_create_questionnaire_targets_table.php:11-18](file://database/migrations/2026_04_16_010240_create_questionnaire_targets_table.php#L11-L18)
 - [Departement.php](file://app/Models/Departement.php)
 - [User.php](file://app/Models/User.php)
 - [Role.php](file://app/Models/Role.php)
+- [Questionnaire.php](file://app/Models/Questionnaire.php)
+- [QuestionnaireTarget.php](file://app/Models/QuestionnaireTarget.php)
 
 **Section sources**
 - [Questionnaire.php:42-50](file://app/Models/Questionnaire.php#L42-L50)
+- [QuestionnaireTarget.php:14-17](file://app/Models/QuestionnaireTarget.php#L14-L17)
 - [Question.php:33-41](file://app/Models/Question.php#L33-L41)
 - [AnswerOption.php:33-36](file://app/Models/AnswerOption.php#L33-L36)
 - [Response.php:37-40](file://app/Models/Response.php#L37-L40)
@@ -484,27 +538,33 @@ boolean is_active
 ## Enhanced Analytics Capabilities
 
 ### Comprehensive Statistical Analysis
-The enhanced analytics system provides four main categories of statistical insights:
+The enhanced analytics system provides four main categories of statistical insights with dynamic target group support:
 
-**1. Respondent Breakdown by Role**
-- Counts distinct respondents by role for each questionnaire
-- Uses configured target role slugs from RBAC configuration
-- Provides baseline for group-specific analysis
-- Cached with version-based invalidation
+**1. Dynamic Target Group Determination**
+- Extracts target groups from questionnaire relationships using `$questionnaire->targets()->pluck('target_group')`
+- Retrieves unique target groups and converts them to values array for processing
+- Eliminates dependency on static configuration for target group management
+- Supports flexible questionnaire-to-role associations
 
-**2. Overall and Group-Specific Averages**
+**2. Database-Driven Role Label Resolution**
+- Retrieves role labels from database using `Role::query()->whereIn('slug', $roles)->pluck('name', 'slug')->all()`
+- Provides human-readable role names for analytics display
+- Includes fallback mechanisms for role label resolution
+- Supports dynamic role management without configuration updates
+
+**3. Overall and Group-Specific Averages**
 - Computes overall average score across all submitted responses
-- Calculates per-group averages for each configured role
+- Calculates per-group averages for each dynamic role extracted from questionnaire targets
 - Uses only responses with non-null calculated scores
 - Rounded to two decimal places for consistency
 
-**3. Question-by-Question Score Distributions**
+**4. Question-by-Question Score Distributions**
 - Provides average scores for each question with response counts
 - Orders questions by average score for easy identification of trends
 - Includes question metadata (ID, text, type) for context
 - Supports both single-choice and combined question types
 
-**4. Detailed Answer Option Distributions**
+**5. Detailed Answer Option Distributions**
 - Shows count and percentage distribution for each answer option
 - Calculates percentages based on question totals (not overall totals)
 - Includes option text, score values, and response counts
@@ -524,16 +584,65 @@ The enhanced analytics system provides four main categories of statistical insig
 - Batch operations for data processing
 
 **Section sources**
-- [QuestionnaireScorer.php:33-112](file://app/Services/QuestionnaireScorer.php#L33-L112)
+- [QuestionnaireScorer.php:33-123](file://app/Services/QuestionnaireScorer.php#L33-L123)
 - [QuestionnaireAnalytics.php:27-72](file://app/Livewire/Admin/QuestionnaireAnalytics.php#L27-L72)
 - [DepartmentAnalyticsService.php:114-189](file://app/Services/DepartmentAnalyticsService.php#L114-L189)
+
+## Dynamic Target Group Management
+
+### Enhanced Target Group Architecture
+The system now supports dynamic target group management through questionnaire relationships:
+
+**Target Group Extraction**:
+- Uses `$questionnaire->targets()->pluck('target_group')->unique()->values()->all()` to extract unique target groups
+- Eliminates hard-coded configuration dependencies
+- Supports flexible questionnaire-to-role associations
+
+**Role Label Retrieval**:
+- Retrieves role labels from database using `Role::query()->whereIn('slug', $roles)->pluck('name', 'slug')->all()`
+- Provides human-readable labels for analytics display
+- Supports dynamic role management without configuration updates
+
+**Fallback Mechanisms**:
+- Maintains backward compatibility with static configuration
+- Falls back to RBAC configuration if database retrieval fails
+- Ensures system stability during migration periods
+
+**Enhanced Questionnaire Management**:
+- `syncTargetGroups(array $targetGroups)` method manages target group associations
+- Validates target groups against allowed role slugs
+- Supports transactional updates for data consistency
+
+```mermaid
+flowchart TD
+Start(["Questionnaire Creation/Edit"]) --> LoadTargets["Load Questionnaire Targets"]
+LoadTargets --> ExtractGroups["Extract Target Groups"]
+ExtractGroups --> UniqueGroups["Filter Unique Groups"]
+UniqueGroups --> ValidateGroups["Validate Against Allowed Roles"]
+ValidateGroups --> SyncTargets["Sync Target Groups"]
+SyncTargets --> DatabaseUpdate["Update Questionnaire Targets Table"]
+DatabaseUpdate --> RoleLabelFetch["Fetch Role Labels from Database"]
+RoleLabelFetch --> AnalyticsComputation["Compute Analytics with Dynamic Groups"]
+AnalyticsComputation --> DisplayResults["Display Results with Role Labels"]
+```
+
+**Diagram sources**
+- [Questionnaire.php:57-85](file://app/Models/Questionnaire.php#L57-L85)
+- [QuestionnaireScorer.php:35-44](file://app/Services/QuestionnaireScorer.php#L35-L44)
+
+**Section sources**
+- [Questionnaire.php:57-131](file://app/Models/Questionnaire.php#L57-L131)
+- [QuestionnaireScorer.php:35-44](file://app/Services/QuestionnaireScorer.php#L35-L44)
+- [QuestionnaireTarget.php:14-17](file://app/Models/QuestionnaireTarget.php#L14-L17)
+- [Role.php:13-19](file://app/Models/Role.php#L13-L19)
 
 ## Dependency Analysis
 **Enhanced Dependencies**:
 - QuestionnaireScorer depends on:
   - Answer, Question, Response models for data access
+  - Questionnaire and QuestionnaireTarget models for dynamic target group management
+  - Role model for database-driven role label retrieval
   - Database queries to compute comprehensive averages and distributions
-  - RBAC configuration for target role slugs and role labels
   - Cache system for analytics data optimization
 
 - DepartmentAnalyticsService depends on:
@@ -556,13 +665,15 @@ S --> A["Answer"]
 S --> Q["Question"]
 S --> R["Response"]
 S --> AO["AnswerOption"]
-S --> CFG["RBAC Config"]
+S --> QZ["Questionnaire"]
+S --> QT["QuestionnaireTarget"]
+S --> RO["Role"]
 S --> CACHE["Cache System"]
 DAS --> A
 DAS --> R
 DAS --> U["User"]
 DAS --> D["Department"]
-DAS --> RO["Role"]
+DAS --> RO
 DAS --> CACHE
 QA["QuestionnaireAnalytics"] --> S
 DA["DepartmentAnalytics"] --> DAS
@@ -574,7 +685,9 @@ DA["DepartmentAnalytics"] --> DAS
 - [QuestionnaireFill.php:8-14](file://app/Livewire/Fill/QuestionnaireFill.php#L8-L14)
 - [QuestionnaireAnalytics.php:8-12](file://app/Livewire/Admin/QuestionnaireAnalytics.php#L8-L12)
 - [DepartmentAnalytics.php:6-8](file://app/Livewire/Admin/DepartmentAnalytics.php#L6-L8)
-- [rbac.php:6-11](file://config/rbac.php#L6-L11)
+- [Questionnaire.php:39-42](file://app/Models/Questionnaire.php#L39-L42)
+- [QuestionnaireTarget.php:19-22](file://app/Models/QuestionnaireTarget.php#L19-L22)
+- [Role.php:26-29](file://app/Models/Role.php#L26-L29)
 
 **Section sources**
 - [QuestionnaireScorer.php:5-10](file://app/Services/QuestionnaireScorer.php#L5-L10)
@@ -582,7 +695,9 @@ DA["DepartmentAnalytics"] --> DAS
 - [QuestionnaireFill.php:8-14](file://app/Livewire/Fill/QuestionnaireFill.php#L8-L14)
 - [QuestionnaireAnalytics.php:8-12](file://app/Livewire/Admin/QuestionnaireAnalytics.php#L8-L12)
 - [DepartmentAnalytics.php:6-8](file://app/Livewire/Admin/DepartmentAnalytics.php#L6-L8)
-- [rbac.php:6-11](file://config/rbac.php#L6-L11)
+- [Questionnaire.php:39-42](file://app/Models/Questionnaire.php#L39-L42)
+- [QuestionnaireTarget.php:19-22](file://app/Models/QuestionnaireTarget.php#L19-L22)
+- [Role.php:26-29](file://app/Models/Role.php#L26-L29)
 
 ## Performance Considerations
 **Enhanced Performance Features**:
@@ -596,6 +711,7 @@ DA["DepartmentAnalytics"] --> DAS
   - Subqueries used for complex department-level aggregations
   - Composite indexes on foreign keys and unique constraints
   - Efficient joins between responses, answers, and user tables
+  - Dynamic target group extraction uses optimized database queries
 
 - **Caching Strategy**:
   - Analytics data cached for 5 minutes to reduce database load
@@ -613,6 +729,11 @@ DA["DepartmentAnalytics"] --> DAS
   - Efficient collection processing with lazy evaluation
   - Proper resource cleanup in analytics services
 
+- **Dynamic Target Group Optimization**:
+  - Target group extraction uses efficient database queries
+  - Role label retrieval optimized with single database call
+  - Caching of role label mappings for repeated use
+
 **Section sources**
 - [QuestionnaireScorer.php:104-111](file://app/Services/QuestionnaireScorer.php#L104-L111)
 - [DepartmentAnalyticsService.php:261-277](file://app/Services/DepartmentAnalyticsService.php#L261-L277)
@@ -628,10 +749,15 @@ DA["DepartmentAnalytics"] --> DAS
   - Essay answers are stored but not scored; they do not contribute to numerical averages
   - Combined questions require both essay and selected answer option for scoring
 
-- **Inconsistent Role Slugs**:
-  - Ensure target role slugs in configuration match questionnaire target groups
-  - Verify RBAC configuration for role aliases and labels
-  - Check role assignment in user records
+- **Dynamic Target Group Issues**:
+  - Verify questionnaire targets table contains proper target_group entries
+  - Check that target groups match existing role slugs in the database
+  - Ensure QuestionnaireTarget model properly relates to Questionnaire model
+
+- **Role Label Retrieval Problems**:
+  - Verify Role model contains entries for all target group slugs
+  - Check database connectivity for role label retrieval queries
+  - Ensure slug/name relationships are properly maintained in Role table
 
 - **Analytics Gaps**:
   - Verify that only "submitted" responses are included in averages and distributions
@@ -648,14 +774,21 @@ DA["DepartmentAnalytics"] --> DAS
   - Check query execution plans for slow analytics queries
   - Verify proper pagination implementation
 
+- **Migration Issues**:
+  - Ensure QuestionnaireTarget table exists and is properly migrated
+  - Verify Role table contains all required role entries
+  - Check for proper foreign key constraints between models
+
 **Section sources**
 - [QuestionnaireScorer.php:14-23](file://app/Services/QuestionnaireScorer.php#L14-L23)
 - [QuestionnaireFill.php:483-493](file://app/Livewire/Fill/QuestionnaireFill.php#L483-L493)
-- [rbac.php:6-11](file://config/rbac.php#L6-L11)
+- [Questionnaire.php:57-131](file://app/Models/Questionnaire.php#L57-L131)
+- [QuestionnaireTarget.php:14-17](file://app/Models/QuestionnaireTarget.php#L14-L17)
+- [Role.php:13-19](file://app/Models/Role.php#L13-L19)
 - [DepartmentAnalyticsService.php:114-189](file://app/Services/DepartmentAnalyticsService.php#L114-L189)
 
 ## Conclusion
-The enhanced scoring system provides comprehensive statistical analysis capabilities with four main categories of insights: respondent breakdown by role, overall and group-specific averages, question-by-question score distributions, and detailed answer option distributions. The system maintains clean separation between submission, persistence, and analytics while adding sophisticated caching mechanisms and performance optimizations. Scores are derived from answer options for single-choice questions, while essay and combined responses contribute qualitative insights alongside quantitative metrics. The enhanced analytics services provide robust aggregation with precise rounding and comprehensive reporting, supporting both questionnaire-level and department-level decision-making. Extending caching strategies and implementing precomputed summaries can further improve performance for large-scale evaluations.
+The enhanced scoring system provides comprehensive statistical analysis capabilities with four main categories of insights: dynamic target group determination, database-driven role label resolution, overall and group-specific averages, question-by-question score distributions, and detailed answer option distributions. The system maintains clean separation between submission, persistence, and analytics while adding sophisticated caching mechanisms and performance optimizations. The dynamic target group management eliminates dependency on static configuration, allowing flexible questionnaire-to-role associations. Scores are derived from answer options for single-choice questions, while essay and combined responses contribute qualitative insights alongside quantitative metrics. The enhanced analytics services provide robust aggregation with precise rounding and comprehensive reporting, supporting both questionnaire-level and department-level decision-making. Extending caching strategies and implementing precomputed summaries can further improve performance for large-scale evaluations.
 
 ## Appendices
 
@@ -675,6 +808,8 @@ The enhanced scoring system provides comprehensive statistical analysis capabili
 - Example scenario: A rating plus justification contributes to averages while the justification remains un-scored
 
 **Enhanced Analytics Examples**:
+- **Dynamic Target Groups**: Questionnaire targets "guru", "tata_usaha", "orang_tua" extracted from relationships
+- **Role Label Resolution**: Database retrieves "Guru", "Tata Usaha", "Orang Tua" for display
 - **Respondent Breakdown**: Shows 15 teachers, 8 staff members, and 25 parents who completed the questionnaire
 - **Overall Average**: 4.23 out of 5.00 across all respondents
 - **Group-Specific Averages**: Teachers: 4.5, Staff: 3.8, Parents: 4.1
@@ -692,11 +827,13 @@ The enhanced scoring system provides comprehensive statistical analysis capabili
 - Final submission of a response triggers per-question scoring
 - Analytics data automatically invalidated and recomputed on new submissions
 - Department analytics cache uses version-based invalidation with timestamp checks
+- Dynamic target group extraction triggered during analytics computation
 
 **Result Storage**:
 - Answers store the computed score and optional essay text
 - Analytics summaries are computed on-demand from persisted data with caching
 - Department analytics data stored for hierarchical reporting and export
+- Role labels stored temporarily in analytics payload for display purposes
 
 **Export Functionality**:
 - Department analytics export supports Excel and PDF formats
@@ -706,6 +843,6 @@ The enhanced scoring system provides comprehensive statistical analysis capabili
 **Section sources**
 - [QuestionnaireFill.php:203-245](file://app/Livewire/Fill/QuestionnaireFill.php#L203-L245)
 - [Answer.php:15-22](file://app/Models/Answer.php#L15-L22)
-- [QuestionnaireScorer.php:33-112](file://app/Services/QuestionnaireScorer.php#L33-L112)
+- [QuestionnaireScorer.php:33-123](file://app/Services/QuestionnaireScorer.php#L33-L123)
 - [DepartmentAnalyticsExport.php:19-50](file://app/Exports/DepartmentAnalyticsExport.php#L19-L50)
 - [DepartmentAnalyticsExportController.php:15-62](file://app/Http/Controllers/Admin/DepartmentAnalyticsExportController.php#L15-L62)

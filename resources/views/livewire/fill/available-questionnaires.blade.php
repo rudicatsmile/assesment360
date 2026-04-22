@@ -138,6 +138,70 @@
 
             $wire.openSubmitAllConfirmation();
         },
+        validateBeforeGoTo(targetIndex) {
+            if (this.timeExpired) return;
+            const currentIndex = parseInt(document.getElementById('current-index')?.value || '0', 10);
+
+            // Allow going back to previously visited tabs without validation
+            if (targetIndex <= currentIndex) {
+                $wire.goToQuestionnaire(targetIndex);
+                return;
+            }
+
+            // Going forward: validate current questionnaire first
+            this.clearValidationState();
+
+            const root = this.$root;
+            const blocks = Array.from(root.querySelectorAll('[data-question-block]'));
+
+            for (const block of blocks) {
+                const isRequired = block.dataset.required === '1';
+                if (!isRequired) continue;
+
+                const questionId = Number(block.dataset.questionId || 0);
+                const questionType = String(block.dataset.questionType || '');
+
+                const hasSelectedRadio = block.querySelector('input[type=radio]:checked') !== null;
+                const hasCheckedBox = block.querySelector('input[type=checkbox]:checked') !== null;
+                const hasSelectedDropdown = Array.from(block.querySelectorAll('select')).some((el) => String(el.value || '').trim() !== '');
+                const essayTextareas = Array.from(block.querySelectorAll('textarea[data-essay-input]'));
+                const hasEssayText = essayTextareas.some((el) => String(el.value || '').trim() !== '');
+                const hasText = Array.from(block.querySelectorAll('textarea, input[type=text], input[type=email], input[type=number], input:not([type])'))
+                    .some((el) => String(el.value || '').trim() !== '');
+
+                let isAnswered = false;
+                if (questionType === 'single_choice') {
+                    isAnswered = hasSelectedRadio || hasCheckedBox || hasSelectedDropdown;
+                } else if (questionType === 'essay') {
+                    isAnswered = hasEssayText;
+                } else if (questionType === 'combined') {
+                    isAnswered = (hasSelectedRadio || hasCheckedBox || hasSelectedDropdown) && hasText;
+                } else {
+                    isAnswered = hasSelectedRadio || hasCheckedBox || hasSelectedDropdown || hasText;
+                }
+
+                if (!isAnswered) {
+                    this.invalidQuestionIds.push(questionId);
+                    this.validationErrors.push('Pertanyaan wajib belum terisi. Silakan isi pertanyaan yang ditandai.');
+                    if (questionType === 'essay') {
+                        this.invalidEssayQuestionIds.push(questionId);
+                    }
+                    break;
+                }
+            }
+
+            if (this.validationErrors.length > 0) {
+                this.$nextTick(() => {
+                    const firstInvalid = document.getElementById('q-' + this.invalidQuestionIds[0]);
+                    if (firstInvalid) {
+                        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                });
+                return;
+            }
+
+            $wire.goToQuestionnaire(targetIndex);
+        },
         validateBeforeNext() {
             if (this.timeExpired) return;
             this.clearValidationState();
@@ -219,6 +283,7 @@
     {{-- Hidden inputs that Livewire morphs with server-side values --}}
     <input type="hidden" id="timer-remaining-seconds" value="{{ $timeLimitInfo['remaining_seconds'] ?? 0 }}">
     <input type="hidden" id="current-questionnaire-complete" value="{{ $currentQuestionnaireComplete ? '1' : '0' }}">
+    <input type="hidden" id="current-index" value="{{ $currentIndex }}">
 
     {{-- Page Header --}}
     <div>
@@ -449,7 +514,7 @@
                         $isCurrent = $i === $currentIndex;
                         $isVisited = $i < $currentIndex;
                     @endphp
-                    <button type="button" wire:click="goToQuestionnaire({{ $i }})"
+                    <button type="button" @click="validateBeforeGoTo({{ $i }})"
                         class="flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition {{ $isCurrent ? 'border-zinc-900 bg-zinc-900 text-white' : ($isVisited ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50') }}"
                         :disabled="timeExpired">
                         @if ($isVisited)
