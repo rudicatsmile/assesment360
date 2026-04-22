@@ -12,8 +12,8 @@
 - [QuestionnaireTarget.php](file://app/Models/QuestionnaireTarget.php)
 - [Role.php](file://app/Models/Role.php)
 - [DepartmentAnalyticsService.php](file://app/Services/DepartmentAnalyticsService.php)
-- [DepartmentAnalytics.php](file://app/Livewire/Admin/DepartmentAnalytics.php)
 - [QuestionnaireAnalytics.php](file://app/Livewire/Admin/QuestionnaireAnalytics.php)
+- [DepartmentAnalytics.php](file://app/Livewire/Admin/DepartmentAnalytics.php)
 - [DepartmentAnalyticsExport.php](file://app/Exports/DepartmentAnalyticsExport.php)
 - [DepartmentAnalyticsExportController.php](file://app/Http/Controllers/Admin/DepartmentAnalyticsExportController.php)
 - [2026_04_16_010241_create_questions_table.php](file://database/migrations/2026_04_16_010241_create_questions_table.php)
@@ -21,6 +21,7 @@
 - [2026_04_16_020000_create_responses_table.php](file://database/migrations/2026_04_16_020000_create_responses_table.php)
 - [2026_04_16_020100_create_answers_table.php](file://database/migrations/2026_04_16_020100_create_answers_table.php)
 - [2026_04_16_010240_create_questionnaire_targets_table.php](file://database/migrations/2026_04_16_010240_create_questionnaire_targets_table.php)
+- [2026_04_17_093035_create_roles_table.php](file://database/migrations/2026_04_17_093035_create_roles_table.php)
 - [rbac.php](file://config/rbac.php)
 - [07-scoring.md](file://.clinerules/07-scoring.md)
 </cite>
@@ -32,6 +33,7 @@
 - Updated analytics computation to use dynamic role slugs from questionnaire targets
 - Enhanced scoring service architecture with database-backed role management
 - Improved role label resolution with fallback to configuration-based labels
+- Implemented comprehensive dynamic target group management system with Questionnaire model enhancements
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -521,6 +523,7 @@ boolean is_active
 - [2026_04_16_020000_create_responses_table.php:10-22](file://database/migrations/2026_04_16_020000_create_responses_table.php#L10-L22)
 - [2026_04_16_020100_create_answers_table.php:10-22](file://database/migrations/2026_04_16_020100_create_answers_table.php#L10-L22)
 - [2026_04_16_010240_create_questionnaire_targets_table.php:11-18](file://database/migrations/2026_04_16_010240_create_questionnaire_targets_table.php#L11-L18)
+- [2026_04_17_093035_create_roles_table.php:14-21](file://database/migrations/2026_04_17_093035_create_roles_table.php#L14-L21)
 - [Departement.php](file://app/Models/Departement.php)
 - [User.php](file://app/Models/User.php)
 - [Role.php](file://app/Models/Role.php)

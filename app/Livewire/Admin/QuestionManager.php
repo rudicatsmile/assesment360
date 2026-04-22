@@ -93,7 +93,7 @@ class QuestionManager extends Component
     public function updatedType(): void
     {
         if ($this->usesSelectableOptions() && $this->options === []) {
-            $this->options = [$this->blankOption(), $this->blankOption()];
+            $this->options = $this->defaultOptions();
         }
 
         if (!$this->usesSelectableOptions()) {
@@ -268,8 +268,22 @@ class QuestionManager extends Component
         $this->question_text = '';
         $this->type = 'single_choice';
         $this->is_required = true;
-        $this->options = [$this->blankOption(), $this->blankOption()];
+        $this->options = $this->defaultOptions();
         $this->resetErrorBag();
+    }
+
+    /**
+     * @return array<int, array{id: int|null, option_text: string, score: int|null}>
+     */
+    private function defaultOptions(): array
+    {
+        return [
+            ['id' => null, 'option_text' => 'Sangat Tidak Setuju', 'score' => 1],
+            ['id' => null, 'option_text' => 'Tidak Setuju',        'score' => 2],
+            ['id' => null, 'option_text' => 'Netral',              'score' => 3],
+            ['id' => null, 'option_text' => 'Setuju',              'score' => 4],
+            ['id' => null, 'option_text' => 'Sangat Setuju',       'score' => 5],
+        ];
     }
 
     public function render()
