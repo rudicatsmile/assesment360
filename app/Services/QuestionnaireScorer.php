@@ -19,7 +19,7 @@ class QuestionnaireScorer
 
         return $question->answerOptions
             ->firstWhere('id', $optionId)
-                ?->score;
+            ?->score;
     }
 
     /**
@@ -32,7 +32,17 @@ class QuestionnaireScorer
      */
     public function summarizeQuestionnaire(Questionnaire $questionnaire): array
     {
-        $roles = array_values(array_unique(array_filter((array) config('rbac.questionnaire_target_slugs', []))));
+        $roles = $questionnaire->targets()
+            ->pluck('target_group')
+            ->unique()
+            ->values()
+            ->all();
+
+        $roleLabels = \App\Models\Role::query()
+            ->whereIn('slug', $roles)
+            ->pluck('name', 'slug')
+            ->all();
+
         $responseBase = Response::query()
             ->where('questionnaire_id', $questionnaire->id)
             ->where('status', 'submitted');
@@ -98,16 +108,17 @@ class QuestionnaireScorer
 
         return [
             'respondent_breakdown' => collect($roles)
-                ->mapWithKeys(fn (string $role): array => [$role => (int) ($respondentBreakdown[$role] ?? 0)])
+                ->mapWithKeys(fn(string $role): array => [$role => (int) ($respondentBreakdown[$role] ?? 0)])
                 ->all(),
             'averages' => [
                 'overall' => round($overallAverage, 2),
                 'per_group' => collect($roles)
-                    ->mapWithKeys(fn (string $role): array => [$role => (float) ($groupAverages[$role] ?? 0)])
+                    ->mapWithKeys(fn(string $role): array => [$role => (float) ($groupAverages[$role] ?? 0)])
                     ->all(),
             ],
             'question_scores' => $questionScores,
             'distribution' => $distribution,
+            'role_labels' => $roleLabels,
         ];
     }
 

@@ -26,14 +26,14 @@ class QuestionnaireAnalytics extends Component
 
     public function render()
     {
-        $roleSlugs = array_values(array_unique(array_filter((array) config('rbac.questionnaire_target_slugs', []))));
-        $roleLabels = (array) config('rbac.role_labels', []);
-
         $analytics = Cache::remember(
             $this->analyticsCacheKey(),
             now()->addMinutes(5),
             fn(): array => app(QuestionnaireScorer::class)->summarizeQuestionnaire($this->questionnaire)
         );
+
+        $roleSlugs = array_keys($analytics['respondent_breakdown']);
+        $roleLabels = $analytics['role_labels'] ?? [];
 
         $chartGroupLabels = collect($roleSlugs)
             ->map(fn(string $slug): string => (string) ($roleLabels[$slug] ?? str($slug)->replace('_', ' ')->title()))
