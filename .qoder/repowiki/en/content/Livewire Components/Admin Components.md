@@ -25,7 +25,7 @@
 - [Questionnaire.php](file://app/Models/Questionnaire.php)
 - [Question.php](file://app/Models/Question.php)
 - [AnswerOption.php](file://app/Models/AnswerOption.php)
-- [QuestionnaireTargets.php](file://app/Models/QuestionnaireTarget.php)
+- [QuestionnaireTarget.php](file://app/Models/QuestionnaireTarget.php)
 - [Response.php](file://app/Models/Response.php)
 - [QuestionnaireScorer.php](file://app/Services/QuestionnaireScorer.php)
 - [DepartmentAnalyticsService.php](file://app/Services/DepartmentAnalyticsService.php)
@@ -42,16 +42,17 @@
 - [UpdateQuestionRequest.php](file://app/Http/Requests/UpdateQuestionRequest.php)
 - [rbac.php](file://config/rbac.php)
 - [admin.blade.php](file://resources/views/layouts/admin.blade.php)
+- [2026_04_16_010240_create_questionnaire_targets_table.php](file://database/migrations/2026_04_16_010240_create_questionnaire_targets_table.php)
 - [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Enhanced UserDirectory component with comprehensive time limit management capabilities
-- Added individual user time limit configuration with hours and minutes components
-- Implemented user fill session reset functionality for administrators
-- Integrated time-based access control with questionnaire filling system
-- Updated database schema to support time limit tracking and session management
+- Enhanced QuestionnaireList component with new target group filtering capability
+- Added dynamic dropdown options for questionnaire target groups in all questionnaire management components
+- Integrated target group filtering with existing search and status filters
+- Updated QuestionnaireForm and QuestionnaireAssignment components to support dynamic target group options
+- Enhanced Questionnaire model with improved target group management and validation
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -66,10 +67,10 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the admin-focused Livewire components that power the assessment platform. It covers the admin dashboard, department management, user administration, role management, and questionnaire lifecycle management (creation, editing, assignment, analytics). The UserDirectory component has been significantly enhanced with time limit management capabilities, allowing administrators to set individual time limits for users, reset user fill sessions, and manage time-based access controls. It also explains component state management, form handling, validation, real-time updates, integration with admin layouts and navigation, security considerations, data filtering, and bulk operations.
+This document describes the admin-focused Livewire components that power the assessment platform. It covers the admin dashboard, department management, user administration, role management, and questionnaire lifecycle management (creation, editing, assignment, analytics). The questionnaire management system has been significantly enhanced with comprehensive target group filtering capabilities, allowing administrators to filter questionnaires by target groups, assign target groups dynamically, and manage questionnaire access controls more effectively. The UserDirectory component has also been enhanced with time limit management capabilities, enabling administrators to set individual time limits for users, reset user fill sessions, and manage time-based access controls. It explains component state management, form handling, validation, real-time updates, integration with admin layouts and navigation, security considerations, data filtering, and bulk operations.
 
 ## Project Structure
-The admin components are organized under the Livewire Admin namespace and paired with Blade views. They integrate with middleware for role-based access control and leverage Laravel requests for validation. The UserDirectory component now includes advanced time limit management features integrated with the questionnaire filling system.
+The admin components are organized under the Livewire Admin namespace and paired with Blade views. They integrate with middleware for role-based access control and leverage Laravel requests for validation. The questionnaire management system now includes advanced target group filtering and dynamic option management, while the UserDirectory component includes advanced time limit management features integrated with the questionnaire filling system.
 
 ```mermaid
 graph TB
@@ -78,9 +79,9 @@ AD["AdminDashboard"]
 DDir["DepartmentDirectory"]
 UDir["UserDirectory<br/>+ Time Limit Management"]
 RDir["RoleDirectory"]
-QForm["QuestionnaireForm"]
-QList["QuestionnaireList"]
-QAssign["QuestionnaireAssignment"]
+QForm["QuestionnaireForm<br/>+ Dynamic Target Groups"]
+QList["QuestionnaireList<br/>+ Target Group Filtering"]
+QAssign["QuestionnaireAssignment<br/>+ Dynamic Options"]
 QMgr["QuestionManager"]
 end
 subgraph "Blade Views"
@@ -88,19 +89,19 @@ VAD["admin-dashboard.blade.php"]
 VDD["department-directory.blade.php"]
 VUD["user-directory.blade.php<br/>+ Time Limit UI"]
 VRD["role-directory.blade.php"]
-VQF["questionnaire-form.blade.php"]
-VQL["questionnaire-list.blade.php"]
-VQA["questionnaire-assignment.blade.php"]
+VQF["questionnaire-form.blade.php<br/>+ Target Group Dropdown"]
+VQL["questionnaire-list.blade.php<br/>+ Target Group Filter"]
+VQA["questionnaire-assignment.blade.php<br/>+ Dynamic Options"]
 VQM["question-manager.blade.php"]
 end
 subgraph "Models & Database"
 MDept["Departement"]
 MRole["Role"]
 MUser["User<br/>+ time_limit_minutes<br/>+ filling_started_at"]
-MQ["Questionnaire"]
+MQ["Questionnaire<br/>+ Target Group Options"]
 MQst["Question"]
 MOpt["AnswerOption"]
-MTgt["QuestionnaireTarget"]
+MTgt["QuestionnaireTarget<br/>+ Dynamic Slugs"]
 MResp["Response<br/>+ status field"]
 end
 subgraph "Fill System Integration"
@@ -130,6 +131,12 @@ AQ --> MUser
 ```
 
 **Diagram sources**
+- [QuestionnaireList.php:21](file://app/Livewire/Admin/QuestionnaireList.php#L21)
+- [QuestionnaireList.php:81](file://app/Livewire/Admin/QuestionnaireList.php#L81)
+- [QuestionnaireForm.php:36-47](file://app/Livewire/Admin/QuestionnaireForm.php#L36-L47)
+- [QuestionnaireAssignment.php:29-36](file://app/Livewire/Admin/QuestionnaireAssignment.php#L29-L36)
+- [Questionnaire.php:115-131](file://app/Models/Questionnaire.php#L115-L131)
+- [QuestionnaireTarget.php:14-17](file://app/Models/QuestionnaireTarget.php#L14-L17)
 - [UserDirectory.php:18-61](file://app/Livewire/Admin/UserDirectory.php#L18-L61)
 - [user-directory.blade.php:78-98](file://resources/views/livewire/admin/user-directory.blade.php#L78-L98)
 - [AvailableQuestionnaires.php:152-165](file://app/Livewire/Fill/AvailableQuestionnaires.php#L152-L165)
@@ -141,9 +148,9 @@ AQ --> MUser
 - [DepartmentDirectory.php:12-162](file://app/Livewire/Admin/DepartmentDirectory.php#L12-L162)
 - [UserDirectory.php:16-420](file://app/Livewire/Admin/UserDirectory.php#L16-L420)
 - [RoleDirectory.php:11-156](file://app/Livewire/Admin/RoleDirectory.php#L11-L156)
-- [QuestionnaireForm.php:14-132](file://app/Livewire/Admin/QuestionnaireForm.php#L14-L132)
-- [QuestionnaireList.php:11-81](file://app/Livewire/Admin/QuestionnaireList.php#L11-L81)
-- [QuestionnaireAssignment.php:10-90](file://app/Livewire/Admin/QuestionnaireAssignment.php#L10-L90)
+- [QuestionnaireForm.php:14-138](file://app/Livewire/Admin/QuestionnaireForm.php#L14-L138)
+- [QuestionnaireList.php:11-91](file://app/Livewire/Admin/QuestionnaireList.php#L11-L91)
+- [QuestionnaireAssignment.php:10-91](file://app/Livewire/Admin/QuestionnaireAssignment.php#L10-L91)
 - [QuestionManager.php:15-281](file://app/Livewire/Admin/QuestionManager.php#L15-L281)
 
 ## Core Components
@@ -151,9 +158,9 @@ AQ --> MUser
 - DepartmentDirectory: CRUD for departments with search, pagination, sorting, and validation.
 - UserDirectory: **Enhanced** Full user administration with filters, sorting, password handling, role/department resolution, and comprehensive time limit management including individual user time limits and session reset capabilities.
 - RoleDirectory: Role management with validation and alias-aware persistence.
-- QuestionnaireForm: Creates/edit questionnaires, manages targets, and redirects to edit page after save.
-- QuestionnaireList: Lists questionnaires with search, status filter, and actions (publish/close/delete).
-- QuestionnaireAssignment: Assigns target groups to questionnaires with validation and alias normalization.
+- QuestionnaireForm: **Enhanced** Creates/edit questionnaires with dynamic target group dropdown options, manages targets, and redirects to edit page after save.
+- QuestionnaireList: **Enhanced** Lists questionnaires with search, status filter, target group filter, and actions (publish/close/delete).
+- QuestionnaireAssignment: **Enhanced** Assigns target groups to questionnaires with dynamic dropdown options, validation, and alias normalization.
 - QuestionManager: Manages questions and answer options per questionnaire, supports ordering and scoring.
 
 **Section sources**
@@ -161,36 +168,42 @@ AQ --> MUser
 - [DepartmentDirectory.php:35-161](file://app/Livewire/Admin/DepartmentDirectory.php#L35-L161)
 - [UserDirectory.php:56-420](file://app/Livewire/Admin/UserDirectory.php#L56-L420)
 - [RoleDirectory.php:28-155](file://app/Livewire/Admin/RoleDirectory.php#L28-L155)
-- [QuestionnaireForm.php:40-131](file://app/Livewire/Admin/QuestionnaireForm.php#L40-L131)
-- [QuestionnaireList.php:21-80](file://app/Livewire/Admin/QuestionnaireList.php#L21-L80)
-- [QuestionnaireAssignment.php:27-90](file://app/Livewire/Admin/QuestionnaireAssignment.php#L27-L90)
+- [QuestionnaireForm.php:40-138](file://app/Livewire/Admin/QuestionnaireForm.php#L40-L138)
+- [QuestionnaireList.php:21-91](file://app/Livewire/Admin/QuestionnaireList.php#L21-L91)
+- [QuestionnaireAssignment.php:27-91](file://app/Livewire/Admin/QuestionnaireAssignment.php#L27-L91)
 - [QuestionManager.php:35-280](file://app/Livewire/Admin/QuestionManager.php#L35-L280)
 
 ## Architecture Overview
-The admin components follow a layered pattern with enhanced time limit management integration:
-- Presentation: Blade views bind Livewire component properties and event handlers, including time limit configuration UI.
-- State: Livewire component properties manage UI state, form data, and time limit configurations.
-- Validation: Request classes define strict validation rules for forms including time limit inputs.
-- Persistence: Eloquent models encapsulate data access, relationships, and time limit tracking.
+The admin components follow a layered pattern with enhanced target group filtering and time limit management integration:
+- Presentation: Blade views bind Livewire component properties and event handlers, including dynamic target group dropdowns and time limit configuration UI.
+- State: Livewire component properties manage UI state, form data, target group options, and time limit configurations.
+- Validation: Request classes define strict validation rules for forms including target group selections and time limit inputs.
+- Persistence: Eloquent models encapsulate data access, relationships, target group management, and time limit tracking.
 - Security: Middleware and authorization gates enforce role-based access.
 - Caching: Dashboard metrics are cached to reduce database load.
-- **Enhanced Integration**: User time limits integrate with the questionnaire filling system for real-time access control.
+- **Enhanced Integration**: Target group filtering integrates with questionnaire assignment system, while user time limits integrate with the questionnaire filling system for real-time access control.
 
 ```mermaid
 graph TB
-UI["Blade Views<br/>+ Time Limit UI"] --> LW["Livewire Components<br/>+ Time Limit Logic"]
+UI["Blade Views<br/>+ Dynamic Target Group Dropdowns<br/>+ Time Limit UI"] --> LW["Livewire Components<br/>+ Target Group Filtering<br/>+ Time Limit Logic"]
 LW --> AUTH["Authorization & Middleware"]
-LW --> REQ["Validation Requests<br/>+ Time Limit Validation"]
+LW --> REQ["Validation Requests<br/>+ Target Group Validation<br/>+ Time Limit Validation"]
 LW --> SVC["Services (optional)"]
-LW --> DB["Eloquent Models<br/>+ Time Limit Fields"]
+LW --> DB["Eloquent Models<br/>+ Target Group Options<br/>+ Time Limit Fields"]
 DB --> CACHE["Cache Layer"]
-DB --> FILL["Fill System<br/>+ Session Timer"]
-AUTH --> RBAC["RBAC Config"]
-FILL --> TIME["Time Limit Logic<br/>+ Session Management"]
+DB --> FILL["Fill System<br/>+ Session Timer<br/>+ Target Group Access"]
+AUTH --> RBAC["RBAC Config<br/>+ Target Aliases"]
+FILL --> TIME["Time Limit Logic<br/>+ Session Management<br/>+ Access Control"]
 ```
 
 **Diagram sources**
+- [questionnaire-list.blade.php:37-46](file://resources/views/livewire/admin/questionnaire-list.blade.php#L37-L46)
+- [questionnaire-form.blade.php:109-121](file://resources/views/livewire/admin/questionnaire-form.blade.php#L109-L121)
+- [questionnaire-assignment.blade.php:13-26](file://resources/views/livewire/admin/questionnaire-assignment.blade.php#L13-L26)
 - [user-directory.blade.php:78-98](file://resources/views/livewire/admin/user-directory.blade.php#L78-L98)
+- [QuestionnaireList.php:21](file://app/Livewire/Admin/QuestionnaireList.php#L21)
+- [QuestionnaireList.php:81](file://app/Livewire/Admin/QuestionnaireList.php#L81)
+- [Questionnaire.php:115-131](file://app/Models/Questionnaire.php#L115-L131)
 - [UserDirectory.php:131-193](file://app/Livewire/Admin/UserDirectory.php#L131-L193)
 - [AvailableQuestionnaires.php:152-165](file://app/Livewire/Fill/AvailableQuestionnaires.php#L152-L165)
 - [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php:14-16](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php#L14-L16)
@@ -200,9 +213,9 @@ FILL --> TIME["Time Limit Logic<br/>+ Session Management"]
 - [DepartmentDirectory.php:15-161](file://app/Livewire/Admin/DepartmentDirectory.php#L15-L161)
 - [UserDirectory.php:19-420](file://app/Livewire/Admin/UserDirectory.php#L19-L420)
 - [RoleDirectory.php:14-155](file://app/Livewire/Admin/RoleDirectory.php#L14-L155)
-- [QuestionnaireForm.php:17-131](file://app/Livewire/Admin/QuestionnaireForm.php#L17-L131)
-- [QuestionnaireList.php:14-80](file://app/Livewire/Admin/QuestionnaireList.php#L14-L80)
-- [QuestionnaireAssignment.php:12-90](file://app/Livewire/Admin/QuestionnaireAssignment.php#L12-L90)
+- [QuestionnaireForm.php:17-138](file://app/Livewire/Admin/QuestionnaireForm.php#L17-L138)
+- [QuestionnaireList.php:14-91](file://app/Livewire/Admin/QuestionnaireList.php#L14-L91)
+- [QuestionnaireAssignment.php:12-91](file://app/Livewire/Admin/QuestionnaireAssignment.php#L12-L91)
 - [QuestionManager.php:18-280](file://app/Livewire/Admin/QuestionManager.php#L18-L280)
 
 ## Detailed Component Analysis
@@ -338,25 +351,27 @@ Reset --> Render
 - [role-directory.blade.php:1-105](file://resources/views/livewire/admin/role-directory.blade.php#L1-L105)
 
 ### QuestionnaireForm
-- Purpose: Create or edit a questionnaire and sync target groups.
-- State: Holds title, description, dates, status, and target groups; resolves labels from configuration.
-- Validation: Uses dedicated request classes for create/update.
-- Behavior: On save, persists questionnaire and target groups; redirects to edit page.
+- Purpose: **Enhanced** Create or edit a questionnaire with dynamic target group dropdown options and sync target groups.
+- State: Holds title, description, dates, status, time limit, and target groups; resolves dynamic target group options from configuration.
+- Validation: Uses dedicated request classes for create/update with target group validation.
+- Behavior: On save, persists questionnaire and target groups; redirects to edit page; provides dynamic target group options with labels.
 
 ```mermaid
 sequenceDiagram
 participant U as "User"
 participant C as "QuestionnaireForm"
+participant CFG as "RBAC Config"
 participant DB as "Database"
 U->>C : "Open form (create/edit)"
-C->>C : "Resolve target group options and labels"
+C->>CFG : "Load target group options and labels"
+C->>C : "Prepare default target group selection"
 alt "Edit"
 C->>DB : "Load existing questionnaire"
 else "Create"
 C->>C : "Prepare defaults"
 end
 U->>C : "Submit form"
-C->>C : "Validate with request rules"
+C->>C : "Validate with request rules and target groups"
 alt "Edit"
 C->>DB : "Update questionnaire"
 else "Create"
@@ -367,24 +382,26 @@ C-->>U : "Flash success and redirect to edit"
 ```
 
 **Diagram sources**
-- [QuestionnaireForm.php:40-106](file://app/Livewire/Admin/QuestionnaireForm.php#L40-L106)
+- [QuestionnaireForm.php:42-75](file://app/Livewire/Admin/QuestionnaireForm.php#L42-L75)
+- [QuestionnaireForm.php:107-112](file://app/Livewire/Admin/QuestionnaireForm.php#L107-L112)
 - [questionnaire-form.blade.php:23-132](file://resources/views/livewire/admin/questionnaire-form.blade.php#L23-L132)
 
 **Section sources**
-- [QuestionnaireForm.php:40-131](file://app/Livewire/Admin/QuestionnaireForm.php#L40-L131)
+- [QuestionnaireForm.php:40-138](file://app/Livewire/Admin/QuestionnaireForm.php#L40-L138)
 - [questionnaire-form.blade.php:1-149](file://resources/views/livewire/admin/questionnaire-form.blade.php#L1-L149)
 - [StoreQuestionnaireRequest.php](file://app/Http/Requests/StoreQuestionnaireRequest.php)
 - [UpdateQuestionnaireRequest.php](file://app/Http/Requests/UpdateQuestionnaireRequest.php)
 
 ### QuestionnaireList
-- Purpose: List questionnaires with search, status filter, and actions.
-- State: Tracks search and status filter.
+- Purpose: **Enhanced** List questionnaires with search, status filter, target group filter, and actions.
+- State: Tracks search, status filter, and target group filter.
+- **New Feature**: Target group filtering capability with dynamic dropdown options.
 - Actions: Publish (set status to active), close (set status to closed), delete.
 
 ```mermaid
 flowchart TD
-Start(["Open Questionnaire List"]) --> ApplyFilters["Apply search and status filter"]
-ApplyFilters --> Render["Render paginated list"]
+Start(["Open Questionnaire List"]) --> ApplyFilters["Apply search, status, and target group filters"]
+ApplyFilters --> Render["Render paginated list with target group badges"]
 Render --> Action{"Action?"}
 Action --> |Publish| Publish["Set status to active"]
 Action --> |Close| Close["Set status to closed"]
@@ -398,15 +415,17 @@ Reset --> Render
 
 **Diagram sources**
 - [QuestionnaireList.php:36-59](file://app/Livewire/Admin/QuestionnaireList.php#L36-L59)
-- [questionnaire-list.blade.php:44-142](file://resources/views/livewire/admin/questionnaire-list.blade.php#L44-L142)
+- [QuestionnaireList.php:70-83](file://app/Livewire/Admin/QuestionnaireList.php#L70-L83)
+- [questionnaire-list.blade.php:37-46](file://resources/views/livewire/admin/questionnaire-list.blade.php#L37-L46)
 
 **Section sources**
-- [QuestionnaireList.php:21-80](file://app/Livewire/Admin/QuestionnaireList.php#L21-L80)
-- [questionnaire-list.blade.php:1-144](file://resources/views/livewire/admin/questionnaire-list.blade.php#L1-L144)
+- [QuestionnaireList.php:21-91](file://app/Livewire/Admin/QuestionnaireList.php#L21-L91)
+- [questionnaire-list.blade.php:1-137](file://resources/views/livewire/admin/questionnaire-list.blade.php#L1-L137)
 
 ### QuestionnaireAssignment
-- Purpose: Assign target groups to a questionnaire with validation and alias normalization.
-- State: Holds selected target groups, available options, and labels.
+- Purpose: **Enhanced** Assign target groups to a questionnaire with dynamic dropdown options, validation, and alias normalization.
+- State: Holds selected target groups, available options, and labels loaded from dynamic configuration.
+- **New Feature**: Dynamic target group dropdown options with automatic label resolution.
 - Behavior: Normalizes aliases via configuration, validates selection, syncs target groups, and dispatches an event to refresh parent.
 
 ```mermaid
@@ -426,12 +445,13 @@ C-->>U : "Flash saved message and dispatch event"
 ```
 
 **Diagram sources**
-- [QuestionnaireAssignment.php:27-68](file://app/Livewire/Admin/QuestionnaireAssignment.php#L27-L68)
-- [questionnaire-assignment.blade.php:1-37](file://resources/views/livewire/admin/questionnaire-assignment.blade.php#L1-L37)
+- [QuestionnaireAssignment.php:27-54](file://app/Livewire/Admin/QuestionnaireAssignment.php#L27-L54)
+- [QuestionnaireAssignment.php:79-89](file://app/Livewire/Admin/QuestionnaireAssignment.php#L79-L89)
+- [questionnaire-assignment.blade.php:13-26](file://resources/views/livewire/admin/questionnaire-assignment.blade.php#L13-L26)
 - [rbac.php](file://config/rbac.php)
 
 **Section sources**
-- [QuestionnaireAssignment.php:27-90](file://app/Livewire/Admin/QuestionnaireAssignment.php#L27-L90)
+- [QuestionnaireAssignment.php:27-91](file://app/Livewire/Admin/QuestionnaireAssignment.php#L27-L91)
 - [questionnaire-assignment.blade.php:1-37](file://resources/views/livewire/admin/questionnaire-assignment.blade.php#L1-L37)
 
 ### QuestionManager
@@ -471,22 +491,27 @@ Cleanup --> Success["Flash success and reset form"]
 - Validation is centralized in request classes.
 - Security is enforced via middleware and authorization gates.
 - Configuration-driven behavior (RBAC) influences component logic.
-- **Enhanced Integration**: User time limits integrate with the questionnaire filling system for real-time access control.
+- **Enhanced Integration**: Target group filtering integrates with questionnaire assignment system, while user time limits integrate with the questionnaire filling system for real-time access control.
 
 ```mermaid
 graph LR
-LW["Livewire Components<br/>+ Time Limit Logic"] --> M["Models<br/>+ Time Limit Fields"]
-LW --> RQ["Validation Requests<br/>+ Time Limit Validation"]
+LW["Livewire Components<br/>+ Target Group Filtering<br/>+ Time Limit Logic"] --> M["Models<br/>+ Target Group Options<br/>+ Time Limit Fields"]
+LW --> RQ["Validation Requests<br/>+ Target Group Validation<br/>+ Time Limit Validation"]
 LW --> MW["Middleware"]
-LW --> CFG["RBAC Config"]
-M --> DB["Database<br/>+ Time Limit Schema"]
-M --> FILL["Fill System<br/>+ Session Timer"]
+LW --> CFG["RBAC Config<br/>+ Target Aliases"]
+M --> DB["Database<br/>+ Target Group Schema<br/>+ Time Limit Schema"]
+M --> FILL["Fill System<br/>+ Session Timer<br/>+ Access Control"]
 RQ --> DB
 MW --> RBAC["RBAC Policy"]
 FILL --> TIME["Time Limit Logic<br/>+ Session Management"]
 ```
 
 **Diagram sources**
+- [QuestionnaireList.php:21](file://app/Livewire/Admin/QuestionnaireList.php#L21)
+- [QuestionnaireList.php:81](file://app/Livewire/Admin/QuestionnaireList.php#L81)
+- [QuestionnaireForm.php:44-47](file://app/Livewire/Admin/QuestionnaireForm.php#L44-L47)
+- [QuestionnaireAssignment.php:29-36](file://app/Livewire/Admin/QuestionnaireAssignment.php#L29-L36)
+- [Questionnaire.php:115-131](file://app/Models/Questionnaire.php#L115-L131)
 - [UserDirectory.php:131-193](file://app/Livewire/Admin/UserDirectory.php#L131-L193)
 - [AvailableQuestionnaires.php:152-165](file://app/Livewire/Fill/AvailableQuestionnaires.php#L152-L165)
 - [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php:14-16](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php#L14-L16)
@@ -510,12 +535,13 @@ FILL --> TIME["Time Limit Logic<br/>+ Session Management"]
 - Efficient queries: Components use eager loading and selective field retrieval.
 - Debounced live updates: Inputs use debounced binding to minimize server round trips.
 - Bulk operations: Deletion safeguards prevent accidental mass deletions; alias normalization avoids redundant writes.
-- **Enhanced**: Time limit calculations are performed efficiently using simple arithmetic operations and database queries.
+- **Enhanced**: Target group filtering uses efficient whereHas queries with proper indexing; time limit calculations are performed efficiently using simple arithmetic operations and database queries.
 
 ## Troubleshooting Guide
 - Validation errors: Review request classes for precise validation messages and rules.
 - Authorization failures: Ensure user roles and permissions align with middleware and authorization gates.
 - Target group assignment: Verify RBAC aliases and availability; ensure at least one target remains selected.
+- **New Issue**: Target group filtering not working: Check that target group options are properly configured in RBAC config and that the questionnaire_targets table has valid entries.
 - Soft deletes: Some delete actions are soft deletes; confirm model behavior and restore procedures.
 - Logging: Components log significant changes; review logs for audit trails.
 - **New Issues**: Time limit configuration errors: Verify that hours and minutes inputs are properly validated and converted to total minutes.
@@ -534,7 +560,7 @@ FILL --> TIME["Time Limit Logic<br/>+ Session Management"]
 - [RedirectByRole.php](file://app/Http/Middleware/RedirectByRole.php)
 
 ## Conclusion
-The admin components provide a cohesive, secure, and efficient interface for managing departments, users, roles, and questionnaires. They emphasize real-time UX with Livewire, robust validation via request classes, strong authorization via middleware and policies, and configurable behavior through RBAC settings. **The UserDirectory component has been significantly enhanced with comprehensive time limit management capabilities**, allowing administrators to set individual time limits for users, reset user fill sessions, and manage time-based access controls, integrating seamlessly with the questionnaire filling system.
+The admin components provide a cohesive, secure, and efficient interface for managing departments, users, roles, and questionnaires. They emphasize real-time UX with Livewire, robust validation via request classes, strong authorization via middleware and policies, and configurable behavior through RBAC settings. **The questionnaire management system has been significantly enhanced with comprehensive target group filtering capabilities**, allowing administrators to filter questionnaires by target groups, assign target groups dynamically with proper validation, and manage questionnaire access controls more effectively. **The UserDirectory component has been significantly enhanced with comprehensive time limit management capabilities**, allowing administrators to set individual time limits for users, reset user fill sessions, and manage time-based access controls, integrating seamlessly with the questionnaire filling system.
 
 ## Appendices
 
@@ -542,7 +568,7 @@ The admin components provide a cohesive, secure, and efficient interface for man
 - Live bindings: Many inputs use live binding with debouncing to balance responsiveness and performance.
 - Events: Components emit and listen to events (e.g., target-groups-updated) to synchronize state across panels.
 - Flash messages: Success/error feedback is surfaced via session flash messages.
-- **Enhanced**: Time limit inputs use live debounced binding for real-time conversion and validation.
+- **Enhanced**: Target group filtering uses live debounced binding for real-time filtering; time limit inputs use live debounced binding for real-time conversion and validation.
 
 **Section sources**
 - [questionnaire-form.blade.php:109-121](file://resources/views/livewire/admin/questionnaire-form.blade.php#L109-L121)
@@ -563,7 +589,7 @@ The admin components provide a cohesive, secure, and efficient interface for man
 - Password handling: Passwords are hashed during create/update.
 - Self-protection: Deleting self is prevented in user management.
 - Logging: Administrative actions are logged for auditability.
-- **Enhanced**: Time limit management includes proper validation and sanitization of time inputs.
+- **Enhanced**: Target group filtering includes proper validation and sanitization of target group inputs; time limit management includes proper validation and sanitization of time inputs.
 
 **Section sources**
 - [EnsureUserIsAdmin.php](file://app/Http/Middleware/EnsureUserIsAdmin.php)
@@ -573,13 +599,54 @@ The admin components provide a cohesive, secure, and efficient interface for man
 
 ### Data Filtering and Bulk Operations
 - Filtering: Users, roles, and questionnaires support multiple filters and sorting.
+- **Enhanced**: QuestionnaireList now supports target group filtering with dynamic dropdown options.
 - Bulk operations: While individual actions are exposed, bulk operations are not explicitly implemented in the reviewed components.
 - **Enhanced**: UserDirectory supports time limit filtering and management through individual user configuration.
 
 **Section sources**
 - [UserDirectory.php:286-420](file://app/Livewire/Admin/UserDirectory.php#L286-L420)
 - [RoleDirectory.php:137-155](file://app/Livewire/Admin/RoleDirectory.php#L137-L155)
-- [QuestionnaireList.php:61-80](file://app/Livewire/Admin/QuestionnaireList.php#L61-L80)
+- [QuestionnaireList.php:61-91](file://app/Livewire/Admin/QuestionnaireList.php#L61-L91)
+
+### Target Group Filtering and Management Features
+**New Section**: The questionnaire management system now includes comprehensive target group filtering and management capabilities:
+
+#### Target Group Filtering
+- **Dynamic Dropdown Options**: QuestionnaireList now includes a target group filter dropdown populated with dynamic options from the Questionnaire model.
+- **Real-time Filtering**: Target group filtering works alongside existing search and status filters with live debounced binding.
+- **Comprehensive Coverage**: All questionnaire management components (List, Form, Assignment) now support target group filtering.
+
+#### Dynamic Target Group Options
+- **Configuration-driven**: Target group options are loaded from RBAC configuration and Role model relationships.
+- **Automatic Label Resolution**: Target group labels are automatically resolved from role names with proper formatting.
+- **Consistent Options**: All components use the same target group option source for consistency.
+
+#### Enhanced Questionnaire Management
+- **QuestionnaireForm**: Now includes dynamic target group dropdown with default selection and label resolution.
+- **QuestionnaireAssignment**: Provides dynamic target group checkboxes with validation and alias normalization.
+- **QuestionnaireList**: Displays target group badges and supports filtering by target groups.
+
+#### Database Integration
+- **QuestionnaireTargets Table**: New table structure supports multiple target groups per questionnaire with unique constraints.
+- **Target Group Options**: Dynamic options loaded from Role model with slug/name pairs.
+- **Alias Support**: RBAC configuration supports target group aliases for flexible mapping.
+
+#### Frontend Implementation
+- **Dropdown Integration**: Target group filter dropdown in questionnaire list with proper debounced binding.
+- **Checkbox Interface**: Dynamic target group selection in assignment component with validation feedback.
+- **Badge Display**: Target group badges in questionnaire list with proper formatting.
+
+**Section sources**
+- [QuestionnaireList.php:21](file://app/Livewire/Admin/QuestionnaireList.php#L21)
+- [QuestionnaireList.php:81](file://app/Livewire/Admin/QuestionnaireList.php#L81)
+- [QuestionnaireList.php:87](file://app/Livewire/Admin/QuestionnaireList.php#L87)
+- [questionnaire-list.blade.php:37-46](file://resources/views/livewire/admin/questionnaire-list.blade.php#L37-L46)
+- [QuestionnaireForm.php:44-47](file://app/Livewire/Admin/QuestionnaireForm.php#L44-L47)
+- [QuestionnaireAssignment.php:29-36](file://app/Livewire/Admin/QuestionnaireAssignment.php#L29-L36)
+- [Questionnaire.php:115-131](file://app/Models/Questionnaire.php#L115-L131)
+- [QuestionnaireTarget.php:14-17](file://app/Models/QuestionnaireTarget.php#L14-L17)
+- [rbac.php](file://config/rbac.php)
+- [2026_04_16_010240_create_questionnaire_targets_table.php:11-18](file://database/migrations/2026_04_16_010240_create_questionnaire_targets_table.php#L11-L18)
 
 ### Time Limit Management Features
 **New Section**: The UserDirectory component now includes comprehensive time limit management capabilities:

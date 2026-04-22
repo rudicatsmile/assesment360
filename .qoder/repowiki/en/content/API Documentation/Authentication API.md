@@ -11,7 +11,16 @@
 - [config/services.php](file://config/services.php)
 - [config/features.php](file://config/features.php)
 - [config/rbac.php](file://config/rbac.php)
+- [app/Models/User.php](file://app/Models/User.php)
+- [database/migrations/2026_04_17_043615_add_phone_number_to_users_table.php](file://database/migrations/2026_04_17_043615_add_phone_number_to_users_table.php)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Updated phone number validation to reflect simplified Indonesian-only format
+- Modified authentication endpoints documentation to reflect fixed country code '+62'
+- Updated validation rules and error messages to match new Indonesian phone number requirements
+- Enhanced security considerations for Indonesian phone number format
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -26,7 +35,7 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the authentication system with phone-based login verification and WhatsApp webhook integration. It covers HTTP endpoints, request/response considerations, authentication middleware, security controls, rate limiting, and integration patterns with the WhatsApp Business API. The goal is to provide a clear, actionable guide for developers and operators to implement, test, and maintain the authentication flows.
+This document describes the authentication system with phone-based login verification and WhatsApp webhook integration. The system has been simplified to support Indonesian phone numbers only, using a fixed country code format. It covers HTTP endpoints, request/response considerations, authentication middleware, security controls, rate limiting, and integration patterns with the WhatsApp Business API. The goal is to provide a clear, actionable guide for developers and operators to implement, test, and maintain the authentication flows.
 
 ## Project Structure
 The authentication endpoints are defined in the web routes and handled by dedicated controllers. Supporting services and models encapsulate business logic and persistence.
@@ -45,6 +54,7 @@ WBS["WhatsAppBusinessService"]
 end
 subgraph "Models"
 PLV["PhoneLoginVerification"]
+USER["User"]
 end
 subgraph "Config"
 SVC["config/services.php"]
@@ -55,6 +65,7 @@ RWEB --> AC
 RWEB --> WHC
 AC --> WBS
 AC --> PLV
+AC --> USER
 WHC --> PLV
 WBS --> SVC
 AC --> FEAT
@@ -93,7 +104,8 @@ RWEB --> RBAC
 - RBAC middleware aliases for role-aware routing
 
 Key responsibilities:
-- Validate phone input and normalize E164 format
+- Validate Indonesian phone numbers with fixed '+62' country code format
+- Normalize phone numbers to E164 format (+62XXXXXXXXXX)
 - Create verification records with expiry and attempt limits
 - Send OTP via WhatsApp Business or compatible provider
 - Persist provider message ID and status
@@ -115,8 +127,8 @@ Key responsibilities:
 
 ## Architecture Overview
 High-level flow:
-- Client requests phone login and submits country code and phone number
-- Backend validates input, creates a verification record, and sends an OTP via WhatsApp
+- Client requests phone login with Indonesian phone number format
+- Backend validates input against Indonesian format, creates a verification record, and sends an OTP via WhatsApp
 - Client receives the code and submits it for verification
 - On success, the backend authenticates the user and redirects to the role-specific dashboard
 - Provider sends delivery status updates via webhook; backend updates the verification record
@@ -131,7 +143,7 @@ participant DB as "Database"
 participant WH as "WhatsAppWebhookController"
 C->>R : "POST /login/send-verification"
 R->>AC : "sendVerification()"
-AC->>AC : "validate and normalize phone"
+AC->>AC : "validate Indonesian phone format"
 AC->>DB : "create PhoneLoginVerification"
 AC->>WBS : "sendVerificationCode(phone, code)"
 WBS-->>AC : "{success, message_id}"
@@ -162,23 +174,23 @@ WH->>DB : "PATCH provider_status by provider_message_id"
 #### Endpoint: Send Verification Code
 - Method: POST
 - URL: /login/send-verification
-- Purpose: Initiate phone-based login by validating phone input, normalizing to E164, creating a verification record, and sending an OTP via WhatsApp
+- Purpose: Initiate phone-based login by validating Indonesian phone number format, creating a verification record, and sending an OTP via WhatsApp
 - Authentication: guest middleware (not authenticated yet)
 - Rate limit: throttle:10 per minute
 - Request body (JSON):
-  - country_code: string, required, format "+62"
-  - phone_number: string, required, digits 6-15
+  - phone_number: string, required, format "0[0-9]{6,14}" (Indonesian format starting with 0)
 - Response: Redirect with flash message
 - Behavior:
-  - Validates and normalizes phone number
+  - Validates Indonesian phone number format (must start with 0, 6-14 digits total)
+  - Normalizes to E164 format (+62XXXXXXXXXX)
   - Finds user by multiple candidate formats
   - Creates verification record with expiry and attempt limits
   - Sends OTP via configured WhatsApp provider
   - Stores masked phone and identifiers in session for subsequent verification
 
 Security and validation:
-- Country code enforced with regex pattern
-- Phone number enforced with regex pattern
+- **Updated**: Now enforces Indonesian-only phone number format with regex `/^0[0-9]{6,14}$/`
+- **Updated**: Fixed country code '+62' is automatically applied
 - User lookup supports multiple formats to improve usability
 - Verification expires after 5 minutes
 - Maximum 3 attempts per verification session
@@ -255,8 +267,8 @@ Represents a single phone-based login attempt with associated metadata and provi
 Fields:
 - id: auto-increment integer
 - user_id: foreign key to users
-- country_code: string (e.g., "+62")
-- phone_e164: string (E164), indexed
+- country_code: string (fixed "+62" for Indonesian numbers)
+- phone_e164: string (E164 format), indexed
 - verification_code_hash: string (hashed OTP)
 - attempt_count: tiny integer (default 0)
 - max_attempts: tiny integer (default 3)
@@ -344,6 +356,12 @@ class AuthController {
 +loginWithPassword(request)
 +sendVerification(request, service)
 +verifyCode(request)
+-normalizePhone(countryCode, phoneNumber) string
+-findUserByPhone(phoneE164, countryCode, phoneNumber) User?
+-maskPhone(phone) string
+-isExpired(expiresAt) bool
+-clearVerificationSession() void
+-resolveLoginMode() string
 }
 class WhatsAppWebhookController {
 +__invoke(request)
@@ -355,8 +373,12 @@ class WhatsAppBusinessService {
 class PhoneLoginVerification {
 +user() BelongsTo
 }
+class User {
++phone_number string
+}
 AuthController --> WhatsAppBusinessService : "uses"
 AuthController --> PhoneLoginVerification : "creates/updates"
+AuthController --> User : "finds"
 WhatsAppWebhookController --> PhoneLoginVerification : "updates status"
 ```
 
@@ -365,6 +387,7 @@ WhatsAppWebhookController --> PhoneLoginVerification : "updates status"
 - [app/Http/Controllers/Auth/WhatsAppWebhookController.php:11](file://app/Http/Controllers/Auth/WhatsAppWebhookController.php#L11)
 - [app/Services/WhatsAppBusinessService.php:8](file://app/Services/WhatsAppBusinessService.php#L8)
 - [app/Models/PhoneLoginVerification.php:31-34](file://app/Models/PhoneLoginVerification.php#L31-L34)
+- [app/Models/User.php:12](file://app/Models/User.php#L12)
 
 **Section sources**
 - [app/Http/Controllers/Auth/AuthController.php:17](file://app/Http/Controllers/Auth/AuthController.php#L17)
@@ -387,16 +410,14 @@ WhatsAppWebhookController --> PhoneLoginVerification : "updates status"
 - Logging:
   - Use structured logs for audit trails and incident response
 
-[No sources needed since this section provides general guidance]
-
 ## Troubleshooting Guide
 Common issues and resolutions:
 - Service not enabled or missing credentials:
   - Symptom: Failure to send OTP with a descriptive message
   - Resolution: Enable service and set base_url, access_token, template, and webhook_verify_token
-- Invalid phone number:
-  - Symptom: Validation errors or user not found
-  - Resolution: Ensure country_code and phone_number match expected formats
+- Invalid phone number format:
+  - Symptom: Validation errors with message "Format nomor telepon tidak valid. Gunakan format 08xxxxxxxxxx."
+  - Resolution: Ensure phone_number follows Indonesian format (starts with 0, 6-14 digits total)
 - Expired code:
   - Symptom: Verification fails with expiry message
   - Resolution: Request a new code; codes expire after 5 minutes
@@ -412,15 +433,13 @@ Common issues and resolutions:
 
 **Section sources**
 - [app/Services/WhatsAppBusinessService.php:28-35](file://app/Services/WhatsAppBusinessService.php#L28-L35)
-- [app/Http/Controllers/Auth/AuthController.php:72-78](file://app/Http/Controllers/Auth/AuthController.php#L72-L78)
+- [app/Http/Controllers/Auth/AuthController.php:61-65](file://app/Http/Controllers/Auth/AuthController.php#L61-L65)
 - [app/Http/Controllers/Auth/AuthController.php:156-162](file://app/Http/Controllers/Auth/AuthController.php#L156-L162)
 - [app/Http/Controllers/Auth/AuthController.php:164-170](file://app/Http/Controllers/Auth/AuthController.php#L164-L170)
 - [app/Http/Controllers/Auth/WhatsAppWebhookController.php:22-32](file://app/Http/Controllers/Auth/WhatsAppWebhookController.php#L22-L32)
 
 ## Conclusion
-The authentication system provides a robust phone-based login flow integrated with WhatsApp delivery and webhook status updates. By leveraging validated inputs, strict expiry and attempt limits, and configurable provider settings, it balances usability with security. Proper configuration of service credentials, webhook verification, and rate limiting ensures reliable operation.
-
-[No sources needed since this section summarizes without analyzing specific files]
+The authentication system provides a robust phone-based login flow integrated with WhatsApp delivery and webhook status updates. The system has been simplified to support Indonesian phone numbers only, using a fixed '+62' country code format. By leveraging validated Indonesian phone number inputs, strict expiry and attempt limits, and configurable provider settings, it balances usability with security. Proper configuration of service credentials, webhook verification, and rate limiting ensures reliable operation.
 
 ## Appendices
 
@@ -440,11 +459,21 @@ The authentication system provides a robust phone-based login flow integrated wi
 - [routes/web.php:54-55](file://routes/web.php#L54-L55)
 
 ### Security Best Practices
-- Enforce strong validation for phone inputs
+- Enforce Indonesian phone number format validation (0XXXXXXXXXXX)
 - Use HTTPS and secure cookies
 - Limit OTP lifetime and attempts
 - Monitor and log all authentication events
 - Regularly rotate provider tokens
 - Restrict webhook URL exposure to trusted providers
+- **Updated**: Implement fixed country code '+62' for Indonesian phone numbers only
 
-[No sources needed since this section provides general guidance]
+### Indonesian Phone Number Format Requirements
+- **Updated**: Must start with '0' followed by 6-14 digits
+- **Updated**: Automatically normalized to '+62' country code
+- **Updated**: Supports all Indonesian mobile network prefixes
+- **Updated**: Validation ensures compliance with Indonesian telecommunications standards
+
+**Section sources**
+- [app/Http/Controllers/Auth/AuthController.php:61-65](file://app/Http/Controllers/Auth/AuthController.php#L61-L65)
+- [app/Http/Controllers/Auth/AuthController.php:203-208](file://app/Http/Controllers/Auth/AuthController.php#L203-L208)
+- [database/migrations/2026_04_17_043615_add_phone_number_to_users_table.php:14-16](file://database/migrations/2026_04_17_043615_add_phone_number_to_users_table.php#L14-L16)

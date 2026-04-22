@@ -9,8 +9,10 @@
 - [Response.php](file://app/Models/Response.php)
 - [Answer.php](file://app/Models/Answer.php)
 - [User.php](file://app/Models/User.php)
+- [Role.php](file://app/Models/Role.php)
 - [QuestionnaireForm.php](file://app/Livewire/Admin/QuestionnaireForm.php)
 - [QuestionManager.php](file://app/Livewire/Admin/QuestionManager.php)
+- [QuestionnaireList.php](file://app/Livewire/Admin/QuestionnaireList.php)
 - [AvailableQuestionnaires.php](file://app/Livewire/Fill/AvailableQuestionnaires.php)
 - [QuestionnaireFill.php](file://app/Livewire/Fill/QuestionnaireFill.php)
 - [StoreQuestionnaireRequest.php](file://app/Http/Requests/StoreQuestionnaireRequest.php)
@@ -19,19 +21,20 @@
 - [AllQuestionnairesReportExport.php](file://app/Exports/AllQuestionnairesReportExport.php)
 - [QuestionnaireScorer.php](file://app/Services/QuestionnaireScorer.php)
 - [questionnaire-form.blade.php](file://resources/views/livewire/admin/questionnaire-form.blade.php)
+- [questionnaire-list.blade.php](file://resources/views/livewire/admin/questionnaire-list.blade.php)
 - [2026_04_21_003136_add_time_limit_to_questionnaires_table.php](file://database/migrations/2026_04_21_003136_add_time_limit_to_questionnaires_table.php)
 - [2026_04_21_003142_add_started_at_to_responses_table.php](file://database/migrations/2026_04_21_003142_add_started_at_to_responses_table.php)
 - [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php)
+- [2026_04_16_010240_create_questionnaire_targets_table.php](file://database/migrations/2026_04_16_010240_create_questionnaire_targets_table.php)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Added time limit configuration at questionnaire level with validation ensuring limits are between 1 and 10080 minutes (7 days)
-- Enhanced administrative functionality with time limit management capabilities
-- Implemented user-level time limit settings for session-based assessment control
-- Added response-level timestamp tracking for assessment session management
-- Updated form validation rules and UI components to support time limit configuration
-- Integrated time limit enforcement in both individual questionnaire filling and bulk assessment workflows
+- Added target group filtering capability to the QuestionnaireList component with new targetGroup property
+- Enhanced administrative functionality with target group dropdown UI element in the admin view
+- Implemented database-level filtering using whereHas relationship for efficient querying
+- Added targetGroupOptions method to Questionnaire model for dynamic dropdown population
+- Updated search and filtering workflow to support multi-criteria filtering (search, status, target group)
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -46,16 +49,17 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the questionnaire management system, covering the end-to-end lifecycle of creating, editing, validating, assigning target groups, building forms, and exporting analytics. It explains the data model relationships among questionnaires, questions, answer options, responses, and answers, and documents the form builder interface, validation rules, publishing workflows, and reporting capabilities. The system now includes comprehensive time limit management functionality for both individual questionnaires and user assessment sessions.
+This document describes the questionnaire management system, covering the end-to-end lifecycle of creating, editing, validating, assigning target groups, building forms, and exporting analytics. It explains the data model relationships among questionnaires, questions, answer options, responses, and answers, and documents the form builder interface, validation rules, publishing workflows, and reporting capabilities. The system now includes comprehensive time limit management functionality for both individual questionnaires and user assessment sessions, along with enhanced administrative filtering capabilities including target group filtering.
 
 ## Project Structure
-The system is organized around Eloquent models, Livewire components for administration, form requests for validation, and Excel export services for analytics. Time limit functionality spans across multiple layers including database migrations, model definitions, validation rules, and frontend components.
+The system is organized around Eloquent models, Livewire components for administration, form requests for validation, and Excel export services for analytics. Time limit functionality spans across multiple layers including database migrations, model definitions, validation rules, and frontend components. The QuestionnaireList component now includes target group filtering capabilities for improved administrative control.
 
 ```mermaid
 graph TB
 subgraph "Models"
 Q["Questionnaire"]
 QT["QuestionnaireTarget"]
+RQT["Role"]
 U["User"]
 Qs["Question"]
 AO["AnswerOption"]
@@ -65,6 +69,7 @@ end
 subgraph "Livewire Admin"
 QF["QuestionnaireForm"]
 QM["QuestionManager"]
+QL["QuestionnaireList"]
 AQ["AvailableQuestionnaires"]
 QFill["QuestionnaireFill"]
 end
@@ -82,6 +87,10 @@ TL["Time Limit Configuration"]
 RT["Response Timestamps"]
 US["User Session Timer"]
 end
+subgraph "Target Group Filtering"
+TG["Target Group Dropdown"]
+WF["WhereHas Filter"]
+end
 QF --> SR
 QF --> UR
 QF --> Q
@@ -89,6 +98,7 @@ QM --> Qs
 QM --> AO
 Q --> Qs
 Q --> QT
+Q --> RQT
 Q --> U
 Q --> TL
 Qs --> AO
@@ -99,11 +109,14 @@ QE --> SC
 AE --> SC
 AQ --> TL
 QFill --> TL
+QL --> TG
+QL --> WF
 ```
 
 **Diagram sources**
 - [Questionnaire.php:13-133](file://app/Models/Questionnaire.php#L13-L133)
 - [QuestionnaireTarget.php:9-24](file://app/Models/QuestionnaireTarget.php#L9-L24)
+- [Role.php:9-31](file://app/Models/Role.php#L9-L31)
 - [Question.php:11-43](file://app/Models/Question.php#L11-L43)
 - [AnswerOption.php:10-38](file://app/Models/AnswerOption.php#L10-L38)
 - [Response.php:11-44](file://app/Models/Response.php#L11-L44)
@@ -111,6 +124,7 @@ QFill --> TL
 - [User.php:12-98](file://app/Models/User.php#L12-L98)
 - [QuestionnaireForm.php:15-138](file://app/Livewire/Admin/QuestionnaireForm.php#L15-L138)
 - [QuestionManager.php:16-282](file://app/Livewire/Admin/QuestionManager.php#L16-L282)
+- [QuestionnaireList.php:12-91](file://app/Livewire/Admin/QuestionnaireList.php#L12-L91)
 - [AvailableQuestionnaires.php:17-677](file://app/Livewire/Fill/AvailableQuestionnaires.php#L17-L677)
 - [QuestionnaireFill.php:18-515](file://app/Livewire/Fill/QuestionnaireFill.php#L18-515)
 - [StoreQuestionnaireRequest.php:10-42](file://app/Http/Requests/StoreQuestionnaireRequest.php#L10-L42)
@@ -123,6 +137,7 @@ QFill --> TL
 - [Questionnaire.php:13-133](file://app/Models/Questionnaire.php#L13-L133)
 - [QuestionnaireForm.php:15-138](file://app/Livewire/Admin/QuestionnaireForm.php#L15-L138)
 - [QuestionManager.php:16-282](file://app/Livewire/Admin/QuestionManager.php#L16-L282)
+- [QuestionnaireList.php:12-91](file://app/Livewire/Admin/QuestionnaireList.php#L12-L91)
 - [StoreQuestionnaireRequest.php:10-42](file://app/Http/Requests/StoreQuestionnaireRequest.php#L10-L42)
 - [UpdateQuestionnaireRequest.php:9-30](file://app/Http/Requests/UpdateQuestionnaireRequest.php#L9-L30)
 - [QuestionnaireReportExport.php:11-29](file://app/Exports/QuestionnaireReportExport.php#L11-L29)
@@ -133,12 +148,14 @@ QFill --> TL
 - Questionnaire: central entity with metadata, lifecycle status, creator, target groups, ordered questions, responses, and time limit configuration.
 - Question: belongs to a questionnaire, supports multiple types, required flag, ordering, and answer options.
 - AnswerOption: defines selectable choices with scores for specific question types.
-- QuestionnaireTarget: links a questionnaire to target role slugs.
+- QuestionnaireTarget: links a questionnaire to target role slugs with unique constraint for efficient filtering.
+- Role: defines target groups with slug-based identification for questionnaire assignment.
 - Response: captures a submission by a user for a questionnaire with timestamp tracking.
 - Answer: stores selected option or essay answer linked to a response and question.
 - User: includes time limit settings and session tracking for assessment control.
 - QuestionnaireForm: creates/edit questionnaire with validation, target group sync, time limit configuration, and persistence.
 - QuestionManager: manages questions and answer options per questionnaire, including reordering and validation.
+- QuestionnaireList: displays filtered list of questionnaires with search, status, and target group filtering capabilities.
 - AvailableQuestionnaires: handles bulk assessment workflow with time limit enforcement and session management.
 - QuestionnaireFill: manages individual questionnaire filling with time limit validation.
 - Validation Requests: enforce field constraints, target group eligibility, and time limit validation.
@@ -149,11 +166,13 @@ QFill --> TL
 - [Question.php:11-43](file://app/Models/Question.php#L11-L43)
 - [AnswerOption.php:10-38](file://app/Models/AnswerOption.php#L10-L38)
 - [QuestionnaireTarget.php:9-24](file://app/Models/QuestionnaireTarget.php#L9-L24)
+- [Role.php:9-31](file://app/Models/Role.php#L9-L31)
 - [Response.php:11-44](file://app/Models/Response.php#L11-L44)
 - [Answer.php:10-44](file://app/Models/Answer.php#L10-L44)
 - [User.php:12-98](file://app/Models/User.php#L12-L98)
 - [QuestionnaireForm.php:15-138](file://app/Livewire/Admin/QuestionnaireForm.php#L15-L138)
 - [QuestionManager.php:16-282](file://app/Livewire/Admin/QuestionManager.php#L16-L282)
+- [QuestionnaireList.php:12-91](file://app/Livewire/Admin/QuestionnaireList.php#L12-L91)
 - [AvailableQuestionnaires.php:17-677](file://app/Livewire/Fill/AvailableQuestionnaires.php#L17-L677)
 - [QuestionnaireFill.php:18-515](file://app/Livewire/Fill/QuestionnaireFill.php#L18-515)
 - [StoreQuestionnaireRequest.php:10-42](file://app/Http/Requests/StoreQuestionnaireRequest.php#L10-L42)
@@ -163,11 +182,11 @@ QFill --> TL
 - [QuestionnaireScorer.php:12-139](file://app/Services/QuestionnaireScorer.php#L12-L139)
 
 ## Architecture Overview
-The system follows a layered architecture with enhanced time limit management capabilities:
-- Presentation: Livewire components for admin UI (form builder and question manager) and assessment interfaces.
-- Application: Controllers and services orchestrate workflows (validation, persistence, analytics, time limit enforcement).
-- Domain: Eloquent models define domain entities and relationships with time limit support.
-- Persistence: Laravel Eloquent ORM with soft deletes, explicit casts, and time limit tracking.
+The system follows a layered architecture with enhanced time limit management capabilities and improved administrative filtering:
+- Presentation: Livewire components for admin UI (form builder, question manager, and questionnaire list with filtering) and assessment interfaces.
+- Application: Controllers and services orchestrate workflows (validation, persistence, analytics, time limit enforcement, and target group filtering).
+- Domain: Eloquent models define domain entities and relationships with time limit support and target group management.
+- Persistence: Laravel Eloquent ORM with soft deletes, explicit casts, time limit tracking, and efficient filtering through whereHas relationships.
 
 ```mermaid
 classDiagram
@@ -193,6 +212,12 @@ class QuestionnaireTarget {
 +int questionnaire_id
 +string target_group
 +questionnaire() Questionnaire
+}
+class Role {
++int id
++string name
++string slug
++users() User[]
 }
 class Question {
 +int id
@@ -253,6 +278,7 @@ class User {
 }
 Questionnaire "1" --> "*" Question : "has many"
 Questionnaire "1" --> "*" QuestionnaireTarget : "has many"
+QuestionnaireTarget "1" --> "*" Role : "links to"
 Question "1" --> "*" AnswerOption : "has many"
 Question "1" --> "*" Answer : "has many"
 Questionnaire "1" --> "*" Response : "has many"
@@ -265,6 +291,7 @@ User "1" --> "*" Questionnaire : "created"
 **Diagram sources**
 - [Questionnaire.php:13-133](file://app/Models/Questionnaire.php#L13-L133)
 - [QuestionnaireTarget.php:9-24](file://app/Models/QuestionnaireTarget.php#L9-L24)
+- [Role.php:9-31](file://app/Models/Role.php#L9-L31)
 - [Question.php:11-43](file://app/Models/Question.php#L11-L43)
 - [AnswerOption.php:10-38](file://app/Models/AnswerOption.php#L10-L38)
 - [Response.php:11-44](file://app/Models/Response.php#L11-L44)
@@ -272,6 +299,49 @@ User "1" --> "*" Questionnaire : "created"
 - [User.php:12-98](file://app/Models/User.php#L12-L98)
 
 ## Detailed Component Analysis
+
+### Questionnaire List with Target Group Filtering
+The QuestionnaireList component provides comprehensive administrative filtering capabilities including target group filtering. This enhancement allows administrators to efficiently locate questionnaires based on their assigned target groups.
+
+Key features:
+- **Multi-criteria filtering**: Supports search by title/description, status, and target group simultaneously.
+- **Live filtering**: Uses wire:model.live for real-time filtering without page reload.
+- **Target group dropdown**: Dynamic dropdown populated from Role model with unique target group options.
+- **Efficient database queries**: Uses whereHas relationship for target group filtering with proper indexing.
+- **Responsive pagination**: Resets pagination when filters change to maintain consistent results.
+
+```mermaid
+sequenceDiagram
+participant Admin as "Admin UI"
+participant List as "QuestionnaireList"
+participant Model as "Questionnaire"
+participant DB as "Database"
+Admin->>List : "Select targetGroup filter"
+List->>List : "updatingTargetGroup() resets page"
+List->>Model : "render() with whereHas('targets')"
+Model->>DB : "SELECT * FROM questionnaires WHERE EXISTS (SELECT 1 FROM questionnaire_targets WHERE questionnaire_targets.target_group = ?)"
+DB-->>Model : "Filtered results"
+Model-->>List : "Paginated questionnaires"
+List-->>Admin : "Updated table with filtered results"
+```
+
+**Diagram sources**
+- [QuestionnaireList.php:38-41](file://app/Livewire/Admin/QuestionnaireList.php#L38-L41)
+- [QuestionnaireList.php:81](file://app/Livewire/Admin/QuestionnaireList.php#L81)
+- [Questionnaire.php:115-131](file://app/Models/Questionnaire.php#L115-L131)
+
+**Updated** Enhanced administrative filtering with target group capability
+
+Practical example: Filtering by target group
+- Navigate to the Questionnaire Management page.
+- Select a target group from the dropdown (e.g., "teacher", "staff").
+- The table instantly updates to show only questionnaires assigned to that target group.
+- Combine with search and status filters for precise filtering.
+
+**Section sources**
+- [QuestionnaireList.php:12-91](file://app/Livewire/Admin/QuestionnaireList.php#L12-L91)
+- [questionnaire-list.blade.php:37-46](file://resources/views/livewire/admin/questionnaire-list.blade.php#L37-L46)
+- [Questionnaire.php:115-131](file://app/Models/Questionnaire.php#L115-L131)
 
 ### Questionnaire Form Builder with Time Limit Configuration
 The form builder enables administrators to create or update a questionnaire with comprehensive time limit management capabilities. Administrators can set time limits for individual questionnaires and manage target groups effectively.
@@ -532,19 +602,22 @@ Administrators can:
 - Configure time limits for individual questionnaires (1-10080 minutes).
 - Set user-level time limits for session-based assessment control.
 - View and manage target assignments via the assignment panel.
+- **Updated**: Filter questionnaires by target group using the dropdown filter.
 
 Target group resolution:
 - Derives allowed slugs from roles excluding special IDs.
 - Falls back to configured slugs if no roles are available.
+- **Updated**: Populates dropdown with formatted role names and slugs for user-friendly filtering.
 
 **Section sources**
 - [Questionnaire.php:54-85](file://app/Models/Questionnaire.php#L54-L85)
 - [Questionnaire.php:88-108](file://app/Models/Questionnaire.php#L88-L108)
 - [Questionnaire.php:113-131](file://app/Models/Questionnaire.php#L113-L131)
 - [QuestionnaireForm.php:77-112](file://app/Livewire/Admin/QuestionnaireForm.php#L77-L112)
+- [QuestionnaireList.php:87](file://app/Livewire/Admin/QuestionnaireList.php#L87)
 
 ## Dependency Analysis
-The following diagram highlights key dependencies among components with time limit functionality:
+The following diagram highlights key dependencies among components with time limit functionality and target group filtering:
 
 ```mermaid
 graph LR
@@ -553,8 +626,11 @@ QF --> UR["UpdateQuestionnaireRequest"]
 QF --> Q["Questionnaire"]
 QM["QuestionManager"] --> Qs["Question"]
 QM --> AO["AnswerOption"]
+QL["QuestionnaireList"] --> Q["Questionnaire"]
+QL --> TG["Target Group Filter"]
 Q --> Qs
 Q --> QT["QuestionnaireTarget"]
+Q --> RQT["Role"]
 Q --> U["User"]
 Q --> TL["Time Limit Config"]
 Qs --> AO
@@ -569,11 +645,13 @@ QFill["QuestionnaireFill"] --> TL
 
 **Diagram sources**
 - [QuestionnaireForm.php:15-138](file://app/Livewire/Admin/QuestionnaireForm.php#L15-L138)
+- [QuestionnaireList.php:12-91](file://app/Livewire/Admin/QuestionnaireList.php#L12-L91)
 - [QuestionManager.php:16-282](file://app/Livewire/Admin/QuestionManager.php#L16-L282)
 - [StoreQuestionnaireRequest.php:10-42](file://app/Http/Requests/StoreQuestionnaireRequest.php#L10-L42)
 - [UpdateQuestionnaireRequest.php:9-30](file://app/Http/Requests/UpdateQuestionnaireRequest.php#L9-L30)
 - [Questionnaire.php:13-133](file://app/Models/Questionnaire.php#L13-L133)
 - [QuestionnaireTarget.php:9-24](file://app/Models/QuestionnaireTarget.php#L9-L24)
+- [Role.php:9-31](file://app/Models/Role.php#L9-L31)
 - [Question.php:11-43](file://app/Models/Question.php#L11-L43)
 - [AnswerOption.php:10-38](file://app/Models/AnswerOption.php#L10-L38)
 - [Response.php:11-44](file://app/Models/Response.php#L11-L44)
@@ -587,11 +665,13 @@ QFill["QuestionnaireFill"] --> TL
 
 **Section sources**
 - [QuestionnaireForm.php:15-138](file://app/Livewire/Admin/QuestionnaireForm.php#L15-L138)
+- [QuestionnaireList.php:12-91](file://app/Livewire/Admin/QuestionnaireList.php#L12-L91)
 - [QuestionManager.php:16-282](file://app/Livewire/Admin/QuestionManager.php#L16-L282)
 - [StoreQuestionnaireRequest.php:10-42](file://app/Http/Requests/StoreQuestionnaireRequest.php#L10-L42)
 - [UpdateQuestionnaireRequest.php:9-30](file://app/Http/Requests/UpdateQuestionnaireRequest.php#L9-L30)
 - [Questionnaire.php:13-133](file://app/Models/Questionnaire.php#L13-L133)
 - [QuestionnaireTarget.php:9-24](file://app/Models/QuestionnaireTarget.php#L9-L24)
+- [Role.php:9-31](file://app/Models/Role.php#L9-L31)
 - [Question.php:11-43](file://app/Models/Question.php#L11-L43)
 - [AnswerOption.php:10-38](file://app/Models/AnswerOption.php#L10-L38)
 - [Response.php:11-44](file://app/Models/Response.php#L11-L44)
@@ -610,6 +690,8 @@ QFill["QuestionnaireFill"] --> TL
 - Consider pagination for large lists of responses and answers in exports.
 - **Updated**: Implement efficient time limit checking with database-level timestamp comparisons.
 - **Updated**: Cache time limit configurations to reduce database queries during assessment sessions.
+- **Updated**: Optimize target group filtering with proper indexing on questionnaire_targets table.
+- **Updated**: Use whereHas relationships for target group filtering to leverage database optimization.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -620,6 +702,7 @@ Common issues and resolutions:
 - **Updated**: Time limit validation errors: ensure time limit values are between 1 and 10080 minutes when provided.
 - **Updated**: Session timer issues: verify `filling_started_at` is properly set when user confirms assessment session.
 - **Updated**: Time limit enforcement problems: check both questionnaire-level and user-level time limit configurations.
+- **Updated**: Target group filtering issues: ensure target groups are properly assigned to questionnaires; check database constraints and role slugs.
 
 **Section sources**
 - [QuestionnaireForm.php:64-68](file://app/Livewire/Admin/QuestionnaireForm.php#L64-L68)
@@ -627,7 +710,7 @@ Common issues and resolutions:
 - [StoreQuestionnaireRequest.php:35](file://app/Http/Requests/StoreQuestionnaireRequest.php#L35)
 
 ## Conclusion
-The questionnaire management system provides a robust, validated, and extensible foundation for designing assessments, managing questions and options, assigning target groups, and generating analytics. The enhanced time limit functionality adds comprehensive assessment control capabilities, supporting both individual questionnaire time limits and user session-based time management. Its modular architecture supports efficient administration, strong data integrity, scalable reporting, and reliable time limit enforcement across all assessment scenarios.
+The questionnaire management system provides a robust, validated, and extensible foundation for designing assessments, managing questions and options, assigning target groups, and generating analytics. The enhanced time limit functionality adds comprehensive assessment control capabilities, supporting both individual questionnaire time limits and user session-based time management. The newly added target group filtering capability in the QuestionnaireList component significantly improves administrative efficiency by enabling precise questionnaire discovery and management. Its modular architecture supports efficient administration, strong data integrity, scalable reporting, and reliable time limit enforcement across all assessment scenarios.
 
 ## Appendices
 - Data model relationships and cardinalities are defined in the class diagram and model files.
@@ -635,3 +718,5 @@ The questionnaire management system provides a robust, validated, and extensible
 - Reporting leverages a scorer service and Excel export infrastructure for comprehensive analytics.
 - **Updated**: Time limit configurations are stored in database migrations and enforced through validation rules and UI components.
 - **Updated**: Assessment workflows integrate time limit enforcement with real-time session monitoring and automatic submission capabilities.
+- **Updated**: Target group filtering utilizes whereHas relationships for efficient database querying and proper indexing strategies.
+- **Updated**: The QuestionnaireList component provides comprehensive multi-criteria filtering with live updates and responsive pagination.
