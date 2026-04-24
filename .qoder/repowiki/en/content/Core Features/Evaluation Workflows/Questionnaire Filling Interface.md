@@ -26,10 +26,10 @@
 
 ## Update Summary
 **Changes Made**
-- Enhanced documentation to reflect the new comprehensive frontend validation system with validateBeforeGoTo JavaScript method
-- Updated navigation validation to replace Livewire click handlers with custom validation functions
-- Added documentation for the hidden current-index input field that improves questionnaire navigation flow
+- Enhanced documentation to reflect the new comprehensive Alpine.js-based validation system with validateBeforeSubmit() method
 - Updated validation mechanisms to include real-time JavaScript validation with Indonesian error messages and automatic scroll-to-error functionality
+- Added documentation for the new Alpine.js-based validation system that provides immediate feedback and automatic error handling
+- Updated navigation validation to replace Livewire click handlers with custom validation functions
 - Enhanced error handling system with targeted validation errors and visual feedback
 - Updated validation rules to support single_choice, essay, and combined question types with comprehensive Indonesian error messages
 
@@ -37,7 +37,7 @@
 1. [Introduction](#introduction)
 2. [System Architecture](#system-architecture)
 3. [Core Components](#core-components)
-4. [Enhanced Frontend Validation System](#enhanced-frontend-validation-system)
+4. [Enhanced Alpine.js Validation System](#enhanced-alpinejs-validation-system)
 5. [Single Questionnaire Step-Based Navigation](#single-questionnaire-step-based-navigation)
 6. [Navigation and User Experience](#navigation-and-user-experience)
 7. [Question Types and Input Handling](#question-types-and-input-handling)
@@ -59,13 +59,14 @@ The questionnaire filling system operates through a single-questionnaire step-ba
 
 ```mermaid
 graph TB
-subgraph "Enhanced Frontend Validation System"
+subgraph "Enhanced Alpine.js Validation System"
 AQ["AvailableQuestionnaires<br/>(Enhanced Validation & Navigation)"]
 AQV["available-questionnaires.blade.php<br/>(Real-time JS Validation)"]
 ICQ["isQuestionnaireComplete()<br/>(Server-side Validation)"]
 VBT["validateBeforeGoTo()<br/>(Client-side Navigation Validation)"]
 VBN["validateBeforeNext()<br/>(Client-side Navigation Validation)"]
 VBS["validateBeforeSubmitAll()<br/>(Client-side Validation)"]
+VCS["validateBeforeSubmit()<br/>(Single Questionnaire Validation)"]
 HCI["Hidden Current-Index Input<br/>(Improved Navigation Flow)"]
 end
 subgraph "Single Questionnaire Step-Based Navigation"
@@ -74,6 +75,7 @@ AQ --> ICQ
 AQV --> VBT
 AQV --> VBN
 AQV --> VBS
+AQV --> VCS
 AQV --> HCI
 end
 subgraph "Individual Questionnaire Mode"
@@ -145,7 +147,7 @@ The system consists of two main components that work together to provide a strea
 
 ### AvailableQuestionnaires Component
 - **Progressive Navigation**: Manages multiple questionnaires through step-based navigation with $questionnaireIds/$allQuestionnaireIds arrays
-- **Enhanced Frontend Validation System**: Implements comprehensive validation through `isQuestionnaireComplete()` method and real-time JavaScript validation with validateBeforeGoTo
+- **Enhanced Alpine.js Validation System**: Implements comprehensive validation through `isQuestionnaireComplete()` method and real-time JavaScript validation with validateBeforeGoTo
 - **Cross-Questionnaire Progress**: Provides overall progress tracking across all fillable questionnaires
 - **Enhanced Time Limit Management**: Handles time-expired scenarios with automatic submission and session status indicators
 - **Enhanced Session Timer Integration**: Manages user-level time limits and session start/end times with improved error handling
@@ -171,14 +173,14 @@ The system consists of two main components that work together to provide a strea
 - [ParentDashboard.php:10-23](file://app/Livewire/Fill/ParentDashboard.php#L10-L23)
 - [HasEvaluatorDashboardMetrics.php:9-73](file://app/Livewire/Fill/Concerns/HasEvaluatorDashboardMetrics.php#L9-L73)
 
-## Enhanced Frontend Validation System
+## Enhanced Alpine.js Validation System
 The system implements a comprehensive enhanced validation mechanism that ensures questionnaire completion before allowing navigation and submission, with both server-side and client-side validation layers:
 
-### Enhanced Frontend Validation Methods
+### Enhanced Alpine.js Validation Methods
 - **validateBeforeGoTo(targetIndex)**: Validates current questionnaire before navigating to a specific questionnaire index, utilizing the hidden current-index input field for improved navigation flow
 - **validateBeforeNext()**: Validates current questionnaire before moving to the next questionnaire
 - **validateBeforeSubmitAll()**: Comprehensive validation for bulk submission with detailed error reporting
-- **validateCurrentQuestion()**: Individual question validation for single-questionnaire mode
+- **validateBeforeSubmit()**: Individual questionnaire validation for single-questionnaire mode with comprehensive error handling
 - **validateAllRequiredQuestions()**: Validates all required questions across the entire questionnaire
 
 ### Enhanced Validation Error Handling
@@ -207,9 +209,11 @@ CheckTime --> |No| CheckMethod{"Which Validation Method?"}
 CheckMethod --> |validateBeforeGoTo| ValidateGoTo["Validate Specific Questionnaire<br/>Using Hidden Current-Index"]
 CheckMethod --> |validateBeforeNext| ValidateNext["Validate Current Questionnaire"]
 CheckMethod --> |validateBeforeSubmitAll| ValidateAll["Validate All Questionnaires"]
+CheckMethod --> |validateBeforeSubmit| ValidateSingle["Validate Single Questionnaire"]
 ValidateGoTo --> CheckComplete{"isQuestionnaireComplete()?"}
 ValidateNext --> CheckComplete
 ValidateAll --> CheckComplete
+ValidateSingle --> CheckComplete
 CheckComplete --> |No| ShowError["Display Indonesian Validation Error"]
 CheckComplete --> |Yes| CheckJS["Client-side Validation"]
 CheckJS --> JSError{"JS Validation Passes?"}
@@ -226,11 +230,13 @@ AllowNav --> End
 - [available-questionnaires.blade.php:141-204](file://resources/views/livewire/fill/available-questionnaires.blade.php#L141-L204)
 - [available-questionnaires.blade.php:86-140](file://resources/views/livewire/fill/available-questionnaires.blade.php#L86-L140)
 - [available-questionnaires.blade.php:205-259](file://resources/views/livewire/fill/available-questionnaires.blade.php#L205-L259)
+- [questionnaire-fill.blade.php:14-67](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L14-L67)
 
 **Section sources**
 - [available-questionnaires.blade.php:141-204](file://resources/views/livewire/fill/available-questionnaires.blade.php#L141-L204)
 - [available-questionnaires.blade.php:86-140](file://resources/views/livewire/fill/available-questionnaires.blade.php#L86-L140)
 - [available-questionnaires.blade.php:205-259](file://resources/views/livewire/fill/available-questionnaires.blade.php#L205-L259)
+- [questionnaire-fill.blade.php:14-67](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L14-L67)
 - [QuestionnaireFill.php:301-335](file://app/Livewire/Fill/QuestionnaireFill.php#L301-L335)
 
 ## Single Questionnaire Step-Based Navigation
@@ -434,6 +440,7 @@ Wait --> Validate
 **Diagram sources**
 - [AvailableQuestionnaires.php:446-486](file://app/Livewire/Fill/AvailableQuestionnaires.php#L446-L486)
 - [AvailableQuestionnaires.php:201-223](file://app/Livewire/Fill/AvailableQuestionnaires.php#L201-L223)
+- [QuestionnaireFill.php:342-388](file://app/Livewire/Fill/QuestionnaireFill.php#L342-L388)
 
 **Section sources**
 - [AvailableQuestionnaires.php:446-486](file://app/Livewire/Fill/AvailableQuestionnaires.php#L446-L486)
@@ -569,6 +576,7 @@ C->>U : Show Enhanced Thank You Message
 **Diagram sources**
 - [AvailableQuestionnaires.php:216-232](file://app/Livewire/Fill/AvailableQuestionnaires.php#L216-L232)
 - [AvailableQuestionnaires.php:582-668](file://app/Livewire/Fill/AvailableQuestionnaires.php#L582-L668)
+- [QuestionnaireFill.php:172-245](file://app/Livewire/Fill/QuestionnaireFill.php#L172-L245)
 
 **Section sources**
 - [AvailableQuestionnaires.php:204-232](file://app/Livewire/Fill/AvailableQuestionnaires.php#L204-L232)
@@ -685,6 +693,7 @@ Common issues and their solutions with comprehensive enhanced validation trouble
 - **Auto-Submit Not Working**: Verify that enhanced validation prevents progression when incomplete
 - **Enhanced Validation State Issues**: Check that enhanced validation state management works correctly
 - **validateBeforeGoTo Method Issues**: Verify that the JavaScript method properly utilizes the hidden current-index input field
+- **validateBeforeSubmit Method Issues**: Verify that the single-questionnaire validation method properly validates all required questions
 
 **Section sources**
 - [AvailableQuestionnaires.php:56-60](file://app/Livewire/Fill/AvailableQuestionnaires.php#L56-L60)
@@ -694,4 +703,4 @@ Common issues and their solutions with comprehensive enhanced validation trouble
 ## Conclusion
 The streamlined questionnaire filling interface provides a comprehensive, accessible, and responsive solution for evaluator assessment through progressive step-based navigation with integrated enhanced validation capabilities. The system's transformation from grouped questionnaire display to single-questionnaire step-based navigation delivers an excellent user experience with robust autosave functionality, comprehensive validation, rich progress tracking, and sophisticated enhanced validation integration across all device types and user roles. The enhanced validation system provides seamless questionnaire completion management, automatic validation handling, and comprehensive enhanced validation integration that ensures reliable and efficient questionnaire completion. The modular design ensures maintainability and extensibility for future enhancements while providing efficient performance optimization for large-scale questionnaire management with enhanced validation constraints.
 
-The implementation of the validateBeforeGoTo JavaScript method, replacement of Livewire click handlers with custom validation functions, and addition of the hidden current-index input field represent significant improvements to the navigation flow and user experience. These changes ensure that users can navigate between questionnaires seamlessly while maintaining proper validation constraints and providing clear feedback when validation fails.
+The implementation of the validateBeforeGoTo JavaScript method, validateBeforeNext method, validateBeforeSubmitAll method, and validateBeforeSubmit method represents a significant advancement in the validation system. These methods provide comprehensive client-side validation with real-time feedback, Indonesian error messages, and automatic scroll-to-error functionality. The replacement of Livewire click handlers with custom validation functions, and the addition of the hidden current-index input field represent significant improvements to the navigation flow and user experience. These changes ensure that users can navigate between questionnaires seamlessly while maintaining proper validation constraints and providing clear feedback when validation fails.

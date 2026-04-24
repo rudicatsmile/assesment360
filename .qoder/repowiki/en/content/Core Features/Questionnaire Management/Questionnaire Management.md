@@ -22,6 +22,7 @@
 - [QuestionnaireScorer.php](file://app/Services/QuestionnaireScorer.php)
 - [questionnaire-form.blade.php](file://resources/views/livewire/admin/questionnaire-form.blade.php)
 - [questionnaire-list.blade.php](file://resources/views/livewire/admin/questionnaire-list.blade.php)
+- [question-manager.blade.php](file://resources/views/livewire/admin/question-manager.blade.php)
 - [2026_04_21_003136_add_time_limit_to_questionnaires_table.php](file://database/migrations/2026_04_21_003136_add_time_limit_to_questionnaires_table.php)
 - [2026_04_21_003142_add_started_at_to_responses_table.php](file://database/migrations/2026_04_21_003142_add_started_at_to_responses_table.php)
 - [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php)
@@ -30,11 +31,11 @@
 
 ## Update Summary
 **Changes Made**
-- Added target group filtering capability to the QuestionnaireList component with new targetGroup property
-- Enhanced administrative functionality with target group dropdown UI element in the admin view
-- Implemented database-level filtering using whereHas relationship for efficient querying
-- Added targetGroupOptions method to Questionnaire model for dynamic dropdown population
-- Updated search and filtering workflow to support multi-criteria filtering (search, status, target group)
+- Enhanced Question Manager with new defaultOptions() method providing predefined Indonesian rating scale options
+- Improved default option generation system with automatic application when creating new questions with selectable options
+- Added five-point Likert scale options: Sangat Tidak Setuju (1), Tidak Setuju (2), Netral (3), Setuju (4), Sangat Setuju (5)
+- Integrated default options into the question creation workflow through updatedType() and resetForm() methods
+- Enhanced user experience with ready-to-use rating scales for Indonesian language assessments
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -49,10 +50,10 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the questionnaire management system, covering the end-to-end lifecycle of creating, editing, validating, assigning target groups, building forms, and exporting analytics. It explains the data model relationships among questionnaires, questions, answer options, responses, and answers, and documents the form builder interface, validation rules, publishing workflows, and reporting capabilities. The system now includes comprehensive time limit management functionality for both individual questionnaires and user assessment sessions, along with enhanced administrative filtering capabilities including target group filtering.
+This document describes the questionnaire management system, covering the end-to-end lifecycle of creating, editing, validating, assigning target groups, building forms, and exporting analytics. It explains the data model relationships among questionnaires, questions, answer options, responses, and answers, and documents the form builder interface, validation rules, publishing workflows, and reporting capabilities. The system now includes comprehensive time limit management functionality for both individual questionnaires and user assessment sessions, enhanced administrative filtering capabilities including target group filtering, and improved default option generation with predefined Indonesian rating scales.
 
 ## Project Structure
-The system is organized around Eloquent models, Livewire components for administration, form requests for validation, and Excel export services for analytics. Time limit functionality spans across multiple layers including database migrations, model definitions, validation rules, and frontend components. The QuestionnaireList component now includes target group filtering capabilities for improved administrative control.
+The system is organized around Eloquent models, Livewire components for administration, form requests for validation, and Excel export services for analytics. Time limit functionality spans across multiple layers including database migrations, model definitions, validation rules, and frontend components. The QuestionnaireList component now includes target group filtering capabilities for improved administrative control. The QuestionManager component has been enhanced with intelligent default option generation for Indonesian language assessments.
 
 ```mermaid
 graph TB
@@ -91,11 +92,16 @@ subgraph "Target Group Filtering"
 TG["Target Group Dropdown"]
 WF["WhereHas Filter"]
 end
+subgraph "Default Options System"
+DO["Default Options Method"]
+RS["Rating Scale Options"]
+end
 QF --> SR
 QF --> UR
 QF --> Q
 QM --> Qs
 QM --> AO
+QM --> DO
 Q --> Qs
 Q --> QT
 Q --> RQT
@@ -111,6 +117,7 @@ AQ --> TL
 QFill --> TL
 QL --> TG
 QL --> WF
+DO --> RS
 ```
 
 **Diagram sources**
@@ -123,11 +130,11 @@ QL --> WF
 - [Answer.php:10-44](file://app/Models/Answer.php#L10-L44)
 - [User.php:12-98](file://app/Models/User.php#L12-L98)
 - [QuestionnaireForm.php:15-138](file://app/Livewire/Admin/QuestionnaireForm.php#L15-L138)
-- [QuestionManager.php:16-282](file://app/Livewire/Admin/QuestionManager.php#L16-L282)
+- [QuestionManager.php:16-296](file://app/Livewire/Admin/QuestionManager.php#L16-L296)
 - [QuestionnaireList.php:12-91](file://app/Livewire/Admin/QuestionnaireList.php#L12-L91)
 - [AvailableQuestionnaires.php:17-677](file://app/Livewire/Fill/AvailableQuestionnaires.php#L17-L677)
 - [QuestionnaireFill.php:18-515](file://app/Livewire/Fill/QuestionnaireFill.php#L18-515)
-- [StoreQuestionnaireRequest.php:10-42](file://app/Http/Requests/StoreQuestionnaireRequest.php#L10-L42)
+- [StoreQuestionnaireRequest.php:10-47](file://app/Http/Requests/StoreQuestionnaireRequest.php#L10-L47)
 - [UpdateQuestionnaireRequest.php:9-30](file://app/Http/Requests/UpdateQuestionnaireRequest.php#L9-L30)
 - [QuestionnaireReportExport.php:11-29](file://app/Exports/QuestionnaireReportExport.php#L11-L29)
 - [AllQuestionnairesReportExport.php:10-25](file://app/Exports/AllQuestionnairesReportExport.php#L10-L25)
@@ -136,9 +143,9 @@ QL --> WF
 **Section sources**
 - [Questionnaire.php:13-133](file://app/Models/Questionnaire.php#L13-L133)
 - [QuestionnaireForm.php:15-138](file://app/Livewire/Admin/QuestionnaireForm.php#L15-L138)
-- [QuestionManager.php:16-282](file://app/Livewire/Admin/QuestionManager.php#L16-L282)
+- [QuestionManager.php:16-296](file://app/Livewire/Admin/QuestionManager.php#L16-L296)
 - [QuestionnaireList.php:12-91](file://app/Livewire/Admin/QuestionnaireList.php#L12-L91)
-- [StoreQuestionnaireRequest.php:10-42](file://app/Http/Requests/StoreQuestionnaireRequest.php#L10-L42)
+- [StoreQuestionnaireRequest.php:10-47](file://app/Http/Requests/StoreQuestionnaireRequest.php#L10-L47)
 - [UpdateQuestionnaireRequest.php:9-30](file://app/Http/Requests/UpdateQuestionnaireRequest.php#L9-L30)
 - [QuestionnaireReportExport.php:11-29](file://app/Exports/QuestionnaireReportExport.php#L11-L29)
 - [AllQuestionnairesReportExport.php:10-25](file://app/Exports/AllQuestionnairesReportExport.php#L10-L25)
@@ -154,7 +161,7 @@ QL --> WF
 - Answer: stores selected option or essay answer linked to a response and question.
 - User: includes time limit settings and session tracking for assessment control.
 - QuestionnaireForm: creates/edit questionnaire with validation, target group sync, time limit configuration, and persistence.
-- QuestionManager: manages questions and answer options per questionnaire, including reordering and validation.
+- QuestionManager: manages questions and answer options per questionnaire, including reordering, validation, and intelligent default option generation.
 - QuestionnaireList: displays filtered list of questionnaires with search, status, and target group filtering capabilities.
 - AvailableQuestionnaires: handles bulk assessment workflow with time limit enforcement and session management.
 - QuestionnaireFill: manages individual questionnaire filling with time limit validation.
@@ -171,22 +178,22 @@ QL --> WF
 - [Answer.php:10-44](file://app/Models/Answer.php#L10-L44)
 - [User.php:12-98](file://app/Models/User.php#L12-L98)
 - [QuestionnaireForm.php:15-138](file://app/Livewire/Admin/QuestionnaireForm.php#L15-L138)
-- [QuestionManager.php:16-282](file://app/Livewire/Admin/QuestionManager.php#L16-L282)
+- [QuestionManager.php:16-296](file://app/Livewire/Admin/QuestionManager.php#L16-L296)
 - [QuestionnaireList.php:12-91](file://app/Livewire/Admin/QuestionnaireList.php#L12-L91)
 - [AvailableQuestionnaires.php:17-677](file://app/Livewire/Fill/AvailableQuestionnaires.php#L17-L677)
 - [QuestionnaireFill.php:18-515](file://app/Livewire/Fill/QuestionnaireFill.php#L18-515)
-- [StoreQuestionnaireRequest.php:10-42](file://app/Http/Requests/StoreQuestionnaireRequest.php#L10-L42)
+- [StoreQuestionnaireRequest.php:10-47](file://app/Http/Requests/StoreQuestionnaireRequest.php#L10-L47)
 - [UpdateQuestionnaireRequest.php:9-30](file://app/Http/Requests/UpdateQuestionnaireRequest.php#L9-L30)
 - [QuestionnaireReportExport.php:11-29](file://app/Exports/QuestionnaireReportExport.php#L11-L29)
 - [AllQuestionnairesReportExport.php:10-25](file://app/Exports/AllQuestionnairesReportExport.php#L10-L25)
 - [QuestionnaireScorer.php:12-139](file://app/Services/QuestionnaireScorer.php#L12-L139)
 
 ## Architecture Overview
-The system follows a layered architecture with enhanced time limit management capabilities and improved administrative filtering:
-- Presentation: Livewire components for admin UI (form builder, question manager, and questionnaire list with filtering) and assessment interfaces.
-- Application: Controllers and services orchestrate workflows (validation, persistence, analytics, time limit enforcement, and target group filtering).
-- Domain: Eloquent models define domain entities and relationships with time limit support and target group management.
-- Persistence: Laravel Eloquent ORM with soft deletes, explicit casts, time limit tracking, and efficient filtering through whereHas relationships.
+The system follows a layered architecture with enhanced time limit management capabilities, improved administrative filtering, and intelligent default option generation for Indonesian language assessments:
+- Presentation: Livewire components for admin UI (form builder, question manager with default options, and questionnaire list with filtering) and assessment interfaces.
+- Application: Controllers and services orchestrate workflows (validation, persistence, analytics, time limit enforcement, target group filtering, and intelligent default option management).
+- Domain: Eloquent models define domain entities and relationships with time limit support, target group management, and rating scale integration.
+- Persistence: Laravel Eloquent ORM with soft deletes, explicit casts, time limit tracking, efficient filtering through whereHas relationships, and intelligent default option caching.
 
 ```mermaid
 classDiagram
@@ -276,6 +283,16 @@ class User {
 +departmentRef() Department
 +roleRef() Role
 }
+class QuestionManager {
++Questionnaire questionnaire
++string question_text
++string type
++bool is_required
++array options
++defaultOptions() array
++resetForm() void
++updatedType() void
+}
 Questionnaire "1" --> "*" Question : "has many"
 Questionnaire "1" --> "*" QuestionnaireTarget : "has many"
 QuestionnaireTarget "1" --> "*" Role : "links to"
@@ -286,6 +303,8 @@ Response "1" --> "*" Answer : "has many"
 AnswerOption "1" --> "*" Answer : "has many"
 User "1" --> "*" Response : "has many"
 User "1" --> "*" Questionnaire : "created"
+QuestionManager --> Question : "manages"
+QuestionManager --> AnswerOption : "creates with defaults"
 ```
 
 **Diagram sources**
@@ -297,8 +316,58 @@ User "1" --> "*" Questionnaire : "created"
 - [Response.php:11-44](file://app/Models/Response.php#L11-L44)
 - [Answer.php:10-44](file://app/Models/Answer.php#L10-L44)
 - [User.php:12-98](file://app/Models/User.php#L12-L98)
+- [QuestionManager.php:16-296](file://app/Livewire/Admin/QuestionManager.php#L16-L296)
 
 ## Detailed Component Analysis
+
+### Question Manager with Enhanced Default Options System
+The QuestionManager component has been significantly enhanced with intelligent default option generation for Indonesian language assessments. The new defaultOptions() method provides predefined five-point Likert scale options that automatically populate when creating new questions with selectable options.
+
+Key features:
+- **Intelligent default option generation**: The defaultOptions() method returns predefined Indonesian rating scale options
+- **Automatic application**: Default options are automatically applied when creating new questions with selectable types
+- **Five-point rating scale**: Options range from "Sangat Tidak Setuju" (Very Disagree) to "Sangat Setuju" (Very Agree)
+- **Predefined scoring**: Scores automatically assigned as 1-5 respectively for each rating level
+- **Seamless integration**: Works with existing question creation and editing workflows
+
+```mermaid
+sequenceDiagram
+participant Admin as "Admin UI"
+participant Manager as "QuestionManager"
+participant Options as "Default Options"
+participant Form as "Question Form"
+Admin->>Manager : "Select question type with options"
+Manager->>Manager : "updatedType() triggered"
+Manager->>Options : "Check if type uses selectable options"
+Options-->>Manager : "Returns true for single_choice/combined"
+Manager->>Manager : "Apply defaultOptions()"
+Manager->>Form : "Populate form with default options"
+Form-->>Admin : "Display pre-filled rating scale options"
+```
+
+**Diagram sources**
+- [QuestionManager.php:93-102](file://app/Livewire/Admin/QuestionManager.php#L93-L102)
+- [QuestionManager.php:278-287](file://app/Livewire/Admin/QuestionManager.php#L278-L287)
+- [QuestionManager.php:264-273](file://app/Livewire/Admin/QuestionManager.php#L264-L273)
+
+**Updated** Enhanced Question Manager with intelligent default option generation system
+
+Practical example: Creating a new question with default Indonesian rating scale
+- Select question type "Single Choice" or "Combined".
+- The system automatically applies five predefined Indonesian rating scale options.
+- Options include: "Sangat Tidak Setuju" (1), "Tidak Setuju" (2), "Netral" (3), "Setuju" (4), "Sangat Setuju" (5).
+- Administrator can modify or remove options as needed.
+- Automatic scoring ensures proper numerical values for each rating level.
+
+Practical example: Resetting form with default options
+- When creating new questions, the resetForm() method initializes with defaultOptions().
+- Ensures consistent baseline for all new questions requiring selectable options.
+
+**Section sources**
+- [QuestionManager.php:93-102](file://app/Livewire/Admin/QuestionManager.php#L93-L102)
+- [QuestionManager.php:264-273](file://app/Livewire/Admin/QuestionManager.php#L264-L273)
+- [QuestionManager.php:278-287](file://app/Livewire/Admin/QuestionManager.php#L278-L287)
+- [question-manager.blade.php:66-111](file://resources/views/livewire/admin/question-manager.blade.php#L66-L111)
 
 ### Questionnaire List with Target Group Filtering
 The QuestionnaireList component provides comprehensive administrative filtering capabilities including target group filtering. This enhancement allows administrators to efficiently locate questionnaires based on their assigned target groups.
@@ -442,13 +511,14 @@ RPersist --> Success
 - [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php:14-17](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php#L14-L17)
 
 ### Question Manager and Answer Options
-The question manager supports adding, editing, deleting, and reordering questions within a questionnaire. It enforces type-specific constraints for answer options and maintains ordering.
+The question manager supports adding, editing, deleting, and reordering questions within a questionnaire. It enforces type-specific constraints for answer options and maintains ordering. The enhanced default option system provides intelligent baseline options for Indonesian language assessments.
 
 Key behaviors:
 - Supports question types that require selectable options (e.g., single_choice, combined).
 - Enforces minimum two options and requires numeric scores for selectable types.
 - Automatically manages option ordering and updates or creates options per question.
 - Provides move up/down reordering with atomic swaps.
+- **Updated**: Intelligent default option generation with predefined Indonesian rating scales.
 
 ```mermaid
 flowchart TD
@@ -458,7 +528,10 @@ TypeCheck --> |Yes| MinOpts{">= 2 options?"}
 MinOpts --> |No| ErrMin["Show error: minimum 2 options"]
 MinOpts --> |Yes| ScoreCheck{"All options have scores?"}
 ScoreCheck --> |No| ErrScore["Show error: missing scores"]
-ScoreCheck --> |Yes| Persist["Persist question and options"]
+ScoreCheck --> |Yes| DefaultCheck{"Default options needed?"}
+DefaultCheck --> |Yes| ApplyDefaults["Apply Indonesian rating scale"]
+DefaultCheck --> |No| Persist["Persist question and options"]
+ApplyDefaults --> Persist
 TypeCheck --> |No| DeleteOpts["Delete existing options"]
 DeleteOpts --> Persist
 Persist --> Done(["Success"])
@@ -470,17 +543,21 @@ ErrScore --> Done
 - [QuestionManager.php:104-173](file://app/Livewire/Admin/QuestionManager.php#L104-L173)
 - [QuestionManager.php:226-229](file://app/Livewire/Admin/QuestionManager.php#L226-L229)
 - [QuestionManager.php:235-250](file://app/Livewire/Admin/QuestionManager.php#L235-L250)
+- [QuestionManager.php:278-287](file://app/Livewire/Admin/QuestionManager.php#L278-L287)
 
-Practical example: Adding a new question with options
+**Updated** Enhanced default option generation system with Indonesian rating scales
+
+Practical example: Adding a new question with default Indonesian rating scale
 - Select type single_choice or combined.
-- Enter question text and add at least two options with scores.
-- Save; the system persists and orders options.
+- The system automatically applies five predefined Indonesian rating scale options.
+- Options include: "Sangat Tidak Setuju" (1), "Tidak Setuju" (2), "Netral" (3), "Setuju" (4), "Sangat Setuju" (5).
+- Administrator can modify scores or add custom options as needed.
 
 Practical example: Reordering questions
 - Use move up/down actions; the system swaps order values atomically.
 
 **Section sources**
-- [QuestionManager.php:16-282](file://app/Livewire/Admin/QuestionManager.php#L16-L282)
+- [QuestionManager.php:16-296](file://app/Livewire/Admin/QuestionManager.php#L16-L296)
 - [Question.php:11-43](file://app/Models/Question.php#L11-L43)
 - [AnswerOption.php:10-38](file://app/Models/AnswerOption.php#L10-L38)
 
@@ -538,6 +615,7 @@ Validation ensures data integrity and policy compliance with enhanced time limit
 - Status must be one of draft, active, closed.
 - Target groups must be a non-empty array of valid role slugs.
 - **Updated**: Time limit must be between 1 and 10080 minutes (7 days max) when provided.
+- **Updated**: Question types with selectable options must have at least 2 options with valid scores.
 
 Publishing workflow:
 - Set status to active to enable submissions.
@@ -560,6 +638,7 @@ Analytics computation:
 - Calculates question-level averages and response counts.
 - Builds distribution of answers with percentages.
 - **Updated**: Includes time limit compliance metrics and session duration analysis.
+- **Updated**: Incorporates default option usage statistics for Indonesian rating scales.
 
 ```mermaid
 sequenceDiagram
@@ -570,10 +649,10 @@ participant Sheets as "Sheets"
 participant Excel as "Excel Writer"
 Admin->>Export : "Trigger report"
 Export->>Scorer : "summarizeQuestionnaire(questionnaire)"
-Scorer-->>Export : "Analytics data including time limits"
+Scorer-->>Export : "Analytics data including time limits and default options"
 Export->>Sheets : "Create summary + answers sheets"
 Sheets->>Excel : "Write workbook"
-Excel-->>Admin : "Download report with time limit metrics"
+Excel-->>Admin : "Download report with time limit metrics and rating scale usage"
 ```
 
 **Diagram sources**
@@ -581,14 +660,16 @@ Excel-->>Admin : "Download report with time limit metrics"
 - [AllQuestionnairesReportExport.php:17-23](file://app/Exports/AllQuestionnairesReportExport.php#L17-L23)
 - [QuestionnaireScorer.php:33-112](file://app/Services/QuestionnaireScorer.php#L33-L112)
 
+**Updated** Enhanced export functionality with default option usage statistics
+
 Practical example: Generating a questionnaire report
 - Navigate to the questionnaire's analytics page and export.
 - Download an Excel workbook containing summary and answers sheets.
-- **Updated**: Report includes time limit compliance statistics and session duration metrics.
+- **Updated**: Report includes time limit compliance statistics, session duration metrics, and default option usage patterns.
 
 Practical example: Bulk operations
 - Use the all-questionnaires export to compile cross-questionnaire analytics.
-- **Updated**: Export includes aggregated time limit performance data across all assessments.
+- **Updated**: Export includes aggregated time limit performance data and default option adoption rates across all assessments.
 
 **Section sources**
 - [QuestionnaireReportExport.php:11-29](file://app/Exports/QuestionnaireReportExport.php#L11-L29)
@@ -603,6 +684,7 @@ Administrators can:
 - Set user-level time limits for session-based assessment control.
 - View and manage target assignments via the assignment panel.
 - **Updated**: Filter questionnaires by target group using the dropdown filter.
+- **Updated**: Utilize intelligent default options for consistent Indonesian language assessments.
 
 Target group resolution:
 - Derives allowed slugs from roles excluding special IDs.
@@ -617,7 +699,7 @@ Target group resolution:
 - [QuestionnaireList.php:87](file://app/Livewire/Admin/QuestionnaireList.php#L87)
 
 ## Dependency Analysis
-The following diagram highlights key dependencies among components with time limit functionality and target group filtering:
+The following diagram highlights key dependencies among components with time limit functionality, target group filtering, and enhanced default option generation:
 
 ```mermaid
 graph LR
@@ -626,6 +708,7 @@ QF --> UR["UpdateQuestionnaireRequest"]
 QF --> Q["Questionnaire"]
 QM["QuestionManager"] --> Qs["Question"]
 QM --> AO["AnswerOption"]
+QM --> DO["Default Options"]
 QL["QuestionnaireList"] --> Q["Questionnaire"]
 QL --> TG["Target Group Filter"]
 Q --> Qs
@@ -641,13 +724,14 @@ QE["QuestionnaireReportExport"] --> SC["QuestionnaireScorer"]
 AE["AllQuestionnairesReportExport"] --> SC
 AQ["AvailableQuestionnaires"] --> TL
 QFill["QuestionnaireFill"] --> TL
+DO --> RS["Rating Scale Options"]
 ```
 
 **Diagram sources**
 - [QuestionnaireForm.php:15-138](file://app/Livewire/Admin/QuestionnaireForm.php#L15-L138)
 - [QuestionnaireList.php:12-91](file://app/Livewire/Admin/QuestionnaireList.php#L12-L91)
-- [QuestionManager.php:16-282](file://app/Livewire/Admin/QuestionManager.php#L16-L282)
-- [StoreQuestionnaireRequest.php:10-42](file://app/Http/Requests/StoreQuestionnaireRequest.php#L10-L42)
+- [QuestionManager.php:16-296](file://app/Livewire/Admin/QuestionManager.php#L16-L296)
+- [StoreQuestionnaireRequest.php:10-47](file://app/Http/Requests/StoreQuestionnaireRequest.php#L10-L47)
 - [UpdateQuestionnaireRequest.php:9-30](file://app/Http/Requests/UpdateQuestionnaireRequest.php#L9-L30)
 - [Questionnaire.php:13-133](file://app/Models/Questionnaire.php#L13-L133)
 - [QuestionnaireTarget.php:9-24](file://app/Models/QuestionnaireTarget.php#L9-L24)
@@ -666,8 +750,8 @@ QFill["QuestionnaireFill"] --> TL
 **Section sources**
 - [QuestionnaireForm.php:15-138](file://app/Livewire/Admin/QuestionnaireForm.php#L15-L138)
 - [QuestionnaireList.php:12-91](file://app/Livewire/Admin/QuestionnaireList.php#L12-L91)
-- [QuestionManager.php:16-282](file://app/Livewire/Admin/QuestionManager.php#L16-L282)
-- [StoreQuestionnaireRequest.php:10-42](file://app/Http/Requests/StoreQuestionnaireRequest.php#L10-L42)
+- [QuestionManager.php:16-296](file://app/Livewire/Admin/QuestionManager.php#L16-L296)
+- [StoreQuestionnaireRequest.php:10-47](file://app/Http/Requests/StoreQuestionnaireRequest.php#L10-L47)
 - [UpdateQuestionnaireRequest.php:9-30](file://app/Http/Requests/UpdateQuestionnaireRequest.php#L9-L30)
 - [Questionnaire.php:13-133](file://app/Models/Questionnaire.php#L13-L133)
 - [QuestionnaireTarget.php:9-24](file://app/Models/QuestionnaireTarget.php#L9-L24)
@@ -692,11 +776,14 @@ QFill["QuestionnaireFill"] --> TL
 - **Updated**: Cache time limit configurations to reduce database queries during assessment sessions.
 - **Updated**: Optimize target group filtering with proper indexing on questionnaire_targets table.
 - **Updated**: Use whereHas relationships for target group filtering to leverage database optimization.
+- **Updated**: Cache default option arrays to reduce repeated array instantiation during question creation.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
 - Target group validation errors: ensure at least one target group is selected; the system prevents removing the last remaining group.
 - Option validation errors: for single_choice and combined types, provide at least two options with numeric scores.
+- **Updated**: Default option generation errors: verify that defaultOptions() method returns properly formatted arrays with required keys (id, option_text, score).
+- **Updated**: Indonesian rating scale issues: ensure "Sangat Tidak Setuju" through "Sangat Setuju" options are properly recognized and scored.
 - Date validation errors: end date must be after or equal to start date.
 - Reordering anomalies: use move up/down actions; the system performs atomic swaps to maintain order integrity.
 - **Updated**: Time limit validation errors: ensure time limit values are between 1 and 10080 minutes when provided.
@@ -707,10 +794,11 @@ Common issues and resolutions:
 **Section sources**
 - [QuestionnaireForm.php:64-68](file://app/Livewire/Admin/QuestionnaireForm.php#L64-L68)
 - [QuestionManager.php:113-127](file://app/Livewire/Admin/QuestionManager.php#L113-L127)
+- [QuestionManager.php:278-287](file://app/Livewire/Admin/QuestionManager.php#L278-L287)
 - [StoreQuestionnaireRequest.php:35](file://app/Http/Requests/StoreQuestionnaireRequest.php#L35)
 
 ## Conclusion
-The questionnaire management system provides a robust, validated, and extensible foundation for designing assessments, managing questions and options, assigning target groups, and generating analytics. The enhanced time limit functionality adds comprehensive assessment control capabilities, supporting both individual questionnaire time limits and user session-based time management. The newly added target group filtering capability in the QuestionnaireList component significantly improves administrative efficiency by enabling precise questionnaire discovery and management. Its modular architecture supports efficient administration, strong data integrity, scalable reporting, and reliable time limit enforcement across all assessment scenarios.
+The questionnaire management system provides a robust, validated, and extensible foundation for designing assessments, managing questions and options, assigning target groups, and generating analytics. The enhanced time limit functionality adds comprehensive assessment control capabilities, supporting both individual questionnaire time limits and user session-based time management. The newly added target group filtering capability in the QuestionnaireList component significantly improves administrative efficiency by enabling precise questionnaire discovery and management. The enhanced QuestionManager component with intelligent default option generation provides administrators with ready-to-use Indonesian rating scales, improving user experience and ensuring consistent assessment quality. Its modular architecture supports efficient administration, strong data integrity, scalable reporting, and reliable time limit enforcement across all assessment scenarios.
 
 ## Appendices
 - Data model relationships and cardinalities are defined in the class diagram and model files.
@@ -720,3 +808,4 @@ The questionnaire management system provides a robust, validated, and extensible
 - **Updated**: Assessment workflows integrate time limit enforcement with real-time session monitoring and automatic submission capabilities.
 - **Updated**: Target group filtering utilizes whereHas relationships for efficient database querying and proper indexing strategies.
 - **Updated**: The QuestionnaireList component provides comprehensive multi-criteria filtering with live updates and responsive pagination.
+- **Updated**: The QuestionManager component now includes intelligent default option generation with predefined Indonesian rating scales for enhanced user experience.

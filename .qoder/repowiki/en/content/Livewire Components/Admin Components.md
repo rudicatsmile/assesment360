@@ -48,11 +48,10 @@
 
 ## Update Summary
 **Changes Made**
-- Enhanced QuestionnaireList component with new target group filtering capability
-- Added dynamic dropdown options for questionnaire target groups in all questionnaire management components
-- Integrated target group filtering with existing search and status filters
-- Updated QuestionnaireForm and QuestionnaireAssignment components to support dynamic target group options
-- Enhanced Questionnaire model with improved target group management and validation
+- Enhanced QuestionManager component with new defaultOptions() method providing predefined Indonesian rating scale options
+- Improved default option generation system with automatic application when creating new questions with selectable options
+- Updated component behavior to include enhanced default option management for better user experience
+- Added comprehensive Indonesian rating scale with predefined options: "Sangat Tidak Setuju" (1), "Tidak Setuju" (2), "Netral" (3), "Setuju" (4), "Sangat Setuju" (5)
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -67,10 +66,10 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the admin-focused Livewire components that power the assessment platform. It covers the admin dashboard, department management, user administration, role management, and questionnaire lifecycle management (creation, editing, assignment, analytics). The questionnaire management system has been significantly enhanced with comprehensive target group filtering capabilities, allowing administrators to filter questionnaires by target groups, assign target groups dynamically, and manage questionnaire access controls more effectively. The UserDirectory component has also been enhanced with time limit management capabilities, enabling administrators to set individual time limits for users, reset user fill sessions, and manage time-based access controls. It explains component state management, form handling, validation, real-time updates, integration with admin layouts and navigation, security considerations, data filtering, and bulk operations.
+This document describes the admin-focused Livewire components that power the assessment platform. It covers the admin dashboard, department management, user administration, role management, and questionnaire lifecycle management (creation, editing, assignment, analytics). The questionnaire management system has been significantly enhanced with comprehensive target group filtering capabilities, allowing administrators to filter questionnaires by target groups, assign target groups dynamically, and manage questionnaire access controls more effectively. The UserDirectory component has also been enhanced with time limit management capabilities, enabling administrators to set individual time limits for users, reset user fill sessions, and manage time-based access controls. The QuestionManager component has been enhanced with intelligent default option generation for Indonesian rating scales, improving the user experience when creating questions with selectable answer options.
 
 ## Project Structure
-The admin components are organized under the Livewire Admin namespace and paired with Blade views. They integrate with middleware for role-based access control and leverage Laravel requests for validation. The questionnaire management system now includes advanced target group filtering and dynamic option management, while the UserDirectory component includes advanced time limit management features integrated with the questionnaire filling system.
+The admin components are organized under the Livewire Admin namespace and paired with Blade views. They integrate with middleware for role-based access control and leverage Laravel requests for validation. The questionnaire management system now includes advanced target group filtering and dynamic option management, while the UserDirectory component includes advanced time limit management features integrated with the questionnaire filling system. The QuestionManager component now includes intelligent default option generation for Indonesian rating scales.
 
 ```mermaid
 graph TB
@@ -82,7 +81,7 @@ RDir["RoleDirectory"]
 QForm["QuestionnaireForm<br/>+ Dynamic Target Groups"]
 QList["QuestionnaireList<br/>+ Target Group Filtering"]
 QAssign["QuestionnaireAssignment<br/>+ Dynamic Options"]
-QMgr["QuestionManager"]
+QMgr["QuestionManager<br/>+ Default Options"]
 end
 subgraph "Blade Views"
 VAD["admin-dashboard.blade.php"]
@@ -92,7 +91,7 @@ VRD["role-directory.blade.php"]
 VQF["questionnaire-form.blade.php<br/>+ Target Group Dropdown"]
 VQL["questionnaire-list.blade.php<br/>+ Target Group Filter"]
 VQA["questionnaire-assignment.blade.php<br/>+ Dynamic Options"]
-VQM["question-manager.blade.php"]
+VQM["question-manager.blade.php<br/>+ Default Options"]
 end
 subgraph "Models & Database"
 MDept["Departement"]
@@ -142,6 +141,7 @@ AQ --> MUser
 - [AvailableQuestionnaires.php:152-165](file://app/Livewire/Fill/AvailableQuestionnaires.php#L152-L165)
 - [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php:14-16](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php#L14-L16)
 - [Response.php:16-27](file://app/Models/Response.php#L16-L27)
+- [QuestionManager.php:277-287](file://app/Livewire/Admin/QuestionManager.php#L277-L287)
 
 **Section sources**
 - [AdminDashboard.php:15-136](file://app/Livewire/Admin/AdminDashboard.php#L15-L136)
@@ -151,7 +151,7 @@ AQ --> MUser
 - [QuestionnaireForm.php:14-138](file://app/Livewire/Admin/QuestionnaireForm.php#L14-L138)
 - [QuestionnaireList.php:11-91](file://app/Livewire/Admin/QuestionnaireList.php#L11-L91)
 - [QuestionnaireAssignment.php:10-91](file://app/Livewire/Admin/QuestionnaireAssignment.php#L10-L91)
-- [QuestionManager.php:15-281](file://app/Livewire/Admin/QuestionManager.php#L15-L281)
+- [QuestionManager.php:15-296](file://app/Livewire/Admin/QuestionManager.php#L15-L296)
 
 ## Core Components
 - AdminDashboard: Aggregates and caches overview metrics for active questionnaires, participation rate, respondents, average scores, and role-based breakdowns.
@@ -161,7 +161,7 @@ AQ --> MUser
 - QuestionnaireForm: **Enhanced** Creates/edit questionnaires with dynamic target group dropdown options, manages targets, and redirects to edit page after save.
 - QuestionnaireList: **Enhanced** Lists questionnaires with search, status filter, target group filter, and actions (publish/close/delete).
 - QuestionnaireAssignment: **Enhanced** Assigns target groups to questionnaires with dynamic dropdown options, validation, and alias normalization.
-- QuestionManager: Manages questions and answer options per questionnaire, supports ordering and scoring.
+- QuestionManager: **Enhanced** Manages questions and answer options per questionnaire, supports ordering and scoring, and provides intelligent default option generation for Indonesian rating scales.
 
 **Section sources**
 - [AdminDashboard.php:20-135](file://app/Livewire/Admin/AdminDashboard.php#L20-L135)
@@ -171,25 +171,25 @@ AQ --> MUser
 - [QuestionnaireForm.php:40-138](file://app/Livewire/Admin/QuestionnaireForm.php#L40-L138)
 - [QuestionnaireList.php:21-91](file://app/Livewire/Admin/QuestionnaireList.php#L21-L91)
 - [QuestionnaireAssignment.php:27-91](file://app/Livewire/Admin/QuestionnaireAssignment.php#L27-L91)
-- [QuestionManager.php:35-280](file://app/Livewire/Admin/QuestionManager.php#L35-L280)
+- [QuestionManager.php:35-296](file://app/Livewire/Admin/QuestionManager.php#L35-L296)
 
 ## Architecture Overview
-The admin components follow a layered pattern with enhanced target group filtering and time limit management integration:
-- Presentation: Blade views bind Livewire component properties and event handlers, including dynamic target group dropdowns and time limit configuration UI.
-- State: Livewire component properties manage UI state, form data, target group options, and time limit configurations.
-- Validation: Request classes define strict validation rules for forms including target group selections and time limit inputs.
-- Persistence: Eloquent models encapsulate data access, relationships, target group management, and time limit tracking.
+The admin components follow a layered pattern with enhanced target group filtering, time limit management, and intelligent default option generation:
+- Presentation: Blade views bind Livewire component properties and event handlers, including dynamic target group dropdowns, time limit configuration UI, and intelligent default option management.
+- State: Livewire component properties manage UI state, form data, target group options, time limit configurations, and intelligent default option arrays.
+- Validation: Request classes define strict validation rules for forms including target group selections, time limit inputs, and question option validation.
+- Persistence: Eloquent models encapsulate data access, relationships, target group management, time limit tracking, and intelligent default option persistence.
 - Security: Middleware and authorization gates enforce role-based access.
 - Caching: Dashboard metrics are cached to reduce database load.
-- **Enhanced Integration**: Target group filtering integrates with questionnaire assignment system, while user time limits integrate with the questionnaire filling system for real-time access control.
+- **Enhanced Integration**: Target group filtering integrates with questionnaire assignment system, while user time limits integrate with the questionnaire filling system for real-time access control. Intelligent default option generation enhances the QuestionManager component with predefined Indonesian rating scales.
 
 ```mermaid
 graph TB
-UI["Blade Views<br/>+ Dynamic Target Group Dropdowns<br/>+ Time Limit UI"] --> LW["Livewire Components<br/>+ Target Group Filtering<br/>+ Time Limit Logic"]
+UI["Blade Views<br/>+ Dynamic Target Group Dropdowns<br/>+ Time Limit UI<br/>+ Default Option Management"] --> LW["Livewire Components<br/>+ Target Group Filtering<br/>+ Time Limit Logic<br/>+ Intelligent Default Options"]
 LW --> AUTH["Authorization & Middleware"]
-LW --> REQ["Validation Requests<br/>+ Target Group Validation<br/>+ Time Limit Validation"]
+LW --> REQ["Validation Requests<br/>+ Target Group Validation<br/>+ Time Limit Validation<br/>+ Question Option Validation"]
 LW --> SVC["Services (optional)"]
-LW --> DB["Eloquent Models<br/>+ Target Group Options<br/>+ Time Limit Fields"]
+LW --> DB["Eloquent Models<br/>+ Target Group Options<br/>+ Time Limit Fields<br/>+ Default Option Arrays"]
 DB --> CACHE["Cache Layer"]
 DB --> FILL["Fill System<br/>+ Session Timer<br/>+ Target Group Access"]
 AUTH --> RBAC["RBAC Config<br/>+ Target Aliases"]
@@ -207,6 +207,7 @@ FILL --> TIME["Time Limit Logic<br/>+ Session Management<br/>+ Access Control"]
 - [UserDirectory.php:131-193](file://app/Livewire/Admin/UserDirectory.php#L131-L193)
 - [AvailableQuestionnaires.php:152-165](file://app/Livewire/Fill/AvailableQuestionnaires.php#L152-L165)
 - [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php:14-16](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php#L14-L16)
+- [QuestionManager.php:277-287](file://app/Livewire/Admin/QuestionManager.php#L277-L287)
 
 **Section sources**
 - [AdminDashboard.php:11-135](file://app/Livewire/Admin/AdminDashboard.php#L11-L135)
@@ -216,7 +217,7 @@ FILL --> TIME["Time Limit Logic<br/>+ Session Management<br/>+ Access Control"]
 - [QuestionnaireForm.php:17-138](file://app/Livewire/Admin/QuestionnaireForm.php#L17-L138)
 - [QuestionnaireList.php:14-91](file://app/Livewire/Admin/QuestionnaireList.php#L14-L91)
 - [QuestionnaireAssignment.php:12-91](file://app/Livewire/Admin/QuestionnaireAssignment.php#L12-L91)
-- [QuestionManager.php:18-280](file://app/Livewire/Admin/QuestionManager.php#L18-L280)
+- [QuestionManager.php:18-296](file://app/Livewire/Admin/QuestionManager.php#L18-L296)
 
 ## Detailed Component Analysis
 
@@ -455,33 +456,43 @@ C-->>U : "Flash saved message and dispatch event"
 - [questionnaire-assignment.blade.php:1-37](file://resources/views/livewire/admin/questionnaire-assignment.blade.php#L1-L37)
 
 ### QuestionManager
-- Purpose: Manage questions and answer options for a questionnaire, support ordering and scoring.
-- State: Tracks editing question ID, form visibility, question text, type, requirement, and options array.
-- Behavior: Validates options for selectable types, prepares options, persists question and options, swaps orders atomically, and cleans up orphaned options.
+- Purpose: **Enhanced** Manage questions and answer options for a questionnaire, support ordering and scoring, and provide intelligent default option generation for Indonesian rating scales.
+- State: Tracks editing question ID, form visibility, question text, type, requirement, and options array with intelligent default option management.
+- **New Feature**: Intelligent default option generation with predefined Indonesian rating scale options.
+- Behavior: Validates options for selectable types, prepares options, persists question and options, swaps orders atomically, cleans up orphaned options, and automatically applies default Indonesian rating scale options when creating new questions with selectable answer types.
+
+**Updated** Enhanced with intelligent default option generation system that provides predefined Indonesian rating scale options for better user experience when creating questions with selectable answer options.
 
 ```mermaid
-flowchart TD
-Start(["Open Question Manager"]) --> Edit{"Create/Edit?"}
-Edit --> |Create| Prepare["Prepare defaults"]
-Edit --> |Edit| Load["Load question with options"]
-Prepare --> ShowForm["Show form"]
-Load --> ShowForm
-ShowForm --> TypeChange{"Type changed?"}
-TypeChange --> |To selectable| AddDefaults["Add default options"]
-TypeChange --> |To non-selectable| ClearOptions["Clear options"]
-ShowForm --> Submit["Save question"]
-Submit --> Validate["Validate rules and options"]
-Validate --> Persist["Persist question and options"]
-Persist --> Cleanup["Delete orphaned options"]
-Cleanup --> Success["Flash success and reset form"]
+sequenceDiagram
+participant U as "Administrator"
+participant C as "QuestionManager"
+participant DB as "Database"
+U->>C : "Create new question with selectable options"
+C->>C : "Check if type uses selectable options"
+alt "Type uses selectable options"
+C->>C : "Generate default Indonesian rating scale options"
+C->>C : "Apply default options : Sangat Tidak Setuju (1), Tidak Setuju (2), Netral (3), Setuju (4), Sangat Setuju (5)"
+else "Type doesn't use selectable options"
+C->>C : "Keep empty options array"
+end
+U->>C : "Edit question"
+C->>DB : "Load existing question with answer options"
+C->>C : "Display current options or apply defaults if empty"
+U->>C : "Save question"
+C->>C : "Validate rules and options"
+C->>DB : "Persist question and answer options"
+C-->>U : "Flash success and reset form"
 ```
 
 **Diagram sources**
-- [QuestionManager.php:42-181](file://app/Livewire/Admin/QuestionManager.php#L42-L181)
-- [question-manager.blade.php:19-186](file://resources/views/livewire/admin/question-manager.blade.php#L19-L186)
+- [QuestionManager.php:93-102](file://app/Livewire/Admin/QuestionManager.php#L93-L102)
+- [QuestionManager.php:264-273](file://app/Livewire/Admin/QuestionManager.php#L264-L273)
+- [QuestionManager.php:277-287](file://app/Livewire/Admin/QuestionManager.php#L277-L287)
+- [question-manager.blade.php:66-111](file://resources/views/livewire/admin/question-manager.blade.php#L66-L111)
 
 **Section sources**
-- [QuestionManager.php:35-280](file://app/Livewire/Admin/QuestionManager.php#L35-L280)
+- [QuestionManager.php:35-296](file://app/Livewire/Admin/QuestionManager.php#L35-L296)
 - [question-manager.blade.php:1-188](file://resources/views/livewire/admin/question-manager.blade.php#L1-L188)
 - [StoreQuestionRequest.php](file://app/Http/Requests/StoreQuestionRequest.php)
 - [UpdateQuestionRequest.php](file://app/Http/Requests/UpdateQuestionRequest.php)
@@ -491,15 +502,15 @@ Cleanup --> Success["Flash success and reset form"]
 - Validation is centralized in request classes.
 - Security is enforced via middleware and authorization gates.
 - Configuration-driven behavior (RBAC) influences component logic.
-- **Enhanced Integration**: Target group filtering integrates with questionnaire assignment system, while user time limits integrate with the questionnaire filling system for real-time access control.
+- **Enhanced Integration**: Target group filtering integrates with questionnaire assignment system, while user time limits integrate with the questionnaire filling system for real-time access control. Intelligent default option generation in QuestionManager enhances user experience with predefined Indonesian rating scales.
 
 ```mermaid
 graph LR
-LW["Livewire Components<br/>+ Target Group Filtering<br/>+ Time Limit Logic"] --> M["Models<br/>+ Target Group Options<br/>+ Time Limit Fields"]
-LW --> RQ["Validation Requests<br/>+ Target Group Validation<br/>+ Time Limit Validation"]
+LW["Livewire Components<br/>+ Target Group Filtering<br/>+ Time Limit Logic<br/>+ Intelligent Default Options"] --> M["Models<br/>+ Target Group Options<br/>+ Time Limit Fields<br/>+ Default Option Arrays"]
+LW --> RQ["Validation Requests<br/>+ Target Group Validation<br/>+ Time Limit Validation<br/>+ Question Option Validation"]
 LW --> MW["Middleware"]
 LW --> CFG["RBAC Config<br/>+ Target Aliases"]
-M --> DB["Database<br/>+ Target Group Schema<br/>+ Time Limit Schema"]
+M --> DB["Database<br/>+ Target Group Schema<br/>+ Time Limit Schema<br/>+ Default Option Schema"]
 M --> FILL["Fill System<br/>+ Session Timer<br/>+ Access Control"]
 RQ --> DB
 MW --> RBAC["RBAC Policy"]
@@ -515,6 +526,7 @@ FILL --> TIME["Time Limit Logic<br/>+ Session Management"]
 - [UserDirectory.php:131-193](file://app/Livewire/Admin/UserDirectory.php#L131-L193)
 - [AvailableQuestionnaires.php:152-165](file://app/Livewire/Fill/AvailableQuestionnaires.php#L152-L165)
 - [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php:14-16](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php#L14-L16)
+- [QuestionManager.php:277-287](file://app/Livewire/Admin/QuestionManager.php#L277-L287)
 
 **Section sources**
 - [AdminDashboard.php:5-12](file://app/Livewire/Admin/AdminDashboard.php#L5-L12)
@@ -535,7 +547,8 @@ FILL --> TIME["Time Limit Logic<br/>+ Session Management"]
 - Efficient queries: Components use eager loading and selective field retrieval.
 - Debounced live updates: Inputs use debounced binding to minimize server round trips.
 - Bulk operations: Deletion safeguards prevent accidental mass deletions; alias normalization avoids redundant writes.
-- **Enhanced**: Target group filtering uses efficient whereHas queries with proper indexing; time limit calculations are performed efficiently using simple arithmetic operations and database queries.
+- **Enhanced**: Target group filtering uses efficient whereHas queries with proper indexing; time limit calculations are performed efficiently using simple arithmetic operations and database queries. Intelligent default option generation uses lightweight array operations and is only triggered when needed.
+- **New**: Default option generation is memory-efficient and only creates predefined arrays when questions with selectable options are created or edited.
 
 ## Troubleshooting Guide
 - Validation errors: Review request classes for precise validation messages and rules.
@@ -545,6 +558,8 @@ FILL --> TIME["Time Limit Logic<br/>+ Session Management"]
 - Soft deletes: Some delete actions are soft deletes; confirm model behavior and restore procedures.
 - Logging: Components log significant changes; review logs for audit trails.
 - **New Issues**: Time limit configuration errors: Verify that hours and minutes inputs are properly validated and converted to total minutes.
+- **New Issue**: Default option generation not working: Check that the defaultOptions() method is properly defined and accessible in the QuestionManager component.
+- **New Issue**: Indonesian rating scale options not appearing: Verify that the question type is set to 'single_choice' or 'combined' and that the defaultOptions() method is being called correctly.
 
 **Section sources**
 - [StoreDepartementRequest.php](file://app/Http/Requests/StoreDepartementRequest.php)
@@ -558,9 +573,10 @@ FILL --> TIME["Time Limit Logic<br/>+ Session Management"]
 - [EnsureUserIsAdmin.php](file://app/Http/Middleware/EnsureUserIsAdmin.php)
 - [EnsureUserHasRole.php](file://app/Http/Middleware/EnsureUserHasRole.php)
 - [RedirectByRole.php](file://app/Http/Middleware/RedirectByRole.php)
+- [QuestionManager.php:277-287](file://app/Livewire/Admin/QuestionManager.php#L277-L287)
 
 ## Conclusion
-The admin components provide a cohesive, secure, and efficient interface for managing departments, users, roles, and questionnaires. They emphasize real-time UX with Livewire, robust validation via request classes, strong authorization via middleware and policies, and configurable behavior through RBAC settings. **The questionnaire management system has been significantly enhanced with comprehensive target group filtering capabilities**, allowing administrators to filter questionnaires by target groups, assign target groups dynamically with proper validation, and manage questionnaire access controls more effectively. **The UserDirectory component has been significantly enhanced with comprehensive time limit management capabilities**, allowing administrators to set individual time limits for users, reset user fill sessions, and manage time-based access controls, integrating seamlessly with the questionnaire filling system.
+The admin components provide a cohesive, secure, and efficient interface for managing departments, users, roles, and questionnaires. They emphasize real-time UX with Livewire, robust validation via request classes, strong authorization via middleware and policies, and configurable behavior through RBAC settings. **The questionnaire management system has been significantly enhanced with comprehensive target group filtering capabilities**, allowing administrators to filter questionnaires by target groups, assign target groups dynamically with proper validation, and manage questionnaire access controls more effectively. **The UserDirectory component has been significantly enhanced with comprehensive time limit management capabilities**, allowing administrators to set individual time limits for users, reset user fill sessions, and manage time-based access controls, integrating seamlessly with the questionnaire filling system. **The QuestionManager component has been enhanced with intelligent default option generation for Indonesian rating scales**, improving the user experience when creating questions with selectable answer options by providing predefined rating scales with culturally appropriate Indonesian terminology.
 
 ## Appendices
 
@@ -568,12 +584,15 @@ The admin components provide a cohesive, secure, and efficient interface for man
 - Live bindings: Many inputs use live binding with debouncing to balance responsiveness and performance.
 - Events: Components emit and listen to events (e.g., target-groups-updated) to synchronize state across panels.
 - Flash messages: Success/error feedback is surfaced via session flash messages.
-- **Enhanced**: Target group filtering uses live debounced binding for real-time filtering; time limit inputs use live debounced binding for real-time conversion and validation.
+- **Enhanced**: Target group filtering uses live debounced binding for real-time filtering; time limit inputs use live debounced binding for real-time conversion and validation. Intelligent default option generation triggers automatically when creating questions with selectable options.
+- **New**: Default option management uses automatic application when questions with selectable answer types are created or edited.
 
 **Section sources**
 - [questionnaire-form.blade.php:109-121](file://resources/views/livewire/admin/questionnaire-form.blade.php#L109-L121)
 - [questionnaire-assignment.blade.php:6-11](file://resources/views/livewire/admin/questionnaire-assignment.blade.php#L6-L11)
 - [user-directory.blade.php:82-94](file://resources/views/livewire/admin/user-directory.blade.php#L82-L94)
+- [QuestionManager.php:93-102](file://app/Livewire/Admin/QuestionManager.php#L93-L102)
+- [QuestionManager.php:264-273](file://app/Livewire/Admin/QuestionManager.php#L264-L273)
 
 ### Integration with Admin Layouts and Navigation
 - Layouts: Components declare the admin layout to ensure consistent navigation and styling.
@@ -589,19 +608,22 @@ The admin components provide a cohesive, secure, and efficient interface for man
 - Password handling: Passwords are hashed during create/update.
 - Self-protection: Deleting self is prevented in user management.
 - Logging: Administrative actions are logged for auditability.
-- **Enhanced**: Target group filtering includes proper validation and sanitization of target group inputs; time limit management includes proper validation and sanitization of time inputs.
+- **Enhanced**: Target group filtering includes proper validation and sanitization of target group inputs; time limit management includes proper validation and sanitization of time inputs. Intelligent default option generation includes proper validation and sanitization of option data.
+- **Enhanced**: Default option management ensures proper validation and sanitization of Indonesian rating scale options.
 
 **Section sources**
 - [EnsureUserIsAdmin.php](file://app/Http/Middleware/EnsureUserIsAdmin.php)
 - [EnsureUserHasRole.php](file://app/Http/Middleware/EnsureUserHasRole.php)
 - [UserDirectory.php:174-182](file://app/Livewire/Admin/UserDirectory.php#L174-L182)
 - [UserDirectory.php:221-245](file://app/Livewire/Admin/UserDirectory.php#L221-L245)
+- [QuestionManager.php:277-287](file://app/Livewire/Admin/QuestionManager.php#L277-L287)
 
 ### Data Filtering and Bulk Operations
 - Filtering: Users, roles, and questionnaires support multiple filters and sorting.
 - **Enhanced**: QuestionnaireList now supports target group filtering with dynamic dropdown options.
 - Bulk operations: While individual actions are exposed, bulk operations are not explicitly implemented in the reviewed components.
 - **Enhanced**: UserDirectory supports time limit filtering and management through individual user configuration.
+- **New**: QuestionManager supports intelligent default option filtering and management for better user experience.
 
 **Section sources**
 - [UserDirectory.php:286-420](file://app/Livewire/Admin/UserDirectory.php#L286-L420)
@@ -683,3 +705,36 @@ The admin components provide a cohesive, secure, and efficient interface for man
 - [user-directory.blade.php:196-213](file://resources/views/livewire/admin/user-directory.blade.php#L196-L213)
 - [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php:14-16](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php#L14-L16)
 - [AvailableQuestionnaires.php:152-165](file://app/Livewire/Fill/AvailableQuestionnaires.php#L152-L165)
+
+### Intelligent Default Option Generation Features
+**New Section**: The QuestionManager component now includes intelligent default option generation for Indonesian rating scales:
+
+#### Default Option Generation
+- **Predefined Indonesian Rating Scale**: The defaultOptions() method provides culturally appropriate Indonesian rating scale options with meaningful translations.
+- **Automatic Application**: Default options are automatically applied when creating new questions with selectable answer types (single_choice or combined).
+- **Smart Initialization**: Default options are applied when editing questions that have no existing options but use selectable answer types.
+
+#### Indonesian Rating Scale Options
+- **Very Dissatisfied**: "Sangat Tidak Setuju" with score 1
+- **Dissatisfied**: "Tidak Setuju" with score 2
+- **Neutral**: "Netral" with score 3
+- **Satisfied**: "Setuju" with score 4
+- **Very Satisfied**: "Sangat Setuju" with score 5
+
+#### Enhanced User Experience
+- **Reduced Setup Time**: Administrators don't need to manually create common rating scale options.
+- **Cultural Appropriateness**: Uses Indonesian terminology that is familiar to local users.
+- **Automatic Validation**: Predefined options ensure minimum requirements for selectable question types are met.
+- **Smart Defaults**: Only applied when questions use selectable answer types, preserving flexibility for other question types.
+
+#### Technical Implementation
+- **Memory Efficient**: Default options are generated as lightweight arrays only when needed.
+- **Lazy Loading**: Options are generated on-demand rather than stored permanently.
+- **Type-Specific**: Only applied to questions with types that support selectable answers.
+- **Validation Integration**: Works seamlessly with existing validation rules for question options.
+
+**Section sources**
+- [QuestionManager.php:93-102](file://app/Livewire/Admin/QuestionManager.php#L93-L102)
+- [QuestionManager.php:264-273](file://app/Livewire/Admin/QuestionManager.php#L264-L273)
+- [QuestionManager.php:277-287](file://app/Livewire/Admin/QuestionManager.php#L277-L287)
+- [question-manager.blade.php:66-111](file://resources/views/livewire/admin/question-manager.blade.php#L66-L111)

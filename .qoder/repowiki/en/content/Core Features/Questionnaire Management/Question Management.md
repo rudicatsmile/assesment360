@@ -15,6 +15,13 @@
 - [admin.blade.php](file://resources/views/layouts/admin.blade.php)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Added documentation for the new `defaultOptions()` method that provides predefined Indonesian rating scale options
+- Updated answer option configuration section to reflect automatic application of default options
+- Enhanced validation rules documentation to include new default option handling
+- Updated examples to demonstrate the new default Indonesian rating scale options
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -28,7 +35,7 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document explains the question management system used to create, edit, order, and delete questions within assessment questionnaires. It covers supported question types, answer option configuration, validation rules, ordering via drag-and-drop controls, and the relationships between questions and answer options. It also provides best practices for designing effective questions and guidance for bulk operations and deletions.
+This document explains the question management system used to create, edit, order, and delete questions within assessment questionnaires. It covers supported question types, answer option configuration, validation rules, ordering via drag-and-drop controls, and the relationships between questions and answer options. The system now includes enhanced default option generation with predefined Indonesian rating scale options for improved user experience and consistency.
 
 ## Project Structure
 The question management feature is implemented as a Livewire component integrated into the admin layout. The backend persists data through Eloquent models and database migrations. Routes expose the question management page under the admin section.
@@ -71,7 +78,7 @@ R --> C
 **Diagram sources**
 - [question-manager.blade.php:1-188](file://resources/views/livewire/admin/question-manager.blade.php#L1-L188)
 - [admin.blade.php:1-105](file://resources/views/layouts/admin.blade.php#L1-L105)
-- [QuestionManager.php:1-282](file://app/Livewire/Admin/QuestionManager.php#L1-L282)
+- [QuestionManager.php:1-296](file://app/Livewire/Admin/QuestionManager.php#L1-L296)
 - [Question.php:1-43](file://app/Models/Question.php#L1-L43)
 - [AnswerOption.php:1-38](file://app/Models/AnswerOption.php#L1-L38)
 - [Questionnaire.php:1-131](file://app/Models/Questionnaire.php#L1-L131)
@@ -85,10 +92,10 @@ R --> C
 - [web.php:72-83](file://routes/web.php#L72-L83)
 - [admin.blade.php:1-105](file://resources/views/layouts/admin.blade.php#L1-L105)
 - [question-manager.blade.php:1-188](file://resources/views/livewire/admin/question-manager.blade.php#L1-L188)
-- [QuestionManager.php:1-282](file://app/Livewire/Admin/QuestionManager.php#L1-L282)
+- [QuestionManager.php:1-296](file://app/Livewire/Admin/QuestionManager.php#L1-L296)
 
 ## Core Components
-- QuestionManager: The Livewire component orchestrating question creation/editing, validation, persistence, and ordering.
+- QuestionManager: The Livewire component orchestrating question creation/editing, validation, persistence, and ordering. Now includes enhanced default option generation with predefined Indonesian rating scales.
 - Question: Eloquent model representing a single question within a questionnaire, with relationships to answer options and responses.
 - AnswerOption: Eloquent model representing selectable answer choices for supported question types, with ordering and scoring.
 - Questionnaire: Eloquent model representing an assessment form; provides questions and targets.
@@ -97,13 +104,13 @@ R --> C
 
 Key capabilities:
 - Create and edit questions with live preview.
-- Configure answer options for supported types.
-- Enforce validation rules per question type.
+- Configure answer options for supported types with automatic default option generation.
+- Enforce validation rules per question type including enhanced default option handling.
 - Manage question order via Up/Down buttons.
 - Delete questions with confirmation.
 
 **Section sources**
-- [QuestionManager.php:1-282](file://app/Livewire/Admin/QuestionManager.php#L1-L282)
+- [QuestionManager.php:1-296](file://app/Livewire/Admin/QuestionManager.php#L1-L296)
 - [Question.php:1-43](file://app/Models/Question.php#L1-L43)
 - [AnswerOption.php:1-38](file://app/Models/AnswerOption.php#L1-L38)
 - [Questionnaire.php:1-131](file://app/Models/Questionnaire.php#L1-L131)
@@ -136,6 +143,7 @@ end
 U->>V : Click "Save Question"
 V->>C : saveQuestion()
 C->>C : Validate via Store/UpdateQuestionRequest
+C->>C : Generate default options if needed
 C->>Q : Create or update question record
 C->>AO : Upsert answer options with order/score
 C-->>V : Flash success and refresh list
@@ -155,17 +163,19 @@ Supported question types:
 - Essay: No answer options; options array is ignored.
 - Combined: Behaves like single choice with scoring; requires options and scores.
 
-Behavioral notes:
+Enhanced behavior with default options:
+- When switching to a type that supports options without existing options, the system automatically applies predefined Indonesian rating scale options.
+- Default options include "Sangat Tidak Setuju" (Very Disagree) through "Sangat Setuju" (Very Agree) with scores 1-5 respectively.
 - When switching to a type that does not support options, options are cleared.
-- When switching to a type that supports options without existing options, two blank options are pre-populated.
 
 Best practices:
 - Use single choice for standardized scoring and automated analytics.
 - Use essay for qualitative feedback or open-ended insights.
 - Use combined when you want both structured options and scoring.
+- Leverage default Indonesian rating scales for consistent user experience across assessments.
 
 **Section sources**
-- [QuestionManager.php:28,93-102](file://app/Livewire/Admin/QuestionManager.php#L28,L93-L102)
+- [QuestionManager.php:28,93-102,278-287](file://app/Livewire/Admin/QuestionManager.php#L28,L93-L102,L278-L287)
 - [question-manager.blade.php:46-48](file://resources/views/livewire/admin/question-manager.blade.php#L46-L48)
 
 ### Answer Option Configuration
@@ -174,12 +184,22 @@ Best practices:
 - For single choice and combined, options must have non-empty text and numeric scores.
 - Empty options are filtered out before persisting.
 
+Enhanced default option generation:
+- The `defaultOptions()` method provides predefined Indonesian rating scale options:
+  - "Sangat Tidak Setuju" (Very Disagree) - Score: 1
+  - "Tidak Setuju" (Disagree) - Score: 2
+  - "Netral" (Neutral) - Score: 3
+  - "Setuju" (Agree) - Score: 4
+  - "Sangat Setuju" (Very Agree) - Score: 5
+- Default options are automatically applied when creating new questions with selectable options.
+
 Configuration UI:
 - Add/remove options dynamically.
 - Live preview of question text and selected type/required flag.
+- Default options appear automatically when selecting option-supporting question types.
 
 **Section sources**
-- [QuestionManager.php:32,56-68,113-127,146-169,235-250,255-262](file://app/Livewire/Admin/QuestionManager.php#L32,L56-L68,L113-L127,L146-L169,L235-L250,L255-L262)
+- [QuestionManager.php:32,56-68,113-127,146-169,235-250,255-262,278-287](file://app/Livewire/Admin/QuestionManager.php#L32,L56-L68,L113-L127,L146-L169,L235-L250,L255-L262,L278-L287)
 - [question-manager.blade.php:66-111](file://resources/views/livewire/admin/question-manager.blade.php#L66-L111)
 
 ### Drag-and-Drop Ordering System
@@ -208,14 +228,16 @@ Validation ensures data integrity:
 - is_required: required boolean.
 - options: array with nullable entries; each entry allows id, option_text, and score with length/score constraints.
 
-Additional runtime validations:
+Enhanced runtime validations with default options:
 - Single choice and combined require at least two non-empty options.
 - Scores must be present for single choice and combined options.
+- Default Indonesian rating scale options are automatically generated when needed.
+- Error messages are localized in Indonesian for better user experience.
 
 **Section sources**
 - [StoreQuestionRequest.php:26-45](file://app/Http/Requests/StoreQuestionRequest.php#L26-L45)
 - [UpdateQuestionRequest.php:25-28](file://app/Http/Requests/UpdateQuestionRequest.php#L25-L28)
-- [QuestionManager.php:106-127](file://app/Livewire/Admin/QuestionManager.php#L106-L127)
+- [QuestionManager.php:106-127,278-287](file://app/Livewire/Admin/QuestionManager.php#L106-L127,L278-L287)
 
 ### Relationship Management Between Questions and Answer Options
 - Question has many AnswerOptions ordered by order.
@@ -225,6 +247,7 @@ Additional runtime validations:
   - Updates an existing question if editing.
   - For non-option types, deletes existing options.
   - For option types, upserts options with order and score, then prunes removed ones.
+  - Automatically applies default Indonesian rating scale options when needed.
 
 ```mermaid
 classDiagram
@@ -262,11 +285,12 @@ AnswerOption "many" --> "1" Question : "belongs to"
 - Live debounced inputs update the form state immediately.
 - Preview section reflects current question text, type, and required flag.
 - Save triggers validation and persistence.
+- Default Indonesian rating scale options are automatically applied when editing option-supporting questions.
 
 Bulk operations:
 - Add/remove options while editing.
 - Toggle required flag.
-- Switch question type to automatically adjust option availability.
+- Switch question type to automatically adjust option availability and apply default options when needed.
 
 **Section sources**
 - [QuestionManager.php:48-71,104-173](file://app/Livewire/Admin/QuestionManager.php#L48-L71,L104-L173)
@@ -283,18 +307,21 @@ Bulk operations:
 
 ### Examples of Question Types and Best Practices
 - Single choice:
-  - Use for quantitative scoring.
-  - Provide 2–5 clear, mutually exclusive options.
-  - Assign meaningful scores to reflect importance or frequency.
+  - Use for quantitative scoring with standardized rating scales.
+  - Default Indonesian rating scale options are automatically applied.
+  - Provide 2–5 clear, mutually exclusive options with meaningful scores.
+  - Assign scores 1-5 to reflect intensity levels from Very Disagree to Very Agree.
 - Essay:
   - Use for qualitative feedback.
   - Keep prompt concise but specific.
   - Consider word limits externally if needed.
 - Combined:
   - Mix structured options with scoring and an optional open-ended field.
+  - Default Indonesian rating scale options are automatically applied.
   - Ensure scoring aligns with the assessment rubric.
 
-[No sources needed since this section provides general guidance]
+**Section sources**
+- [QuestionManager.php:278-287](file://app/Livewire/Admin/QuestionManager.php#L278-L287)
 
 ## Dependency Analysis
 The component depends on:
@@ -334,10 +361,12 @@ R["Routes"] --> C
 - Ordering uses a transaction with a temporary placeholder to prevent constraint violations during swaps.
 - Answer options are upserted with order indices; pruning removes obsolete options efficiently.
 - Queries fetch questions with answer options and sort by order to minimize client-side work.
+- Default option generation is performed only when needed, reducing unnecessary processing.
 
 Recommendations:
 - Keep the number of answer options reasonable for single choice to improve rendering performance.
 - Use soft deletes on questions to maintain audit trails and avoid accidental data loss.
+- Default Indonesian rating scale options are cached in memory to avoid repeated generation.
 
 **Section sources**
 - [QuestionManager.php:213-224](file://app/Livewire/Admin/QuestionManager.php#L213-L224)
@@ -347,18 +376,23 @@ Recommendations:
 Common issues and resolutions:
 - Saving single choice/combined without sufficient options:
   - Ensure at least two non-empty options with numeric scores.
+  - Default Indonesian rating scale options are automatically applied when creating new questions.
 - Scores missing for option types:
   - Provide integer scores for each option.
+  - Default options automatically include scores 1-5.
 - Ordering conflicts:
   - Use the Up/Down buttons; the system handles swapping safely.
 - Deleting a question:
   - Confirm deletion; dependent options are removed automatically.
+- Default options not appearing:
+  - Ensure the question type supports selectable options.
+  - Default options are automatically applied when switching to option-supporting types.
 
 **Section sources**
-- [QuestionManager.php:113-127,175-181](file://app/Livewire/Admin/QuestionManager.php#L113-L127,L175-L181)
+- [QuestionManager.php:113-127,175-181,278-287](file://app/Livewire/Admin/QuestionManager.php#L113-L127,L175-L181,L278-L287)
 
 ## Conclusion
-The question management system provides a robust, validated interface for creating and maintaining assessment questions. It supports multiple question types, dynamic answer option configuration, and safe reordering. By following the validation rules and best practices outlined here, administrators can build reliable and effective questionnaires.
+The question management system provides a robust, validated interface for creating and maintaining assessment questions. It supports multiple question types, dynamic answer option configuration with automatic default Indonesian rating scale options, and safe reordering. The enhanced default option generation system improves user experience by providing standardized rating scales that are culturally appropriate for Indonesian users. By following the validation rules and best practices outlined here, administrators can build reliable and effective questionnaires.
 
 ## Appendices
 
@@ -403,3 +437,17 @@ QUESTION ||--o{ ANSWER_OPTION : "has options"
 **Diagram sources**
 - [2026_04_16_010241_create_questions_table.php:11-22](file://database/migrations/2026_04_16_010241_create_questions_table.php#L11-L22)
 - [2026_04_16_010242_create_answer_options_table.php:11-20](file://database/migrations/2026_04_16_010242_create_answer_options_table.php#L11-L20)
+
+### Default Indonesian Rating Scale Options
+The system provides predefined Indonesian rating scale options for consistent user experience:
+
+- **Sangat Tidak Setuju** (Very Disagree) - Score: 1
+- **Tidak Setuju** (Disagree) - Score: 2  
+- **Netral** (Neutral) - Score: 3
+- **Setuju** (Agree) - Score: 4
+- **Sangat Setuju** (Very Agree) - Score: 5
+
+These default options are automatically applied when creating new questions with selectable options and can be customized or replaced as needed.
+
+**Section sources**
+- [QuestionManager.php:278-287](file://app/Livewire/Admin/QuestionManager.php#L278-L287)
