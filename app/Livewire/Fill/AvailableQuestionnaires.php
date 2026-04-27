@@ -195,6 +195,7 @@ class AvailableQuestionnaires extends Component
         $max = count($this->questionnaireIds) - 1;
         if ($this->currentIndex < $max) {
             $this->currentIndex++;
+            $this->dispatch('questionnaire-changed');
         }
     }
 

@@ -279,6 +279,10 @@
             initTimer();
             checkNextButton();
         });
+    " @questionnaire-changed.window="
+        $nextTick(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
     ">
     {{-- Hidden inputs that Livewire morphs with server-side values --}}
     <input type="hidden" id="timer-remaining-seconds" value="{{ $timeLimitInfo['remaining_seconds'] ?? 0 }}">
