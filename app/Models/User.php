@@ -25,6 +25,8 @@ class User extends Authenticatable
         'is_active',
         'time_limit_minutes',
         'filling_started_at',
+        'slug',
+        'prosentase',
     ];
 
     protected $hidden = [
