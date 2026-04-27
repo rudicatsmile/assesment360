@@ -22,6 +22,7 @@
     @php
         $role = auth()->user()?->roleRef?->name;
         $roleSlug = auth()->user()?->roleSlug();
+        $department = auth()->user()?->departmentRef?->name;
         $dashboardPath = (string) (config("rbac.dashboard_paths.{$roleSlug}") ?? '/fill/questionnaires');
         $dashboardRoute = url($dashboardPath);
         $isFillingQuestionnaire = request()->routeIs('fill.questionnaires.index');
@@ -38,7 +39,10 @@
                     <p class="text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Dashboard Penilai</p>
                     <h1 class="text-lg font-semibold">{{ config('app.name', 'KepsekEval') }}</h1>
                     <p class="text-xs text-amber-600 dark:text-amber-400">
-                        Role: {{ $role ?: '-' }}
+                        {{ $role ?: '-' }}
+                    </p>
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                        {{ $department ?: '-' }}
                     </p>
                 </div>
                 <div class="flex flex-wrap items-center justify-end gap-2">
