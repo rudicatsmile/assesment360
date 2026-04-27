@@ -20,8 +20,9 @@
 
 <body class="min-h-screen bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
     @php
-        $role = auth()->user()?->roleSlug();
-        $dashboardPath = (string) (config("rbac.dashboard_paths.{$role}") ?? '/fill/questionnaires');
+        $role = auth()->user()?->roleRef?->name;
+        $roleSlug = auth()->user()?->roleSlug();
+        $dashboardPath = (string) (config("rbac.dashboard_paths.{$roleSlug}") ?? '/fill/questionnaires');
         $dashboardRoute = url($dashboardPath);
         $isFillingQuestionnaire = request()->routeIs('fill.questionnaires.index');
     @endphp

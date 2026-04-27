@@ -24,6 +24,12 @@
 - [web.php](file://routes/web.php)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Enhanced AvailableQuestionnaires component with questionnaire-changed event dispatching for improved Alpine.js integration
+- Added automatic page scrolling functionality when switching between questionnaires
+- Updated component lifecycle and event handling documentation to reflect new event-driven behavior
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -95,7 +101,7 @@ PP --- LAYOUT_EVAL
 - AdminDashboard: Aggregates global metrics and renders cards for active questionnaires, respondents, participation rate, average score, and per-role breakdown.
 - QuestionnaireForm: CRUD for questionnaires with live field updates, validation, and target group selection.
 - QuestionManager: Manages questions and answer options within a questionnaire, supports reordering and validation.
-- AvailableQuestionnaires: Lists active questionnaires eligible for the current evaluator, draft/submitted history.
+- AvailableQuestionnaires: Lists active questionnaires eligible for the current evaluator, draft/submitted history, and provides seamless navigation with automatic scrolling.
 - StaffDashboard / TeacherDashboard: Role-specific dashboards powered by shared metrics trait.
 - QuestionnaireFill: Full-page interactive questionnaire with navigation, autosave, validation, and submission.
 - ProfilePage: Renders user profile with layout selection based on role.
@@ -229,7 +235,7 @@ U->>V : Click Save
 V->>C : submit.save()
 C->>C : validate + persist
 C->>C : syncTargetGroups(data.target_groups)
-C-->>U : redirect to edit page with success flash
+-->>U : redirect to edit page with success flash
 ```
 
 **Diagram sources**
@@ -279,8 +285,10 @@ Swap --> List
 ### AvailableQuestionnaires
 - Purpose: Show active questionnaires for the current evaluator and their draft/submitted history.
 - State: Loads questionnaires filtered by target groups and role aliases; queries draft/submitted responses.
-- Real-time interactions: None; static listing per user session.
+- Real-time interactions: Enhanced with questionnaire-changed event dispatching for improved Alpine.js integration and automatic page scrolling.
 - Rendering: Uses evaluator layout and available-questionnaires.blade.php.
+
+**Updated** Enhanced with event-driven navigation that provides seamless user experience through automatic page scrolling and improved Alpine.js integration.
 
 ```mermaid
 sequenceDiagram
@@ -290,17 +298,25 @@ participant C as "AvailableQuestionnaires"
 participant V as "Blade View"
 U->>R : GET /fill/questionnaires
 R->>C : Instantiate
-C->>C : Resolve role slug + target aliases
-C->>C : Query active questionnaires by target groups
-C->>C : Query draft/submitted responses for user
+C->>C : resolve role slug + target aliases
+C->>C : query active questionnaires by target groups
+C->>C : query draft/submitted responses for user
 C->>V : render('livewire.fill.available-questionnaires', { questionnaires, draftHistory, submittedHistory })
-V-->>U : HTML
+U->>V : Click Next Questionnaire
+V->>C : nextQuestionnaire()
+C->>C : validate current questionnaire completion
+C->>C : persist drafts if needed
+C->>C : increment currentIndex
+C->>C : dispatch('questionnaire-changed')
+C->>V : @questionnaire-changed.window listener
+V->>V : window.scrollTo({ top : 0, behavior : 'smooth' })
+V-->>U : Updated view scrolled to top
 ```
 
 **Diagram sources**
 - [web.php:157-159](file://routes/web.php#L157-L159)
-- [AvailableQuestionnaires.php:14-62](file://app/Livewire/Fill/AvailableQuestionnaires.php#L14-L62)
-- [available-questionnaires.blade.php:1-85](file://resources/views/livewire/fill/available-questionnaires.blade.php#L1-L85)
+- [AvailableQuestionnaires.php:184-200](file://app/Livewire/Fill/AvailableQuestionnaires.php#L184-L200)
+- [available-questionnaires.blade.php:281-286](file://resources/views/livewire/fill/available-questionnaires.blade.php#L281-L286)
 
 **Section sources**
 - [AvailableQuestionnaires.php:12-63](file://app/Livewire/Fill/AvailableQuestionnaires.php#L12-L63)
@@ -370,7 +386,7 @@ alt Valid
 U->>V : Confirm submit
 V->>C : submitFinal()
 C->>C : upsert answers + update response
-C-->>V : showThankYou
+-->>V : showThankYou
 else Invalid
 C-->>V : scroll to first invalid question
 end
@@ -441,6 +457,7 @@ LAYOUT_EVAL --> PP
 - Minimal reactivity: Components avoid unnecessary reactive properties; state is kept close to UI needs.
 - Autosave strategy: Draft persistence occurs on navigation rather than frequent heartbeat, reducing write pressure.
 - Blade rendering: Templates precompute counts and labels to keep Livewire state lean.
+- Event-driven navigation: AvailableQuestionnaires uses efficient event dispatching for seamless transitions without full page reloads.
 
 [No sources needed since this section provides general guidance]
 
@@ -455,6 +472,8 @@ LAYOUT_EVAL --> PP
   - QuestionnaireForm prevents removing the last target group; aliasing handled via configuration.
 - Layout issues:
   - ProfilePage selects layout based on role; ensure role configuration aligns with user roles.
+- Event integration issues:
+  - AvailableQuestionnaires questionnaire-changed event requires proper Alpine.js integration for automatic scrolling functionality.
 
 **Section sources**
 - [AdminDashboard.php:20-23](file://app/Livewire/Admin/AdminDashboard.php#L20-L23)
@@ -465,7 +484,7 @@ LAYOUT_EVAL --> PP
 - [ProfilePage.php:10-16](file://app/Livewire/Shared/ProfilePage.php#L10-L16)
 
 ## Conclusion
-The Livewire components provide a cohesive, real-time frontend for administration and evaluation workflows. They leverage caching, debounced updates, and robust validation to balance responsiveness and correctness. Blade templates integrate seamlessly with component state, while routing and RBAC ensure secure, role-aware experiences.
+The Livewire components provide a cohesive, real-time frontend for administration and evaluation workflows. They leverage caching, debounced updates, and robust validation to balance responsiveness and correctness. Blade templates integrate seamlessly with component state, while routing and RBAC ensure secure, role-aware experiences. The enhanced AvailableQuestionnaires component demonstrates improved event-driven architecture with seamless Alpine.js integration for better user experience.
 
 [No sources needed since this section summarizes without analyzing specific files]
 
@@ -478,15 +497,21 @@ The Livewire components provide a cohesive, real-time frontend for administratio
 - Events:
   - QuestionnaireForm emits target-groups-updated to synchronize dependent components.
   - QuestionnaireFill dispatches queue-autosave and listens for autosave-status to show feedback.
+  - **AvailableQuestionnaires** dispatches questionnaire-changed event for seamless navigation and automatic page scrolling.
+
+**Updated** Enhanced AvailableQuestionnaires component now provides event-driven navigation with automatic page scrolling for improved user experience.
 
 **Section sources**
 - [QuestionnaireForm.php:109-121](file://app/Livewire/Admin/QuestionnaireForm.php#L109-L121)
 - [questionnaire-fill.blade.php:69-76](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L69-L76)
+- [AvailableQuestionnaires.php:197-199](file://app/Livewire/Fill/AvailableQuestionnaires.php#L197-L199)
+- [available-questionnaires.blade.php:281-286](file://resources/views/livewire/fill/available-questionnaires.blade.php#L281-L286)
 
 ### Data Binding Patterns
 - wire:model.live and wire:model.live.debounce for immediate UI updates with throttled persistence.
 - wire:click for actions like adding/removing options, moving questions, and navigation.
 - wire:loading and wire:target for UX feedback during async operations.
+- **Event-driven navigation** for seamless transitions between questionnaires.
 
 **Section sources**
 - [questionnaire-form.blade.php:27-64](file://resources/views/livewire/admin/questionnaire-form.blade.php#L27-L64)
@@ -496,9 +521,11 @@ The Livewire components provide a cohesive, real-time frontend for administratio
 ### Integration with Blade Templates
 - Components return views with compact data; Blade templates consume component-provided props and drive interactivity.
 - Layouts inject assets and provide navigation; components choose layout via attributes or runtime logic.
+- **Enhanced Alpine.js integration** with event listeners for improved user experience and seamless navigation.
 
 **Section sources**
 - [admin-dashboard.blade.php:1-51](file://resources/views/livewire/admin/admin-dashboard.blade.php#L1-L51)
 - [questionnaire-fill.blade.php:500-513](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L500-L513)
 - [admin.blade.php:17-102](file://resources/views/layouts/admin.blade.php#L17-L102)
 - [evaluator.blade.php:16-79](file://resources/views/layouts/evaluator.blade.php#L16-L79)
+- [available-questionnaires.blade.php:281-286](file://resources/views/livewire/fill/available-questionnaires.blade.php#L281-L286)

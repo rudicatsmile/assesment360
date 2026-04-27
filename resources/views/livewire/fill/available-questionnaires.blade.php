@@ -71,7 +71,7 @@
                 } else if (questionType === 'essay') {
                     isAnswered = hasEssayText;
                 } else if (questionType === 'combined') {
-                    isAnswered = (hasSelectedRadio || hasCheckedBox || hasSelectedDropdown) && hasText;
+                    isAnswered = hasSelectedRadio || hasCheckedBox || hasSelectedDropdown;
                 } else {
                     isAnswered = hasSelectedRadio || hasCheckedBox || hasSelectedDropdown || hasText;
                 }
@@ -111,7 +111,7 @@
                 } else if (questionType === 'essay') {
                     isAnswered = hasEssayText;
                 } else if (questionType === 'combined') {
-                    isAnswered = (hasSelectedRadio || hasCheckedBox || hasSelectedDropdown) && hasText;
+                    isAnswered = hasSelectedRadio || hasCheckedBox || hasSelectedDropdown;
                 } else {
                     isAnswered = hasSelectedRadio || hasCheckedBox || hasSelectedDropdown || hasText;
                 }
@@ -175,7 +175,7 @@
                 } else if (questionType === 'essay') {
                     isAnswered = hasEssayText;
                 } else if (questionType === 'combined') {
-                    isAnswered = (hasSelectedRadio || hasCheckedBox || hasSelectedDropdown) && hasText;
+                    isAnswered = hasSelectedRadio || hasCheckedBox || hasSelectedDropdown;
                 } else {
                     isAnswered = hasSelectedRadio || hasCheckedBox || hasSelectedDropdown || hasText;
                 }
@@ -230,7 +230,7 @@
                 } else if (questionType === 'essay') {
                     isAnswered = hasEssayText;
                 } else if (questionType === 'combined') {
-                    isAnswered = (hasSelectedRadio || hasCheckedBox || hasSelectedDropdown) && hasText;
+                    isAnswered = hasSelectedRadio || hasCheckedBox || hasSelectedDropdown;
                 } else {
                     isAnswered = hasSelectedRadio || hasCheckedBox || hasSelectedDropdown || hasText;
                 }
@@ -585,7 +585,7 @@
                     <div class="space-y-4 p-4">
                         @foreach ($currentQuestions as $index => $question)
                             @php
-                                $isRequiredQuestion = $question->is_required || in_array($question->type, ['essay', 'combined'], true);
+                                $isRequiredQuestion = $question->is_required;
                             @endphp
                             <section id="q-{{ $question->id }}" wire:key="q-{{ $question->id }}" data-question-block
                                 data-question-id="{{ $question->id }}" data-question-number="{{ $index + 1 }}"

@@ -95,12 +95,12 @@ class AvailableQuestionnaires extends Component
             foreach ($questions as $question) {
                 $totalQuestions++;
                 $answer = $this->answers[$question->id] ?? ['answer_option_id' => null, 'essay_answer' => ''];
-                $isRequired = $question->is_required || in_array($question->type, ['essay', 'combined'], true);
+                $isRequired = $question->is_required;
 
                 $isAnswered = match ($question->type) {
                     'single_choice' => $answer['answer_option_id'] !== null,
                     'essay' => trim($answer['essay_answer'] ?? '') !== '',
-                    'combined' => $answer['answer_option_id'] !== null && trim($answer['essay_answer'] ?? '') !== '',
+                    'combined' => $answer['answer_option_id'] !== null,
                     default => false,
                 };
 
@@ -126,14 +126,14 @@ class AvailableQuestionnaires extends Component
         if ($currentId !== null && $currentQuestions->count() > 0) {
             $currentComplete = true;
             foreach ($currentQuestions as $question) {
-                $isRequired = $question->is_required || in_array($question->type, ['essay', 'combined'], true);
+                $isRequired = $question->is_required;
                 if (!$isRequired) continue;
 
                 $answer = $this->answers[$question->id] ?? ['answer_option_id' => null, 'essay_answer' => ''];
                 $isAnswered = match ($question->type) {
                     'single_choice' => $answer['answer_option_id'] !== null,
                     'essay' => trim($answer['essay_answer'] ?? '') !== '',
-                    'combined' => $answer['answer_option_id'] !== null && trim($answer['essay_answer'] ?? '') !== '',
+                    'combined' => $answer['answer_option_id'] !== null,
                     default => false,
                 };
 
@@ -203,7 +203,7 @@ class AvailableQuestionnaires extends Component
     {
         $questions = Question::where('questionnaire_id', $questionnaireId)->orderBy('order')->get();
         foreach ($questions as $question) {
-            $isRequired = $question->is_required || in_array($question->type, ['essay', 'combined'], true);
+            $isRequired = $question->is_required;
             if (!$isRequired) {
                 continue;
             }
@@ -212,7 +212,7 @@ class AvailableQuestionnaires extends Component
             $isAnswered = match ($question->type) {
                 'single_choice' => $answer['answer_option_id'] !== null,
                 'essay' => trim($answer['essay_answer'] ?? '') !== '',
-                'combined' => $answer['answer_option_id'] !== null && trim($answer['essay_answer'] ?? '') !== '',
+                'combined' => $answer['answer_option_id'] !== null,
                 default => false,
             };
 
@@ -520,16 +520,14 @@ class AvailableQuestionnaires extends Component
                     $messages[$prefix . '.answer_option_id.required'] = 'Pilih salah satu opsi jawaban.';
                 }
 
-                if ($question->type === 'essay') {
+                if ($question->type === 'essay' && $question->is_required) {
                     $rules[$prefix . '.essay_answer'] = ['required', 'string', 'min:3', 'max:2000'];
                     $messages[$prefix . '.essay_answer.required'] = 'Jawaban esai wajib diisi.';
                 }
 
-                if ($question->type === 'combined') {
+                if ($question->type === 'combined' && $question->is_required) {
                     $rules[$prefix . '.answer_option_id'] = ['required', 'integer'];
-                    $rules[$prefix . '.essay_answer'] = ['required', 'string', 'min:3', 'max:2000'];
                     $messages[$prefix . '.answer_option_id.required'] = 'Pilih salah satu opsi jawaban.';
-                    $messages[$prefix . '.essay_answer.required'] = 'Alasan/esai wajib diisi untuk tipe combined.';
                 }
             }
         }

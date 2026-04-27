@@ -27,6 +27,9 @@
 - [2026_04_21_003142_add_started_at_to_responses_table.php](file://database/migrations/2026_04_21_003142_add_started_at_to_responses_table.php)
 - [2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php](file://database/migrations/2026_04_21_020644_add_time_limit_and_filling_started_at_to_users_table.php)
 - [2026_04_16_010240_create_questionnaire_targets_table.php](file://database/migrations/2026_04_16_010240_create_questionnaire_targets_table.php)
+- [2026_04_16_010242_create_answer_options_table.php](file://database/migrations/2026_04_16_010242_create_answer_options_table.php)
+- [AnswerOptionFactory.php](file://database/factories/AnswerOptionFactory.php)
+- [QuestionnaireSeeder.php](file://database/seeders/QuestionnaireSeeder.php)
 </cite>
 
 ## Update Summary
@@ -94,7 +97,7 @@ WF["WhereHas Filter"]
 end
 subgraph "Default Options System"
 DO["Default Options Method"]
-RS["Rating Scale Options"]
+RS["Indonesian Rating Scale Options"]
 end
 QF --> SR
 QF --> UR
@@ -724,7 +727,7 @@ QE["QuestionnaireReportExport"] --> SC["QuestionnaireScorer"]
 AE["AllQuestionnairesReportExport"] --> SC
 AQ["AvailableQuestionnaires"] --> TL
 QFill["QuestionnaireFill"] --> TL
-DO --> RS["Rating Scale Options"]
+DO --> RS["Indonesian Rating Scale Options"]
 ```
 
 **Diagram sources**

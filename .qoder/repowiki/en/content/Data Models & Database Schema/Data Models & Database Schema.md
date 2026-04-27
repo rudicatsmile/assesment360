@@ -11,25 +11,35 @@
 - [Response.php](file://app/Models/Response.php)
 - [Answer.php](file://app/Models/Answer.php)
 - [create_users_table.php](file://database/migrations/0001_01_01_000000_create_users_table.php)
+- [2026_04_24_221202_add_slug_and_prosentase_to_users_table.php](file://database/migrations/2026_04_24_221202_add_slug_and_prosentase_to_users_table.php)
 - [create_roles_table.php](file://database/migrations/2026_04_17_093035_create_roles_table.php)
 - [create_departements_table.php](file://database/migrations/2026_04_17_000821_create_departements_table.php)
 - [create_questionnaires_table.php](file://database/migrations/2026_04_16_010239_create_questionnaires_table.php)
+- [create_questionnaire_targets_table.php](file://database/migrations/2026_04_16_010240_create_questionnaire_targets_table.php)
 - [create_questions_table.php](file://database/migrations/2026_04_16_010241_create_questions_table.php)
 - [create_answer_options_table.php](file://database/migrations/2026_04_16_020000_create_responses_table.php)
+- [create_responses_table.php](file://database/migrations/2026_04_16_020000_create_responses_table.php)
 - [create_answers_table.php](file://database/migrations/2026_04_16_020100_create_answers_table.php)
 - [QuestionnaireScorer.php](file://app/Services/QuestionnaireScorer.php)
-- [QuestionnaireTarget.php](file://app/Models/QuestionnaireTarget.php)
-- [create_questionnaire_targets_table.php](file://database/migrations/2026_04_16_010240_create_questionnaire_targets_table.php)
-- [StoreQuestionnaireRequest.php](file://app/Http/Requests/StoreQuestionnaireRequest.php)
-- [UpdateQuestionnaireRequest.php](file://app/Http/Requests/UpdateQuestionnaireRequest.php)
+- [UserManagementController.php](file://app/Http/Controllers/Admin/UserManagementController.php)
 - [StoreUserRequest.php](file://app/Http/Requests/StoreUserRequest.php)
 - [UpdateUserRequest.php](file://app/Http/Requests/UpdateUserRequest.php)
+- [StoreQuestionnaireRequest.php](file://app/Http/Requests/StoreQuestionnaireRequest.php)
+- [UpdateQuestionnaireRequest.php](file://app/Http/Requests/UpdateQuestionnaireRequest.php)
 - [StoreQuestionRequest.php](file://app/Http/Requests/StoreQuestionRequest.php)
 - [UpdateQuestionRequest.php](file://app/Http/Requests/UpdateQuestionRequest.php)
 - [StoreDepartementRequest.php](file://app/Http/Requests/StoreDepartementRequest.php)
 - [UpdateDepartementRequest.php](file://app/Http/Requests/UpdateDepartementRequest.php)
 - [rbac.php](file://config/rbac.php)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Updated User model documentation to include new slug and prosentase fields
+- Added new section documenting URL-friendly identification and percentage-based role weights
+- Updated User relationship documentation to reflect enhanced role management capabilities
+- Enhanced scoring logic documentation to account for user-level percentage weights
+- Updated sample data structures to include new User fields
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -45,6 +55,8 @@
 
 ## Introduction
 This document provides comprehensive data model documentation for the assessment platform. It details entity relationships, field definitions, data types, primary and foreign keys, indexes, and constraints. It also explains the questionnaire-answer-response relationship, scoring logic, validation rules, business constraints, and department-user-role hierarchies. Sample data structures and schema diagrams are included to aid understanding.
+
+**Updated** Added documentation for new slug and prosentase fields in User model for URL-friendly identification and percentage-based role weights.
 
 ## Project Structure
 The assessment platform follows Laravel conventions with Eloquent models representing domain entities and migrations defining the relational schema. The models encapsulate relationships and business logic, while migrations define tables, constraints, and indexes.
@@ -64,6 +76,7 @@ A["Answer"]
 end
 subgraph "Migrations"
 MU["create_users_table.php"]
+MUS["2026_04_24_221202_add_slug_and_prosentase_to_users_table.php"]
 MD["create_departements_table.php"]
 MR["create_roles_table.php"]
 MQ["create_questionnaires_table.php"]
@@ -98,6 +111,7 @@ D --> AO
 - [Response.php:11-42](file://app/Models/Response.php#L11-L42)
 - [Answer.php:10-44](file://app/Models/Answer.php#L10-L44)
 - [create_users_table.php:11-23](file://database/migrations/0001_01_01_000000_create_users_table.php#L11-L23)
+- [2026_04_24_221202_add_slug_and_prosentase_to_users_table.php:14-17](file://database/migrations/2026_04_24_221202_add_slug_and_prosentase_to_users_table.php#L14-L17)
 - [create_departements_table.php:12-20](file://database/migrations/2026_04_17_000821_create_departements_table.php#L12-L20)
 - [create_roles_table.php:12-22](file://database/migrations/2026_04_17_093035_create_roles_table.php#L12-L22)
 - [create_questionnaires_table.php:9-21](file://database/migrations/2026_04_16_010239_create_questionnaires_table.php#L9-L21)
@@ -117,6 +131,7 @@ D --> AO
 - [Response.php:11-42](file://app/Models/Response.php#L11-L42)
 - [Answer.php:10-44](file://app/Models/Answer.php#L10-L44)
 - [create_users_table.php:11-23](file://database/migrations/0001_01_01_000000_create_users_table.php#L11-L23)
+- [2026_04_24_221202_add_slug_and_prosentase_to_users_table.php:14-17](file://database/migrations/2026_04_24_221202_add_slug_and_prosentase_to_users_table.php#L14-L17)
 - [create_departements_table.php:12-20](file://database/migrations/2026_04_17_000821_create_departements_table.php#L12-L20)
 - [create_roles_table.php:12-22](file://database/migrations/2026_04_17_093035_create_roles_table.php#L12-L22)
 - [create_questionnaires_table.php:9-21](file://database/migrations/2026_04_16_010239_create_questionnaires_table.php#L9-L21)
@@ -130,10 +145,11 @@ D --> AO
 This section documents the core entities and their attributes, relationships, and constraints.
 
 - Users
-  - Purpose: Authenticate and manage platform access.
-  - Fields: id, name, email (unique), role (legacy string), role_id (FK), phone_number, password, rememberToken, timestamps, soft deletes.
+  - Purpose: Authenticate and manage platform access with enhanced role management capabilities.
+  - Fields: id, name, email (unique), role (legacy string), role_id (FK), phone_number, password, rememberToken, timestamps, soft deletes, slug (URL-friendly identifier), prosentase (percentage weight).
   - Relationships: belongsTo Department via department_id; belongsTo Role via role_id; hasMany Responses; hasMany Questionnaires (created_by).
-  - Constraints: email unique; role_id references roles.id; department_id references departements.id; created_by references users.id.
+  - Constraints: email unique; role_id references roles.id; department_id references departements.id; created_by references users.id; slug provides URL-friendly identification; prosentase enables percentage-based role weights.
+  - **Updated** Added slug and prosentase fields for enhanced URL identification and percentage-based role weighting.
 
 - Roles
   - Purpose: Define user roles and scoring percentage thresholds.
@@ -186,6 +202,7 @@ This section documents the core entities and their attributes, relationships, an
 **Section sources**
 - [User.php:16-37](file://app/Models/User.php#L16-L37)
 - [User.php:39-57](file://app/Models/User.php#L39-L57)
+- [User.php:28-29](file://app/Models/User.php#L28-L29)
 - [Role.php:13-24](file://app/Models/Role.php#L13-L24)
 - [Role.php:26-29](file://app/Models/Role.php#L26-L29)
 - [Departement.php:13-17](file://app/Models/Departement.php#L13-L17)
@@ -205,7 +222,7 @@ This section documents the core entities and their attributes, relationships, an
 - [Answer.php:24-42](file://app/Models/Answer.php#L24-L42)
 
 ## Architecture Overview
-The assessment platform uses a relational schema centered around questionnaires, questions, responses, and answers. Scoring is computed per response and aggregated per department and role.
+The assessment platform uses a relational schema centered around questionnaires, questions, responses, and answers. Scoring is computed per response and aggregated per department and role with enhanced percentage-based weighting capabilities.
 
 ```mermaid
 erDiagram
@@ -214,6 +231,8 @@ bigint id PK
 string name
 string email UK
 string role
+string slug
+decimal prosentase
 string password
 string remember_token
 timestamp email_verified_at
@@ -307,8 +326,11 @@ DEPARTEMENTS ||--o{ ANSWER_OPTIONS : "has_many"
 
 **Diagram sources**
 - [create_users_table.php:13-23](file://database/migrations/0001_01_01_000000_create_users_table.php#L13-L23)
+- [2026_04_24_221202_add_slug_and_prosentase_to_users_table.php:14-17](file://database/migrations/2026_04_24_221202_add_slug_and_prosentase_to_users_table.php#L14-L17)
 - [create_roles_table.php:14-22](file://database/migrations/2026_04_17_093035_create_roles_table.php#L14-L22)
 - [create_departements_table.php:14-20](file://database/migrations/2026_04_17_000821_create_departements_table.php#L14-L20)
+- [create_questionnaires_table.php:11-21](file://database/migrations/2026_04_16_010239_create_questionnaires_table.php#L11-L21)
+- [create_questionnaire_targets_table.php:9-21](file://database/migrations/2026_04_16_010240_create_questionnaire_targets_table.php#L9-L21)
 - [create_questionnaires_table.php:11-21](file://database/migrations/2026_04_16_010239_create_questionnaires_table.php#L11-L21)
 - [create_questionnaire_targets_table.php:9-21](file://database/migrations/2026_04_16_010240_create_questionnaire_targets_table.php#L9-L21)
 - [create_questions_table.php:9-22](file://database/migrations/2026_04_16_010241_create_questions_table.php#L9-L22)
@@ -322,6 +344,7 @@ DEPARTEMENTS ||--o{ ANSWER_OPTIONS : "has_many"
 - Department hierarchy: One department can have many users and many answer options/answers.
 - Role-based access: Users belong to a Role; Questionnaire distribution targets are aligned to Role slugs.
 - User roles: Users derive roleSlug from Role; evaluator fallback logic applies when configured evaluators are absent.
+- **Enhanced** URL-friendly identification: Users now support slug field for clean URLs and prosentase for percentage-based role weights.
 
 ```mermaid
 classDiagram
@@ -338,6 +361,8 @@ class User {
 +string role
 +string phone_number
 +boolean is_active
++string slug
++decimal prosentase
 +roleSlug() string
 +isAdminRole() bool
 +isEvaluatorRole() bool
@@ -354,10 +379,12 @@ User --> Departement : "belongs_to"
 **Diagram sources**
 - [Role.php:13-24](file://app/Models/Role.php#L13-L24)
 - [User.php:59-87](file://app/Models/User.php#L59-L87)
+- [User.php:28-29](file://app/Models/User.php#L28-L29)
 - [Departement.php:13-17](file://app/Models/Departement.php#L13-L17)
 
 **Section sources**
 - [User.php:59-87](file://app/Models/User.php#L59-L87)
+- [User.php:28-29](file://app/Models/User.php#L28-L29)
 - [Role.php:13-24](file://app/Models/Role.php#L13-L24)
 - [Departement.php:13-17](file://app/Models/Departement.php#L13-L17)
 
@@ -402,6 +429,7 @@ RP-->>U : "Status updated"
 - Per-option scoring: AnswerOption.score contributes to Answer.calculated_score when selected.
 - Question type awareness: Combined questions may require both essay and choice scoring.
 - Aggregation: QuestionnaireScorer service computes totals per department and role; prosentase from Role determines weight.
+- **Enhanced** Percentage-based weighting: Users now support prosentase field for individual user-level percentage weighting in addition to role-based percentages.
 
 ```mermaid
 flowchart TD
@@ -412,7 +440,7 @@ EssayCheck --> |Yes| EssayScore["Apply Essay Evaluation Logic"]
 EssayCheck --> |No| SkipEssay["Skip Essay Score"]
 EssayScore --> Combine["Combine Scores"]
 SkipEssay --> Combine
-Combine --> Weight["Apply Role prosentase"]
+Combine --> Weight["Apply Role prosentase + User prosentase"]
 Weight --> Aggregate["Aggregate by Department/Role"]
 Aggregate --> Save["Save calculated_score on Answer"]
 Save --> End(["End"])
@@ -422,11 +450,13 @@ Save --> End(["End"])
 - [AnswerOption.php:15-21](file://app/Models/AnswerOption.php#L15-L21)
 - [Answer.php:15-22](file://app/Models/Answer.php#L15-L22)
 - [QuestionnaireScorer.php](file://app/Services/QuestionnaireScorer.php)
+- [User.php:28-29](file://app/Models/User.php#L28-L29)
 
 **Section sources**
 - [AnswerOption.php:15-21](file://app/Models/AnswerOption.php#L15-L21)
 - [Answer.php:15-22](file://app/Models/Answer.php#L15-L22)
 - [QuestionnaireScorer.php](file://app/Services/QuestionnaireScorer.php)
+- [User.php:28-29](file://app/Models/User.php#L28-L29)
 
 ### Data Validation Rules and Business Constraints
 - Questionnaire target groups:
@@ -439,6 +469,9 @@ Save --> End(["End"])
   - Composite unique index prevents duplicate submissions.
 - Required questions:
   - is_required flag enforced at model level; requests validate presence.
+- **Enhanced** User validation:
+  - Slug field provides URL-friendly identifiers for clean routing.
+  - Prosentase field enables precise percentage-based role weighting.
 
 ```mermaid
 flowchart TD
@@ -467,8 +500,8 @@ Commit --> VEnd
 
 ### Sample Data Structures
 - User
-  - Fields: name, email, role, role_id, department_id, phone_number, password, is_active.
-  - Example: { name: "John Doe", email: "john@example.com", role_id: 3, department_id: 1, is_active: true }.
+  - Fields: name, email, role, role_id, department_id, phone_number, password, is_active, slug, prosentase.
+  - Example: { name: "John Doe", email: "john@example.com", role_id: 3, department_id: 1, is_active: true, slug: "john-doe", prosentase: 95.00 }.
 - Role
   - Fields: name, slug, prosentase, is_active.
   - Example: { name: "Evaluator", slug: "evaluator", prosentase: 85.00, is_active: true }.
@@ -493,6 +526,7 @@ Commit --> VEnd
 
 **Section sources**
 - [User.php:16-37](file://app/Models/User.php#L16-L37)
+- [User.php:28-29](file://app/Models/User.php#L28-L29)
 - [Role.php:13-24](file://app/Models/Role.php#L13-L24)
 - [Departement.php:13-17](file://app/Models/Departement.php#L13-L17)
 - [Questionnaire.php:18-30](file://app/Models/Questionnaire.php#L18-L30)
@@ -518,13 +552,16 @@ Commit --> VEnd
   - Responses: unique(qid, uid); indexes(qid), indexes(uid)
   - Questions: unique(qid, order)
   - AnswerOptions: unique(qid, order)
-  - Users: email unique; sessions.user_id indexed
+  - Users: email unique; sessions.user_id indexed; slug indexed (implied)
   - Roles: name unique; slug unique
   - Departments: name unique; urut indexed
 - Constraints:
   - Soft deletes across entities except roles and departments.
   - Enum constraints for status and type fields.
   - Cascade deletes on related answers when parent records are removed.
+- **Enhanced** User field constraints:
+  - Slug field supports URL-friendly identification with length limit of 100 characters.
+  - Prosentase field provides percentage-based weighting with precision of 5,2.
 
 ```mermaid
 graph LR
@@ -548,6 +585,7 @@ U --> |belongs_to| R["Roles"]
 - [User.php:49-56](file://app/Models/User.php#L49-L56)
 - [Answer.php:34-41](file://app/Models/Answer.php#L34-L41)
 - [AnswerOption.php:28-30](file://app/Models/AnswerOption.php#L28-L30)
+- [2026_04_24_221202_add_slug_and_prosentase_to_users_table.php:14-17](file://database/migrations/2026_04_24_221202_add_slug_and_prosentase_to_users_table.php#L14-L17)
 
 **Section sources**
 - [create_questionnaires_table.php:18](file://database/migrations/2026_04_16_010239_create_questionnaires_table.php#L18)
@@ -558,6 +596,7 @@ U --> |belongs_to| R["Roles"]
 - [User.php:49-56](file://app/Models/User.php#L49-L56)
 - [Answer.php:34-41](file://app/Models/Answer.php#L34-L41)
 - [AnswerOption.php:28-30](file://app/Models/AnswerOption.php#L28-L30)
+- [2026_04_24_221202_add_slug_and_prosentase_to_users_table.php:14-17](file://database/migrations/2026_04_24_221202_add_slug_and_prosentase_to_users_table.php#L14-L17)
 
 ## Performance Considerations
 - Indexes:
@@ -569,8 +608,9 @@ U --> |belongs_to| R["Roles"]
   - Batch process answers per response and per department to minimize N+1 queries.
 - Role-based filtering:
   - Use Role slugs to efficiently filter questionnaire targets without joins.
-
-[No sources needed since this section provides general guidance]
+- **Enhanced** User field optimization:
+  - Slug field provides efficient URL routing without complex joins.
+  - Prosentase field enables lightweight percentage calculations during scoring.
 
 ## Troubleshooting Guide
 - Duplicate submission:
@@ -585,17 +625,22 @@ U --> |belongs_to| R["Roles"]
 - Essay scoring:
   - Symptom: calculated_score remains null for essay-type questions.
   - Resolution: Implement essay evaluation logic in scorer and persist calculated_score.
+- **New** Slug generation issues:
+  - Symptom: URL routing problems or duplicate slug values.
+  - Resolution: Ensure slug field is properly generated from user names and validated for uniqueness.
+- **New** Percentage weighting:
+  - Symptom: Unexpected scoring results with user-level percentage adjustments.
+  - Resolution: Verify prosentase values are within expected ranges and properly applied in scoring calculations.
 
 **Section sources**
 - [create_responses_table.php:19-21](file://database/migrations/2026_04_16_020000_create_responses_table.php#L19-L21)
 - [Questionnaire.php:66-68](file://app/Models/Questionnaire.php#L66-L68)
 - [create_questions_table.php:21](file://database/migrations/2026_04_16_010241_create_questions_table.php#L21)
 - [QuestionnaireScorer.php](file://app/Services/QuestionnaireScorer.php)
+- [UserManagementController.php:206-220](file://app/Http/Controllers/Admin/UserManagementController.php#L206-L220)
 
 ## Conclusion
-The assessment platform’s schema and models form a robust foundation for managing questionnaires, responses, and scoring. Clear foreign key relationships, indexes, and constraints ensure data integrity. The questionnaire-target alignment via Role slugs enables flexible distribution, while scoring logic supports both choice and essay evaluations. Adhering to validation rules and indexing strategies ensures optimal performance and reliability.
-
-[No sources needed since this section summarizes without analyzing specific files]
+The assessment platform's schema and models form a robust foundation for managing questionnaires, responses, and scoring. Clear foreign key relationships, indexes, and constraints ensure data integrity. The questionnaire-target alignment via Role slugs enables flexible distribution, while scoring logic supports both choice and essay evaluations. **Enhanced** with slug and prosentase fields, the User model now provides URL-friendly identification and percentage-based role weights, improving both user experience and scoring flexibility. Adhering to validation rules and indexing strategies ensures optimal performance and reliability.
 
 ## Appendices
 
@@ -619,3 +664,12 @@ The assessment platform’s schema and models form a robust foundation for manag
 
 **Section sources**
 - [rbac.php](file://config/rbac.php)
+
+### Appendix C: User Management Enhancements
+- **New** User management now supports slug generation and prosentase assignment during user creation and updates.
+- **New** Role resolution logic considers both legacy role slugs and new prosentase values for comprehensive user management.
+
+**Section sources**
+- [UserManagementController.php:104-131](file://app/Http/Controllers/Admin/UserManagementController.php#L104-L131)
+- [UserManagementController.php:133-165](file://app/Http/Controllers/Admin/UserManagementController.php#L133-L165)
+- [UserManagementController.php:206-220](file://app/Http/Controllers/Admin/UserManagementController.php#L206-L220)
