@@ -40,9 +40,13 @@ Route::get('/', function () {
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::get('/login/yadkhul', [AuthController::class, 'showAdminLogin'])->name('login.admin');
     Route::post('/login', [AuthController::class, 'loginWithPassword'])
         ->middleware('throttle:20,1')
         ->name('login.attempt');
+    Route::post('/login/yadkhul', [AuthController::class, 'adminLoginWithPassword'])
+        ->middleware('throttle:20,1')
+        ->name('login.admin.attempt');
     Route::post('/login/send-verification', [AuthController::class, 'sendVerification'])
         ->middleware('throttle:10,1')
         ->name('login.send_verification');

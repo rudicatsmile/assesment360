@@ -26,12 +26,11 @@
 
 ## Update Summary
 **Changes Made**
-- Enhanced documentation to reflect the new comprehensive Alpine.js-based validation system with validateBeforeSubmit() method
-- Updated validation mechanisms to include real-time JavaScript validation with Indonesian error messages and automatic scroll-to-error functionality
-- Added documentation for the new Alpine.js-based validation system that provides immediate feedback and automatic error handling
-- Updated navigation validation to replace Livewire click handlers with custom validation functions
-- Enhanced error handling system with targeted validation errors and visual feedback
-- Updated validation rules to support single_choice, essay, and combined question types with comprehensive Indonesian error messages
+- Updated validation system documentation to reflect simplified requirements for essay and combined question types
+- Enhanced documentation to clarify that essay and combined questions are now validated only when explicitly marked as required
+- Updated validation mechanisms to show administrator flexibility in designing optional essay responses
+- Revised validation rules to remove automatic requirement for essay and combined question types
+- Updated progress tracking documentation to reflect new validation logic for required question counting
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -53,6 +52,8 @@
 
 ## Introduction
 This document describes the interactive questionnaire filling interface used by evaluators to complete assessment forms through a streamlined single-questionnaire step-based navigation system with comprehensive time-based completion capabilities. The interface features progressive questionnaire navigation, autosave functionality, step indicators, enhanced time limit management, automatic submission when time expires, and comprehensive validation mechanisms. It covers step-by-step navigation, question types (single choice, essay, combined), validation mechanisms, autosave and draft management, progress tracking, enhanced time-based session management, UI components, keyboard shortcuts, accessibility, and mobile responsiveness. The interface is built with Laravel Livewire and Blade, styled with Tailwind CSS and Flux UI components.
+
+**Updated** The validation system has been enhanced to provide administrators greater flexibility by removing automatic requirements for essay and combined question types, allowing them to design questionnaires where certain essay responses or combined question components may be optional.
 
 ## System Architecture
 The questionnaire filling system operates through a single-questionnaire step-based navigation approach with integrated enhanced validation that streamlines the user experience by focusing on one questionnaire at a time while maintaining cross-questionnaire progress tracking and robust validation constraints:
@@ -84,7 +85,7 @@ QF["questionnaire-fill.blade.php<br/>(Single Question View)"]
 end
 subgraph "Shared Components"
 QN["Questionnaire<br/>(time_limit_minutes)"]
-QT["Question"]
+QT["Question<br/>(is_required flag)"]
 AO["AnswerOption"]
 RP["Response<br/>(started_at)"]
 AN["Answer"]
@@ -126,7 +127,7 @@ PD --> METRICS
 ```
 
 **Diagram sources**
-- [AvailableQuestionnaires.php:18-707](file://app/Livewire/Fill/AvailableQuestionnaires.php#L18-L707)
+- [AvailableQuestionnaires.php:18-705](file://app/Livewire/Fill/AvailableQuestionnaires.php#L18-L705)
 - [available-questionnaires.blade.php:1-798](file://resources/views/livewire/fill/available-questionnaires.blade.php#L1-L798)
 - [Questionnaire.php:23](file://app/Models/Questionnaire.php#L23)
 - [Response.php:19](file://app/Models/Response.php#L19)
@@ -340,12 +341,16 @@ The system supports three question types with specialized input handling optimiz
 - **Enhanced Live Validation**: Real-time validation with character counter
 - **Debounced Updates**: Input debouncing to optimize performance
 - **Enhanced Validation Integration**: Character count validation and required field enforcement
+- **Administrator Flexibility**: Now validated only when explicitly marked as required in the questionnaire design
 
 ### Combined Questions
 - **Dual Input System**: Radio button selection followed by essay explanation
 - **Conditional Display**: Essay field appears only after option selection
-- **Enhanced Comprehensive Validation**: Both selection and explanation required
+- **Enhanced Comprehensive Validation**: Both selection and explanation required when marked as required
 - **Enhanced Validation Integration**: Dual validation for both radio and textarea
+- **Administrator Flexibility**: Now validated only when explicitly marked as required in the questionnaire design
+
+**Updated** The validation system now provides administrators greater flexibility by removing automatic requirements for essay and combined question types. Questionnaires can now include optional essay responses and combined question components where administrators can choose whether these elements should be mandatory or optional.
 
 ```mermaid
 classDiagram
@@ -424,6 +429,8 @@ The system implements comprehensive validation at both individual question and c
 - **Scroll Positioning**: Scrolls to invalid questions for better user experience
 - **Persistent Error States**: Maintains error states until corrections are made
 - **Enhanced Validation Feedback**: Comprehensive error messages with specific guidance
+
+**Updated** The validation system now provides administrators greater flexibility by removing automatic requirements for essay and combined question types. The validation logic has been simplified to only enforce requirements when explicitly marked as required in the questionnaire design.
 
 ```mermaid
 flowchart TD
@@ -514,6 +521,8 @@ The system provides comprehensive progress tracking across multiple questionnair
 - **Enhanced Validation Analytics**: Completion timing and response patterns
 - **Enhanced Session Statistics**: Time limit utilization and session effectiveness metrics
 
+**Updated** The progress tracking now reflects the simplified validation system where essay and combined questions are only counted as required when explicitly marked as such in the questionnaire design, providing more accurate progress metrics.
+
 ```mermaid
 flowchart TD
 Load["Load All Enhanced Questionnaires"] --> Count["Count Total Questions"]
@@ -556,6 +565,8 @@ The submission process is streamlined with enhanced validation, user confirmatio
 - **Immediate Validation**: Validates all required questions before submission
 - **Score Calculation**: Calculates scores for all answered questions
 - **Enhanced Validation Integration**: Handles single questionnaire submission with validation constraints
+
+**Updated** The submission process now respects the simplified validation system where essay and combined questions are only validated when explicitly marked as required, allowing administrators to create more flexible questionnaire designs.
 
 ```mermaid
 sequenceDiagram
@@ -687,6 +698,8 @@ Common issues and their solutions with comprehensive enhanced validation trouble
 - **Score Calculation Issues**: Verify that enhanced scoring logic matches expected outcomes
 - **Enhanced Validation Submission Issues**: Check that enhanced auto-submit functionality works correctly
 
+**Updated** The validation system now provides administrators greater flexibility by removing automatic requirements for essay and combined question types. If you encounter issues with essay or combined questions not being validated as expected, check that the questions are properly marked as required in the questionnaire design.
+
 ### Enhanced Validation System Issues
 - **Enhanced Validation Not Displaying**: Verify that validation state is properly computed and passed to the view
 - **Validation Not Detected**: Check that `isQuestionnaireComplete()` function executes correctly
@@ -703,4 +716,8 @@ Common issues and their solutions with comprehensive enhanced validation trouble
 ## Conclusion
 The streamlined questionnaire filling interface provides a comprehensive, accessible, and responsive solution for evaluator assessment through progressive step-based navigation with integrated enhanced validation capabilities. The system's transformation from grouped questionnaire display to single-questionnaire step-based navigation delivers an excellent user experience with robust autosave functionality, comprehensive validation, rich progress tracking, and sophisticated enhanced validation integration across all device types and user roles. The enhanced validation system provides seamless questionnaire completion management, automatic validation handling, and comprehensive enhanced validation integration that ensures reliable and efficient questionnaire completion. The modular design ensures maintainability and extensibility for future enhancements while providing efficient performance optimization for large-scale questionnaire management with enhanced validation constraints.
 
+**Updated** The recent enhancement to the validation system provides administrators greater flexibility by removing automatic requirements for essay and combined question types. This change allows administrators to design questionnaires where certain essay responses or combined question components may be optional, giving them more control over the assessment process while maintaining the robust validation framework that ensures data quality and completeness.
+
 The implementation of the validateBeforeGoTo JavaScript method, validateBeforeNext method, validateBeforeSubmitAll method, and validateBeforeSubmit method represents a significant advancement in the validation system. These methods provide comprehensive client-side validation with real-time feedback, Indonesian error messages, and automatic scroll-to-error functionality. The replacement of Livewire click handlers with custom validation functions, and the addition of the hidden current-index input field represent significant improvements to the navigation flow and user experience. These changes ensure that users can navigate between questionnaires seamlessly while maintaining proper validation constraints and providing clear feedback when validation fails.
+
+The simplified validation requirements for essay and combined question types represent a key improvement that enhances the flexibility of the questionnaire design system. Administrators can now create more nuanced assessment forms that balance the need for comprehensive data collection with practical considerations for respondent burden and assessment context.

@@ -60,7 +60,9 @@
                 @endif
 
                 @if ($passwordLoginEnabled)
-                    <form method="POST" action="{{ route('login.attempt') }}" class="mt-5 space-y-4">
+                    <form method="POST"
+                        action="{{ request()->routeIs('login.admin') ? route('login.admin.attempt') : route('login.attempt') }}"
+                        class="mt-5 space-y-4">
                         @csrf
                         <label class="block space-y-1 text-sm">
                             <span class="font-medium text-zinc-700">Email</span>

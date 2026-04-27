@@ -12,8 +12,16 @@
 - [evaluator.blade.php](file://resources/views/layouts/evaluator.blade.php)
 - [web.php](file://routes/web.php)
 - [User.php](file://app/Models/User.php)
+- [Departement.php](file://app/Models/Departement.php)
 - [EnsureUserHasRole.php](file://app/Http/Middleware/EnsureUserHasRole.php)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Enhanced evaluator dashboard header section to display both role names and department information
+- Updated navigation patterns and layout components to leverage the new department relationship in the user model
+- Added documentation for the department information display in evaluator dashboards
+- Updated architecture diagrams to reflect the enhanced header information flow
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -30,14 +38,17 @@
 ## Introduction
 This document describes the multi-role dashboard system used to power administrative analytics, instructional evaluation, staff assessment, and parent feedback dashboards. It explains how dashboards are structured, how metrics are computed and cached, how navigation and role-based access work, and how configuration drives role-specific behavior. It also outlines widget categories, data visualization components, and user preference settings.
 
+**Updated** The system now provides enhanced contextual information in evaluator dashboards by displaying both role names and department information in the header section, improving organizational clarity and user context awareness.
+
 ## Project Structure
 The dashboard system spans Livewire components, Blade layouts, routing, configuration, middleware, and Eloquent models:
 - Administrator dashboard: server-side rendered with caching and analytics queries.
-- Evaluator dashboards (teacher, staff, parent): Livewire components sharing a metrics trait.
+- Evaluator dashboards (teacher, staff, parent): Livewire components sharing a metrics trait with enhanced header information display.
 - Layouts: dedicated admin and evaluator layouts with navigation and theme toggles.
 - Routing: role-aware routes and middleware gates.
 - Configuration: RBAC rules, target aliases, dashboard paths, and role labels.
 - Middleware: enforce role presence and access.
+- Department relationships: user model now includes department foreign key and relationship methods.
 
 ```mermaid
 graph TB
@@ -58,9 +69,10 @@ end
 subgraph "Configuration"
 RBAC["config/rbac.php"]
 end
-subgraph "Security"
+subgraph "Security & Models"
 GUARD["EnsureUserHasRole.php"]
 USER["User.php"]
+DEPT["Departement.php"]
 end
 RWEB --> ADB
 RWEB --> TDB
@@ -78,6 +90,7 @@ TDB --> ELAYOUT
 SDB --> ELAYOUT
 PDB --> ELAYOUT
 GUARD --> USER
+USER --> DEPT
 ```
 
 **Diagram sources**
@@ -92,6 +105,7 @@ GUARD --> USER
 - [evaluator.blade.php:26-68](file://resources/views/layouts/evaluator.blade.php#L26-L68)
 - [EnsureUserHasRole.php:9-26](file://app/Http/Middleware/EnsureUserHasRole.php#L9-L26)
 - [User.php:59-92](file://app/Models/User.php#L59-L92)
+- [Departement.php:19-22](file://app/Models/Departement.php#L19-L22)
 
 **Section sources**
 - [web.php:72-160](file://routes/web.php#L72-L160)
@@ -99,16 +113,17 @@ GUARD --> USER
 
 ## Core Components
 - Administrator Dashboard: Aggregates system-wide metrics (active questionnaires, participation rate, average score, respondent counts by role) with caching and role aliasing.
-- Evaluator Dashboards (Teacher, Staff, Parent): Compute role-specific available/completed questionnaires and summary stats via a shared metrics trait.
-- Layouts: Admin layout with sidebar navigation and theme toggle; Evaluator layout with role-aware dashboard links and theme toggle.
+- Evaluator Dashboards (Teacher, Staff, Parent): Compute role-specific available/completed questionnaires and summary stats via a shared metrics trait, now enhanced with department information display.
+- Layouts: Admin layout with sidebar navigation and theme toggle; Evaluator layout with role-aware dashboard links, department information display, and theme toggle.
 - RBAC Configuration: Defines admin slugs, evaluator slugs, target aliases, dashboard role slugs, labels, and dashboard paths.
 - Middleware and Model: Enforce role presence and provide role checks for access control.
+- Department Relationships: User model includes department foreign key and relationship methods for organizational context.
 
 Key responsibilities:
 - Metrics computation and caching for admin overview.
-- Role-aware filtering for evaluator dashboards.
-- Centralized navigation and theme preferences.
-- Role-based routing and redirection.
+- Role-aware filtering for evaluator dashboards with enhanced contextual information.
+- Centralized navigation and theme preferences with department display.
+- Role-based routing and redirection with organizational clarity.
 
 **Section sources**
 - [AdminDashboard.php:15-136](file://app/Livewire/Admin/AdminDashboard.php#L15-L136)
@@ -118,11 +133,12 @@ Key responsibilities:
 - [evaluator.blade.php:26-68](file://resources/views/layouts/evaluator.blade.php#L26-L68)
 - [EnsureUserHasRole.php:9-26](file://app/Http/Middleware/EnsureUserHasRole.php#L9-L26)
 - [User.php:59-92](file://app/Models/User.php#L59-L92)
+- [Departement.php:19-22](file://app/Models/Departement.php#L19-L22)
 
 ## Architecture Overview
-The system separates concerns by role:
+The system separates concerns by role with enhanced contextual information:
 - Admin: server-rendered analytics dashboard with caching and heavy aggregation.
-- Evaluators: client-rendered dashboards powered by Livewire, using shared metrics logic and role aliases.
+- Evaluators: client-rendered dashboards powered by Livewire, using shared metrics logic and role aliases, now displaying department information for better organizational context.
 
 ```mermaid
 sequenceDiagram
@@ -132,14 +148,16 @@ participant RT as "routes/web.php"
 participant L as "Livewire Component"
 participant M as "HasEvaluatorDashboardMetrics"
 participant CFG as "RBAC Config"
+participant DEPT as "Department Relationship"
 U->>RT : Request /fill/dashboard/{role}
 RT->>MW : Apply role gate middleware
 MW-->>U : Allow or abort(401/403)
 RT->>L : Resolve Teacher/Staff/Parent Dashboard
 L->>M : getDashboardMetricsByRole(roleSlug)
 M->>CFG : Read target aliases and role slugs
-M-->>L : {available, completed, stats}
-L-->>U : Render evaluator dashboard
+M->>DEPT : Access departmentRef relationship
+M-->>L : {available, completed, stats, departmentInfo}
+L-->>U : Render evaluator dashboard with department context
 ```
 
 **Diagram sources**
@@ -150,6 +168,7 @@ L-->>U : Render evaluator dashboard
 - [ParentDashboard.php:12-21](file://app/Livewire/Fill/ParentDashboard.php#L12-L21)
 - [HasEvaluatorDashboardMetrics.php:11-71](file://app/Livewire/Fill/Concerns/HasEvaluatorDashboardMetrics.php#L11-L71)
 - [rbac.php:7-16](file://config/rbac.php#L7-L16)
+- [User.php:55-63](file://app/Models/User.php#L55-L63)
 
 ## Detailed Component Analysis
 
@@ -192,7 +211,7 @@ Return --> End(["Render admin dashboard"])
 - [rbac.php:7-11](file://config/rbac.php#L7-L11)
 
 ### Evaluator Dashboards (Teacher, Staff, Parent)
-- Purpose: Show available and completed questionnaires for the current evaluator role, plus summary statistics.
+- Purpose: Show available and completed questionnaires for the current evaluator role, plus summary statistics with enhanced department context.
 - Shared logic: A single trait computes available vs completed lists and counts.
 - Role resolution:
   - Uses configured dashboard role slugs to resolve the target group.
@@ -200,7 +219,10 @@ Return --> End(["Render admin dashboard"])
 - Data retrieval:
   - Available: active questionnaires targeting the role or alias, excluding existing submitted responses for the current user.
   - Completed: submitted responses linked to questionnaires targeting the role or alias.
-- Layout: Evaluator layout with role-aware dashboard path and theme toggle.
+- Enhanced Header Information: Layout now displays both role name and department information for better organizational context.
+- Layout: Evaluator layout with role-aware dashboard path, department display, and theme toggle.
+
+**Updated** The evaluator dashboards now leverage the department relationship in the user model to display department names below role information in the header section, providing better context and organizational clarity.
 
 ```mermaid
 sequenceDiagram
@@ -208,14 +230,17 @@ participant C as "Teacher/Staff/Parent Dashboard"
 participant T as "HasEvaluatorDashboardMetrics"
 participant U as "User"
 participant CFG as "RBAC Config"
+participant DEPT as "Department Relationship"
 C->>T : getDashboardMetricsByRole(roleSlug)
 T->>U : Auth : : user()
 T->>CFG : Read target_aliases and role slugs
+T->>DEPT : Access departmentRef relationship
 T->>T : Build targetGroups (role + alias)
 T->>T : Query available (active + targets + no submitted response)
 T->>T : Query completed (submitted + questionnaire targets)
 T->>T : Count active questionnaires
-T-->>C : {available, completed, stats}
+T-->>C : {available, completed, stats, departmentInfo}
+C-->>U : Render evaluator dashboard with department context
 ```
 
 **Diagram sources**
@@ -225,6 +250,7 @@ T-->>C : {available, completed, stats}
 - [HasEvaluatorDashboardMetrics.php:11-71](file://app/Livewire/Fill/Concerns/HasEvaluatorDashboardMetrics.php#L11-L71)
 - [rbac.php:7-16](file://config/rbac.php#L7-L16)
 - [User.php:59-67](file://app/Models/User.php#L59-L67)
+- [User.php:55-63](file://app/Models/User.php#L55-L63)
 
 **Section sources**
 - [TeacherDashboard.php:9-22](file://app/Livewire/Fill/TeacherDashboard.php#L9-L22)
@@ -233,15 +259,19 @@ T-->>C : {available, completed, stats}
 - [HasEvaluatorDashboardMetrics.php:9-72](file://app/Livewire/Fill/Concerns/HasEvaluatorDashboardMetrics.php#L9-L72)
 - [rbac.php:7-16](file://config/rbac.php#L7-L16)
 - [User.php:59-67](file://app/Models/User.php#L59-L67)
+- [User.php:55-63](file://app/Models/User.php#L55-L63)
 
 ### Navigation Patterns and Layouts
 - Admin layout:
   - Sidebar navigation with routes for dashboard, questionnaires, analytics, departments, users, and roles (conditional).
   - Theme toggle persisted in local storage.
 - Evaluator layout:
-  - Header with role label and quick links to “My Questionnaires,” history, profile, and logout.
+  - Enhanced header with role label and department information display, plus quick links to "My Questionnaires," history, profile, and logout.
   - Theme toggle persisted in local storage.
   - Dashboard path derived from RBAC configuration per role.
+  - Department information accessed through user model relationships.
+
+**Updated** The evaluator layout header now displays both role names and department information for better organizational context and clarity.
 
 ```mermaid
 graph LR
@@ -251,7 +281,9 @@ A -- "Sidebar links" --> AN["Analytics"]
 A -- "Conditional links" --> DEPT["Departments"]
 A -- "Conditional links" --> UR["Users"]
 A -- "Conditional links" --> RL["Roles"]
-E["Evaluator Layout"] -- "Header links" --> EQ["My Questionnaires"]
+E["Evaluator Layout"] -- "Enhanced Header" --> ROLE["Role: {{ $role }}"]
+E -- "Enhanced Header" --> DEPTINFO["Department: {{ $department }}"]
+E -- "Header links" --> EQ["My Questionnaires"]
 E -- "Header links" --> EH["History"]
 E -- "Header links" --> PF["Profile"]
 E -- "Theme toggle" --> LS["Local Storage"]
@@ -260,10 +292,12 @@ E -- "Theme toggle" --> LS["Local Storage"]
 **Diagram sources**
 - [admin.blade.php:31-66](file://resources/views/layouts/admin.blade.php#L31-L66)
 - [evaluator.blade.php:42-67](file://resources/views/layouts/evaluator.blade.php#L42-L67)
+- [evaluator.blade.php:41-46](file://resources/views/layouts/evaluator.blade.php#L41-L46)
 
 **Section sources**
 - [admin.blade.php:25-89](file://resources/views/layouts/admin.blade.php#L25-L89)
 - [evaluator.blade.php:26-68](file://resources/views/layouts/evaluator.blade.php#L26-L68)
+- [evaluator.blade.php:41-46](file://resources/views/layouts/evaluator.blade.php#L41-L46)
 
 ### Role-Specific Features and Widgets
 - Administrator:
@@ -271,17 +305,21 @@ E -- "Theme toggle" --> LS["Local Storage"]
   - Role breakdown cards: counts per role slug with alias consolidation.
   - Navigation to analytics, departments, users, and roles.
 - Evaluator (Teacher/Staff/Parent):
+  - Enhanced header with role name and department information display.
   - Available questionnaires list: title, description, dates, question count.
   - Completed questionnaires list: recent submissions with questionnaire metadata.
   - Stats: active questionnaires, available to fill, completed total.
   - Widgets: cards for quick overview, lists for actionable items.
 
-Note: The admin layout includes Chart.js for potential visualizations; evaluator dashboards rely on list and card components for metrics display.
+**Updated** Evaluator dashboards now provide enhanced contextual information through the display of department names alongside role information in the header section.
+
+Note: The admin layout includes Chart.js for potential visualizations; evaluator dashboards rely on list and card components for metrics display with enhanced header information.
 
 **Section sources**
 - [AdminDashboard.php:122-130](file://app/Livewire/Admin/AdminDashboard.php#L122-L130)
 - [HasEvaluatorDashboardMetrics.php:62-71](file://app/Livewire/Fill/Concerns/HasEvaluatorDashboardMetrics.php#L62-L71)
 - [admin.blade.php:15](file://resources/views/layouts/admin.blade.php#L15)
+- [evaluator.blade.php:41-46](file://resources/views/layouts/evaluator.blade.php#L41-L46)
 
 ### Configuration Options
 - RBAC:
@@ -296,18 +334,18 @@ These drive:
 - Which roles can access admin routes.
 - How evaluator dashboards resolve their role slugs.
 - How target groups are expanded via aliases.
-- Where each role’s dashboard route points.
+- Where each role's dashboard route points.
 
 **Section sources**
 - [rbac.php:3-63](file://config/rbac.php#L3-L63)
 
 ### Data Visualization Components
 - Admin layout includes Chart.js CDN for rendering charts.
-- No explicit chart usage is present in the analyzed evaluator dashboards; metrics are presented as cards and lists.
+- No explicit chart usage is present in the analyzed evaluator dashboards; metrics are presented as cards and lists with enhanced header information.
 
 Recommendation:
 - Use Chart.js to visualize admin participation rate trends, role breakdowns, and score distributions.
-- For evaluator dashboards, consider small bar/progress indicators for completion stats.
+- For evaluator dashboards, consider small bar/progress indicators for completion stats with department-based filtering options.
 
 **Section sources**
 - [admin.blade.php:15](file://resources/views/layouts/admin.blade.php#L15)
@@ -326,8 +364,11 @@ Recommendation:
 ## Dependency Analysis
 - Routing depends on RBAC middleware aliases and admin route configuration.
 - Livewire dashboards depend on the metrics trait and RBAC configuration.
-- Admin dashboard depends on models and caching; evaluator dashboards depend on authenticated user and RBAC.
+- Admin dashboard depends on models and caching; evaluator dashboards depend on authenticated user, RBAC, and department relationships.
 - Middleware enforces role presence; model helpers determine admin/evaluator roles.
+- Department relationships enable contextual information display in evaluator dashboards.
+
+**Updated** The dependency graph now includes department relationships as a key component for evaluator dashboard contextual information.
 
 ```mermaid
 graph TB
@@ -344,6 +385,9 @@ ADM --> LOUT["layouts/admin.blade.php"]
 TRAIT --> LOUT2["layouts/evaluator.blade.php"]
 GUARD["EnsureUserHasRole.php"] --> WEB
 USERM["User.php"] --> GUARD
+USERM --> DEPTREL["departmentRef() relationship"]
+DEPTREL --> DEPTMODEL["Departement.php"]
+LOUT2 --> DEPTVAR["{{ $department }} variable"]
 ```
 
 **Diagram sources**
@@ -358,47 +402,63 @@ USERM["User.php"] --> GUARD
 - [evaluator.blade.php:26-68](file://resources/views/layouts/evaluator.blade.php#L26-L68)
 - [EnsureUserHasRole.php:9-26](file://app/Http/Middleware/EnsureUserHasRole.php#L9-L26)
 - [User.php:59-92](file://app/Models/User.php#L59-L92)
+- [User.php:55-63](file://app/Models/User.php#L55-L63)
+- [Departement.php:19-22](file://app/Models/Departement.php#L19-L22)
 
 **Section sources**
 - [web.php:72-160](file://routes/web.php#L72-L160)
 - [rbac.php:3-63](file://config/rbac.php#L3-L63)
 - [EnsureUserHasRole.php:9-26](file://app/Http/Middleware/EnsureUserHasRole.php#L9-L26)
 - [User.php:59-92](file://app/Models/User.php#L59-L92)
+- [User.php:55-63](file://app/Models/User.php#L55-L63)
 
 ## Performance Considerations
 - Admin dashboard caches the overview payload for five minutes to reduce database load during analytics queries.
 - Evaluator dashboards compute available/completed lists per request; consider adding pagination or client-side virtualization for large datasets.
 - Target alias expansion avoids redundant queries by precomputing target groups.
 - Theme preference reads/writes are lightweight and localized.
+- Department relationship access adds minimal overhead as it uses eager-loaded relationships in the layout template.
+
+**Updated** Department relationship access is optimized through the layout template's use of the `departmentRef` relationship method, which provides efficient access to department information without additional database queries.
 
 Recommendations:
 - Add caching for evaluator dashboards if datasets grow large.
 - Use lazy loading for long lists and consider debounced search/filter controls.
 - Monitor query counts and add indexes on frequently filtered columns (e.g., questionnaire status, target group, user_id).
+- Department information is efficiently cached through the layout template's approach to accessing user relationships.
 
 **Section sources**
 - [AdminDashboard.php:27-130](file://app/Livewire/Admin/AdminDashboard.php#L27-L130)
 - [HasEvaluatorDashboardMetrics.php:28-34](file://app/Livewire/Fill/Concerns/HasEvaluatorDashboardMetrics.php#L28-L34)
+- [evaluator.blade.php:22-29](file://resources/views/layouts/evaluator.blade.php#L22-L29)
 
 ## Troubleshooting Guide
 - Access denied:
   - Ensure the user has the required role slug; middleware aborts requests without proper roles.
 - Empty evaluator dashboard:
-  - Verify the user’s role slug matches configured dashboard role slugs and that questionnaire targets include the role or alias.
+  - Verify the user's role slug matches configured dashboard role slugs and that questionnaire targets include the role or alias.
+- Missing department information:
+  - Check that the user has a valid department assignment in the database.
+  - Verify the department relationship is properly configured in the User model.
 - Incorrect metrics:
   - Confirm target aliases in configuration align with actual questionnaire target groups.
 - Theme not persisting:
   - Check browser local storage permissions and that theme toggle JavaScript runs after DOM load.
 
+**Updated** Added troubleshooting guidance for department information display issues.
+
 **Section sources**
 - [EnsureUserHasRole.php:9-26](file://app/Http/Middleware/EnsureUserHasRole.php#L9-L26)
 - [rbac.php:7-16](file://config/rbac.php#L7-L16)
 - [User.php:59-67](file://app/Models/User.php#L59-L67)
+- [User.php:55-63](file://app/Models/User.php#L55-L63)
 - [admin.blade.php:6-11](file://resources/views/layouts/admin.blade.php#L6-L11)
 - [evaluator.blade.php:6-11](file://resources/views/layouts/evaluator.blade.php#L6-L11)
 
 ## Conclusion
-The multi-role dashboard system cleanly separates administrative analytics from evaluator dashboards, leveraging RBAC configuration, shared metrics logic, and role-aware layouts. Administrators gain a comprehensive overview with caching, while evaluators receive role-specific insights and actions. With optional visualizations and persistent theme preferences, the system balances usability and performance.
+The multi-role dashboard system cleanly separates administrative analytics from evaluator dashboards, leveraging RBAC configuration, shared metrics logic, and role-aware layouts. Administrators gain a comprehensive overview with caching, while evaluators receive role-specific insights and actions with enhanced contextual information through department display. With optional visualizations, persistent theme preferences, and improved organizational clarity, the system balances usability and performance while providing better user context awareness.
+
+**Updated** The enhanced evaluator dashboard interface now provides superior organizational context by displaying both role names and department information, improving user experience and clarity for evaluator users.
 
 ## Appendices
 - Role mapping reference:
@@ -409,7 +469,12 @@ The multi-role dashboard system cleanly separates administrative analytics from 
   - guru → guru_staf
   - tata_usaha → guru_staf
   - orang_tua → komite
+- Department relationship:
+  - User model includes `departmentRef()` relationship method for accessing department information
+  - Department information is displayed in evaluator dashboard headers for better organizational context
 
 **Section sources**
 - [rbac.php:7-16](file://config/rbac.php#L7-L16)
 - [rbac.php:49-62](file://config/rbac.php#L49-L62)
+- [User.php:55-63](file://app/Models/User.php#L55-L63)
+- [Departement.php:19-22](file://app/Models/Departement.php#L19-L22)

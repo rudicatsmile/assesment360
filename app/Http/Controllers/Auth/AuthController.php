@@ -29,6 +29,36 @@ class AuthController extends Controller
         ]);
     }
 
+    public function showAdminLogin(): View
+    {
+        return view('auth.login', [
+            'verificationPending' => false,
+            'maskedPhone' => null,
+            'loginMode' => 'password',
+            'passwordLoginEnabled' => true,
+            'whatsAppLoginEnabled' => false,
+        ]);
+    }
+
+    public function adminLoginWithPassword(Request $request): RedirectResponse
+    {
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+        ]);
+
+        $remember = (bool) $request->boolean('remember');
+        if (! Auth::attempt($credentials, $remember)) {
+            return back()
+                ->withInput($request->only('email', 'remember'))
+                ->with('error', 'Email atau password tidak valid.');
+        }
+
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('role.dashboard'));
+    }
+
     public function loginWithPassword(Request $request): RedirectResponse
     {
         if (! in_array($this->resolveLoginMode(), ['password', 'both'], true)) {
