@@ -18,10 +18,9 @@
 
 ## Update Summary
 **Changes Made**
-- Enhanced evaluator dashboard header section to display both role names and department information
-- Updated navigation patterns and layout components to leverage the new department relationship in the user model
-- Added documentation for the department information display in evaluator dashboards
-- Updated architecture diagrams to reflect the enhanced header information flow
+- Updated teacher dashboard presentation to use a simplified static 'Dashboard' heading without role-specific labeling
+- Removed dynamic role label generation from teacher dashboard title for improved consistency across user types
+- Maintained department information display in evaluator dashboards for organizational context
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -38,7 +37,7 @@
 ## Introduction
 This document describes the multi-role dashboard system used to power administrative analytics, instructional evaluation, staff assessment, and parent feedback dashboards. It explains how dashboards are structured, how metrics are computed and cached, how navigation and role-based access work, and how configuration drives role-specific behavior. It also outlines widget categories, data visualization components, and user preference settings.
 
-**Updated** The system now provides enhanced contextual information in evaluator dashboards by displaying both role names and department information in the header section, improving organizational clarity and user context awareness.
+**Updated** The teacher dashboard now uses a simplified static 'Dashboard' heading without role-specific labeling, while maintaining department information display for organizational context across all evaluator dashboards.
 
 ## Project Structure
 The dashboard system spans Livewire components, Blade layouts, routing, configuration, middleware, and Eloquent models:
@@ -113,7 +112,7 @@ USER --> DEPT
 
 ## Core Components
 - Administrator Dashboard: Aggregates system-wide metrics (active questionnaires, participation rate, average score, respondent counts by role) with caching and role aliasing.
-- Evaluator Dashboards (Teacher, Staff, Parent): Compute role-specific available/completed questionnaires and summary stats via a shared metrics trait, now enhanced with department information display.
+- Evaluator Dashboards (Teacher, Staff, Parent): Compute role-specific available/completed questionnaires and summary stats via a shared metrics trait, with simplified static headings for consistency.
 - Layouts: Admin layout with sidebar navigation and theme toggle; Evaluator layout with role-aware dashboard links, department information display, and theme toggle.
 - RBAC Configuration: Defines admin slugs, evaluator slugs, target aliases, dashboard role slugs, labels, and dashboard paths.
 - Middleware and Model: Enforce role presence and provide role checks for access control.
@@ -138,7 +137,7 @@ Key responsibilities:
 ## Architecture Overview
 The system separates concerns by role with enhanced contextual information:
 - Admin: server-rendered analytics dashboard with caching and heavy aggregation.
-- Evaluators: client-rendered dashboards powered by Livewire, using shared metrics logic and role aliases, now displaying department information for better organizational context.
+- Evaluators: client-rendered dashboards powered by Livewire, using shared metrics logic and role aliases, with simplified static headings for consistency.
 
 ```mermaid
 sequenceDiagram
@@ -219,10 +218,10 @@ Return --> End(["Render admin dashboard"])
 - Data retrieval:
   - Available: active questionnaires targeting the role or alias, excluding existing submitted responses for the current user.
   - Completed: submitted responses linked to questionnaires targeting the role or alias.
-- Enhanced Header Information: Layout now displays both role name and department information for better organizational context.
+- Simplified Presentation: Teacher dashboard now uses a static 'Dashboard' heading without role-specific labeling for improved consistency across user types.
 - Layout: Evaluator layout with role-aware dashboard path, department display, and theme toggle.
 
-**Updated** The evaluator dashboards now leverage the department relationship in the user model to display department names below role information in the header section, providing better context and organizational clarity.
+**Updated** The teacher dashboard presentation has been simplified to use a static 'Dashboard' heading without dynamic role label generation, while maintaining department information display for organizational context.
 
 ```mermaid
 sequenceDiagram
@@ -271,7 +270,7 @@ C-->>U : Render evaluator dashboard with department context
   - Dashboard path derived from RBAC configuration per role.
   - Department information accessed through user model relationships.
 
-**Updated** The evaluator layout header now displays both role names and department information for better organizational context and clarity.
+**Updated** The evaluator layout header maintains both role name and department information display for better organizational context, while the teacher dashboard uses a simplified static heading.
 
 ```mermaid
 graph LR
@@ -306,12 +305,13 @@ E -- "Theme toggle" --> LS["Local Storage"]
   - Navigation to analytics, departments, users, and roles.
 - Evaluator (Teacher/Staff/Parent):
   - Enhanced header with role name and department information display.
+  - Simplified static heading for teacher dashboard without role-specific labeling.
   - Available questionnaires list: title, description, dates, question count.
   - Completed questionnaires list: recent submissions with questionnaire metadata.
   - Stats: active questionnaires, available to fill, completed total.
   - Widgets: cards for quick overview, lists for actionable items.
 
-**Updated** Evaluator dashboards now provide enhanced contextual information through the display of department names alongside role information in the header section.
+**Updated** The teacher dashboard now uses a simplified static 'Dashboard' heading without dynamic role label generation, while maintaining department information display for organizational context across all evaluator dashboards.
 
 Note: The admin layout includes Chart.js for potential visualizations; evaluator dashboards rely on list and card components for metrics display with enhanced header information.
 
@@ -368,7 +368,7 @@ Recommendation:
 - Middleware enforces role presence; model helpers determine admin/evaluator roles.
 - Department relationships enable contextual information display in evaluator dashboards.
 
-**Updated** The dependency graph now includes department relationships as a key component for evaluator dashboard contextual information.
+**Updated** The dependency graph now includes department relationships as a key component for evaluator dashboard contextual information, with simplified teacher dashboard presentation.
 
 ```mermaid
 graph TB
@@ -444,8 +444,10 @@ Recommendations:
   - Confirm target aliases in configuration align with actual questionnaire target groups.
 - Theme not persisting:
   - Check browser local storage permissions and that theme toggle JavaScript runs after DOM load.
+- Teacher dashboard heading issue:
+  - Verify the teacher dashboard uses the simplified static 'Dashboard' heading without role-specific labeling.
 
-**Updated** Added troubleshooting guidance for department information display issues.
+**Updated** Added troubleshooting guidance for teacher dashboard heading display issues.
 
 **Section sources**
 - [EnsureUserHasRole.php:9-26](file://app/Http/Middleware/EnsureUserHasRole.php#L9-L26)
@@ -456,9 +458,9 @@ Recommendations:
 - [evaluator.blade.php:6-11](file://resources/views/layouts/evaluator.blade.php#L6-L11)
 
 ## Conclusion
-The multi-role dashboard system cleanly separates administrative analytics from evaluator dashboards, leveraging RBAC configuration, shared metrics logic, and role-aware layouts. Administrators gain a comprehensive overview with caching, while evaluators receive role-specific insights and actions with enhanced contextual information through department display. With optional visualizations, persistent theme preferences, and improved organizational clarity, the system balances usability and performance while providing better user context awareness.
+The multi-role dashboard system cleanly separates administrative analytics from evaluator dashboards, leveraging RBAC configuration, shared metrics logic, and role-aware layouts. Administrators gain a comprehensive overview with caching, while evaluators receive role-specific insights and actions with enhanced contextual information through department display. The simplified teacher dashboard presentation improves consistency across user types while maintaining organizational clarity. With optional visualizations, persistent theme preferences, and improved user context awareness, the system balances usability and performance.
 
-**Updated** The enhanced evaluator dashboard interface now provides superior organizational context by displaying both role names and department information, improving user experience and clarity for evaluator users.
+**Updated** The enhanced evaluator dashboard interface now provides superior organizational context by displaying both role names and department information, with simplified static headings for improved consistency across user types.
 
 ## Appendices
 - Role mapping reference:
@@ -472,6 +474,7 @@ The multi-role dashboard system cleanly separates administrative analytics from 
 - Department relationship:
   - User model includes `departmentRef()` relationship method for accessing department information
   - Department information is displayed in evaluator dashboard headers for better organizational context
+  - Teacher dashboard uses simplified static 'Dashboard' heading without role-specific labeling
 
 **Section sources**
 - [rbac.php:7-16](file://config/rbac.php#L7-L16)

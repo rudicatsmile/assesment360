@@ -18,14 +18,15 @@
 - [resources/views/components/session-toast.blade.php](file://resources/views/components/session-toast.blade.php)
 - [resources/views/livewire/fill/available-questionnaires.blade.php](file://resources/views/livewire/fill/available-questionnaires.blade.php)
 - [resources/views/livewire/fill/questionnaire-fill.blade.php](file://resources/views/livewire/fill/questionnaire-fill.blade.php)
+- [app/Livewire/Fill/QuestionnaireFill.php](file://app/Livewire/Fill/QuestionnaireFill.php)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Enhanced evaluator layout navigation with conditional button disabling during questionnaire filling
-- Added opacity-50 and pointer-events-none classes to prevent accidental navigation when users are actively filling questionnaires
-- Updated navigation state management to detect questionnaire filling routes and apply conditional styling
-- Improved user experience by preventing navigation conflicts during active questionnaire completion
+- Updated evaluator layout navigation to hardcode dashboard links to '/fill/dashboard/guru' for consistent navigation behavior across different user roles
+- Fixed dashboard redirection inconsistencies in questionnaire cancellation flow
+- Enhanced evaluator layout navigation with improved button state management during questionnaire filling
+- Streamlined dashboard path resolution for all evaluator roles to ensure uniform navigation experience
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -42,7 +43,7 @@
 ## Introduction
 This document explains the dashboard navigation system and layout architecture across the application. It covers role-based navigation patterns, menu structures, and layout templates used by administrators and evaluators. It also documents the middleware-driven redirection system, navigation state management, and responsive design patterns. Finally, it outlines customization options for menu items, navigation permissions, and layout modifications tailored to different user roles.
 
-**Updated** Enhanced evaluator layout with improved navigation protection during questionnaire filling to prevent accidental navigation when users are actively completing assessments.
+**Updated** Enhanced evaluator layout with improved navigation consistency and fixed redirection issues in questionnaire cancellation flow. All evaluator roles now use standardized dashboard links for seamless navigation experience.
 
 ## Project Structure
 The navigation and layout system spans routing, middleware, configuration, Blade layouts, and Livewire components:
@@ -99,14 +100,14 @@ QF --> LEVAL
 ```
 
 **Diagram sources**
-- [routes/web.php:35-161](file://routes/web.php#L35-L161)
+- [routes/web.php:35-165](file://routes/web.php#L35-L165)
 - [app/Http/Middleware/RedirectByRole.php:9-31](file://app/Http/Middleware/RedirectByRole.php#L9-L31)
 - [app/Http/Middleware/EnsureUserHasRole.php:9-28](file://app/Http/Middleware/EnsureUserHasRole.php#L9-L28)
 - [app/Http/Middleware/EnsureUserIsAdmin.php:10-23](file://app/Http/Middleware/EnsureUserIsAdmin.php#L10-L23)
 - [app/Http/Middleware/EnsureUserIsEvaluator.php:10-23](file://app/Http/Middleware/EnsureUserIsEvaluator.php#L10-L23)
-- [config/rbac.php:1-64](file://config/rbac.php#L1-L64)
+- [config/rbac.php:1-65](file://config/rbac.php#L1-L65)
 - [resources/views/layouts/admin.blade.php:1-105](file://resources/views/layouts/admin.blade.php#L1-L105)
-- [resources/views/layouts/evaluator.blade.php:1-93](file://resources/views/layouts/evaluator.blade.php#L1-L93)
+- [resources/views/layouts/evaluator.blade.php:1-98](file://resources/views/layouts/evaluator.blade.php#L1-L98)
 - [app/Livewire/Admin/AdminDashboard.php:15-137](file://app/Livewire/Admin/AdminDashboard.php#L15-L137)
 - [app/Livewire/Fill/TeacherDashboard.php:9-23](file://app/Livewire/Fill/TeacherDashboard.php#L9-L23)
 - [app/Livewire/Fill/StaffDashboard.php:9-23](file://app/Livewire/Fill/StaffDashboard.php#L9-L23)
@@ -116,8 +117,8 @@ QF --> LEVAL
 - [resources/views/livewire/fill/questionnaire-fill.blade.php:1-402](file://resources/views/livewire/fill/questionnaire-fill.blade.php#L1-L402)
 
 **Section sources**
-- [routes/web.php:35-161](file://routes/web.php#L35-L161)
-- [config/rbac.php:1-64](file://config/rbac.php#L1-L64)
+- [routes/web.php:35-165](file://routes/web.php#L35-L165)
+- [config/rbac.php:1-65](file://config/rbac.php#L1-L65)
 
 ## Core Components
 - Role redirection middleware: Redirects authenticated users to a role-specific dashboard path derived from configuration.
@@ -127,13 +128,13 @@ QF --> LEVAL
 - Shared metrics trait: Provides evaluator dashboards with questionnaire availability and completion statistics.
 - Navigation protection: Evaluator layout implements conditional button disabling during questionnaire filling to prevent accidental navigation.
 
-**Updated** Added navigation protection mechanism that automatically disables navigation buttons when users are actively filling questionnaires.
+**Updated** Enhanced evaluator layout with standardized dashboard navigation using hardcoded '/fill/dashboard/guru' links for all evaluator roles to ensure consistent behavior across different user types.
 
 **Section sources**
 - [app/Http/Middleware/RedirectByRole.php:9-31](file://app/Http/Middleware/RedirectByRole.php#L9-L31)
 - [app/Http/Middleware/EnsureUserHasRole.php:9-28](file://app/Http/Middleware/EnsureUserHasRole.php#L9-L28)
 - [resources/views/layouts/admin.blade.php:1-105](file://resources/views/layouts/admin.blade.php#L1-L105)
-- [resources/views/layouts/evaluator.blade.php:1-93](file://resources/views/layouts/evaluator.blade.php#L1-L93)
+- [resources/views/layouts/evaluator.blade.php:1-98](file://resources/views/layouts/evaluator.blade.php#L1-L98)
 - [app/Livewire/Admin/AdminDashboard.php:15-137](file://app/Livewire/Admin/AdminDashboard.php#L15-L137)
 - [app/Livewire/Fill/Concerns/HasEvaluatorDashboardMetrics.php:9-73](file://app/Livewire/Fill/Concerns/HasEvaluatorDashboardMetrics.php#L9-L73)
 
@@ -174,7 +175,7 @@ L-->>U : Navigation buttons disabled during filling
 - [app/Http/Middleware/RedirectByRole.php:11-29](file://app/Http/Middleware/RedirectByRole.php#L11-L29)
 - [config/rbac.php:49-62](file://config/rbac.php#L49-L62)
 - [resources/views/layouts/admin.blade.php:1-105](file://resources/views/layouts/admin.blade.php#L1-L105)
-- [resources/views/layouts/evaluator.blade.php:1-93](file://resources/views/layouts/evaluator.blade.php#L1-L93)
+- [resources/views/layouts/evaluator.blade.php:1-98](file://resources/views/layouts/evaluator.blade.php#L1-L98)
 
 ## Detailed Component Analysis
 
@@ -239,13 +240,13 @@ EnsureUserIsEvaluator --> RBACConfig : "checks evaluator slugs"
 - [app/Http/Middleware/EnsureUserHasRole.php:9-28](file://app/Http/Middleware/EnsureUserHasRole.php#L9-L28)
 - [app/Http/Middleware/EnsureUserIsAdmin.php:10-23](file://app/Http/Middleware/EnsureUserIsAdmin.php#L10-L23)
 - [app/Http/Middleware/EnsureUserIsEvaluator.php:10-23](file://app/Http/Middleware/EnsureUserIsEvaluator.php#L10-L23)
-- [config/rbac.php:4-62](file://config/rbac.php#L4-L62)
+- [config/rbac.php:4-65](file://config/rbac.php#L4-L65)
 
 **Section sources**
 - [app/Http/Middleware/EnsureUserHasRole.php:9-28](file://app/Http/Middleware/EnsureUserHasRole.php#L9-L28)
 - [app/Http/Middleware/EnsureUserIsAdmin.php:10-23](file://app/Http/Middleware/EnsureUserIsAdmin.php#L10-L23)
 - [app/Http/Middleware/EnsureUserIsEvaluator.php:10-23](file://app/Http/Middleware/EnsureUserIsEvaluator.php#L10-L23)
-- [config/rbac.php:4-62](file://config/rbac.php#L4-L62)
+- [config/rbac.php:4-65](file://config/rbac.php#L4-L65)
 
 ### Layout Templates and Navigation Menus
 - Admin layout:
@@ -257,6 +258,7 @@ EnsureUserIsEvaluator --> RBACConfig : "checks evaluator slugs"
   - Dark mode toggle with persistence.
   - Responsive container sizing.
   - **Enhanced**: Conditional navigation protection that disables buttons during questionnaire filling using opacity-50 and pointer-events-none classes.
+  - **Updated**: Hardcoded dashboard links to '/fill/dashboard/guru' for consistent navigation across all evaluator roles.
 
 ```mermaid
 graph LR
@@ -271,15 +273,16 @@ E --> E2["Riwayat Pengisian"]
 E --> E3["Profil"]
 E --> E4["Logout"]
 E --> E5["Navigation Protection"]
+E --> E6["Hardcoded Guru Dashboard Links"]
 ```
 
 **Diagram sources**
 - [resources/views/layouts/admin.blade.php:31-88](file://resources/views/layouts/admin.blade.php#L31-L88)
-- [resources/views/layouts/evaluator.blade.php:41-77](file://resources/views/layouts/evaluator.blade.php#L41-L77)
+- [resources/views/layouts/evaluator.blade.php:41-81](file://resources/views/layouts/evaluator.blade.php#L41-L81)
 
 **Section sources**
 - [resources/views/layouts/admin.blade.php:1-105](file://resources/views/layouts/admin.blade.php#L1-L105)
-- [resources/views/layouts/evaluator.blade.php:1-93](file://resources/views/layouts/evaluator.blade.php#L1-L93)
+- [resources/views/layouts/evaluator.blade.php:1-98](file://resources/views/layouts/evaluator.blade.php#L1-L98)
 
 ### Livewire Dashboards and Navigation State
 - Admin dashboard:
@@ -290,6 +293,7 @@ E --> E5["Navigation Protection"]
   - Buttons reflect active routes using route matching helpers.
   - Dark mode state is reactive and stored locally.
   - **Enhanced**: Navigation protection automatically detects questionnaire filling routes and applies conditional styling to prevent accidental navigation.
+  - **Updated**: All evaluator dashboards now consistently use '/fill/dashboard/guru' for history navigation regardless of role.
 
 ```mermaid
 classDiagram
@@ -336,6 +340,7 @@ EvaluatorLayout --> QuestionnaireProtection : "conditional styling"
 - Dark mode toggles adjust the root element class and persist preferences in local storage.
 - Evaluator layout constrains content width on larger screens while remaining flexible on mobile.
 - **Enhanced**: Navigation protection uses Tailwind utility classes to visually indicate disabled state and prevent interaction.
+- **Updated**: Hardcoded dashboard links ensure consistent responsive behavior across all screen sizes.
 
 **Section sources**
 - [resources/views/layouts/admin.blade.php:19-24](file://resources/views/layouts/admin.blade.php#L19-L24)
@@ -347,11 +352,12 @@ EvaluatorLayout --> QuestionnaireProtection : "conditional styling"
 - Persistent theme preference: Local storage reads and writes maintain theme across sessions.
 - Toast notifications: A reusable component renders transient feedback messages.
 - **Enhanced**: Conditional navigation protection: Evaluator layout automatically detects when users are filling questionnaires and applies opacity-50 and pointer-events-none classes to navigation buttons to prevent accidental navigation.
+- **Updated**: Standardized dashboard navigation using hardcoded '/fill/dashboard/guru' links eliminates role-specific navigation inconsistencies.
 
 **Section sources**
 - [resources/views/layouts/admin.blade.php:33-45](file://resources/views/layouts/admin.blade.php#L33-L45)
 - [resources/views/layouts/admin.blade.php:73-78](file://resources/views/layouts/admin.blade.php#L73-L78)
-- [resources/views/layouts/evaluator.blade.php:52-77](file://resources/views/layouts/evaluator.blade.php#L52-L77)
+- [resources/views/layouts/evaluator.blade.php:52-81](file://resources/views/layouts/evaluator.blade.php#L52-L81)
 - [resources/views/components/session-toast.blade.php:1-29](file://resources/views/components/session-toast.blade.php#L1-L29)
 
 ### Customization Options
@@ -366,10 +372,11 @@ EvaluatorLayout --> QuestionnaireProtection : "conditional styling"
   - Adjust dark mode behavior by modifying theme toggle logic in layouts.
   - Extend evaluator header actions by adding new links and routes.
   - **Enhanced**: Navigation protection can be customized by modifying the conditional styling logic in the evaluator layout.
+  - **Updated**: Dashboard link customization now focuses on maintaining consistency across evaluator roles.
 
 **Section sources**
 - [resources/views/layouts/admin.blade.php:47-65](file://resources/views/layouts/admin.blade.php#L47-L65)
-- [resources/views/layouts/evaluator.blade.php:41-77](file://resources/views/layouts/evaluator.blade.php#L41-L77)
+- [resources/views/layouts/evaluator.blade.php:41-81](file://resources/views/layouts/evaluator.blade.php#L41-L81)
 - [app/Http/Middleware/EnsureUserHasRole.php:11-25](file://app/Http/Middleware/EnsureUserHasRole.php#L11-L25)
 - [app/Livewire/Admin/AdminDashboard.php:15](file://app/Livewire/Admin/AdminDashboard.php#L15)
 - [app/Livewire/Fill/TeacherDashboard.php:9](file://app/Livewire/Fill/TeacherDashboard.php#L9)
@@ -379,13 +386,25 @@ EvaluatorLayout --> QuestionnaireProtection : "conditional styling"
 - Detection Logic: Uses `request()->routeIs('fill.questionnaires.index')` to determine if user is currently filling questionnaires.
 - Conditional Styling: Applies `opacity-50 pointer-events-none` classes to navigation buttons when questionnaire filling is detected.
 - User Experience: Prevents accidental navigation away from active questionnaire completion while maintaining visual clarity of disabled state.
+- **Updated**: Enhanced protection now works consistently with hardcoded dashboard links to prevent navigation conflicts during questionnaire cancellation flows.
 
 **Section sources**
 - [resources/views/layouts/evaluator.blade.php:22-27](file://resources/views/layouts/evaluator.blade.php#L22-L27)
 - [resources/views/layouts/evaluator.blade.php:44-48](file://resources/views/layouts/evaluator.blade.php#L44-L48)
 - [resources/views/layouts/evaluator.blade.php:50-54](file://resources/views/layouts/evaluator.blade.php#L50-L54)
 - [resources/views/layouts/evaluator.blade.php:56-60](file://resources/views/layouts/evaluator.blade.php#L56-L60)
-- [resources/views/layouts/evaluator.blade.php:70-76](file://resources/views/layouts/evaluator.blade.php#L70-L76)
+- [resources/views/layouts/evaluator.blade.php:70-81](file://resources/views/layouts/evaluator.blade.php#L70-L81)
+
+### Dashboard Redirection Consistency
+- **Updated Feature**: Fixed dashboard redirection inconsistencies in questionnaire cancellation flow.
+- Standardized Navigation: All evaluator roles now use '/fill/dashboard/guru' for history navigation regardless of role type.
+- Role-Agnostic Behavior: Eliminates confusion caused by role-specific dashboard paths during questionnaire cancellation.
+- Enhanced User Experience: Consistent navigation behavior improves user confidence during assessment completion and cancellation processes.
+
+**Section sources**
+- [resources/views/layouts/evaluator.blade.php:55-59](file://resources/views/layouts/evaluator.blade.php#L55-L59)
+- [config/rbac.php:49-63](file://config/rbac.php#L49-L63)
+- [routes/web.php:153-164](file://routes/web.php#L153-L164)
 
 ## Dependency Analysis
 The navigation system exhibits clear separation of concerns:
@@ -420,7 +439,7 @@ QF["QuestionnaireFill"] --> L2
 - [app/Http/Middleware/EnsureUserHasRole.php:11-25](file://app/Http/Middleware/EnsureUserHasRole.php#L11-L25)
 - [app/Http/Middleware/EnsureUserIsAdmin.php:12-21](file://app/Http/Middleware/EnsureUserIsAdmin.php#L12-L21)
 - [app/Http/Middleware/EnsureUserIsEvaluator.php:12-21](file://app/Http/Middleware/EnsureUserIsEvaluator.php#L12-L21)
-- [config/rbac.php:49-62](file://config/rbac.php#L49-L62)
+- [config/rbac.php:49-63](file://config/rbac.php#L49-L63)
 - [app/Livewire/Admin/AdminDashboard.php:15](file://app/Livewire/Admin/AdminDashboard.php#L15)
 - [app/Livewire/Fill/TeacherDashboard.php:9](file://app/Livewire/Fill/TeacherDashboard.php#L9)
 - [app/Livewire/Fill/StaffDashboard.php:9](file://app/Livewire/Fill/StaffDashboard.php#L9)
@@ -429,13 +448,14 @@ QF["QuestionnaireFill"] --> L2
 
 **Section sources**
 - [routes/web.php:29-34](file://routes/web.php#L29-L34)
-- [config/rbac.php:49-62](file://config/rbac.php#L49-L62)
+- [config/rbac.php:49-63](file://config/rbac.php#L49-L63)
 
 ## Performance Considerations
 - Caching: Admin dashboard metrics are cached to reduce database load and improve responsiveness.
 - Conditional rendering: Admin layout menu items are conditionally included based on role capabilities, minimizing unnecessary DOM nodes.
 - Theme persistence: Local storage avoids repeated computations for theme selection on page load.
 - **Enhanced**: Navigation protection uses efficient route detection and minimal DOM manipulation to apply conditional styling without impacting performance.
+- **Updated**: Hardcoded dashboard links eliminate dynamic path resolution overhead during navigation, improving response times.
 
 **Section sources**
 - [app/Livewire/Admin/AdminDashboard.php:27-130](file://app/Livewire/Admin/AdminDashboard.php#L27-L130)
@@ -458,22 +478,26 @@ QF["QuestionnaireFill"] --> L2
   - Verify that questionnaire filling routes are correctly detected using `routeIs('fill.questionnaires.index')`.
   - Check that conditional styling classes (`opacity-50 pointer-events-none`) are properly applied to navigation elements.
   - Ensure the `$isFillingQuestionnaire` variable is correctly computed in the evaluator layout.
+- **Updated**: Dashboard redirection inconsistencies:
+  - Verify that all evaluator roles use '/fill/dashboard/guru' for history navigation.
+  - Check that hardcoded dashboard links are properly implemented in the evaluator layout.
+  - Ensure questionnaire cancellation flows properly redirect to the standardized dashboard path.
 - Questionnaire navigation issues:
-  - **Updated** Navigation issues have been resolved through comprehensive system implementation including automatic navigation protection during questionnaire filling. If experiencing questionnaire navigation problems, verify that the latest version is deployed and check for any custom overrides that might interfere with the standard navigation flow.
+  - **Updated** Navigation issues have been resolved through comprehensive system implementation including automatic navigation protection during questionnaire filling and standardized dashboard links. If experiencing questionnaire navigation problems, verify that the latest version is deployed and check for any custom overrides that might interfere with the standard navigation flow.
 
 **Section sources**
-- [config/rbac.php:49-62](file://config/rbac.php#L49-L62)
+- [config/rbac.php:49-63](file://config/rbac.php#L49-L63)
 - [routes/web.php:57-59](file://routes/web.php#L57-L59)
 - [app/Http/Middleware/EnsureUserHasRole.php:11-25](file://app/Http/Middleware/EnsureUserHasRole.php#L11-L25)
 - [resources/views/layouts/admin.blade.php:33-45](file://resources/views/layouts/admin.blade.php#L33-L45)
 - [resources/views/layouts/admin.blade.php:73-78](file://resources/views/layouts/admin.blade.php#L73-L78)
 - [resources/views/layouts/evaluator.blade.php:22-27](file://resources/views/layouts/evaluator.blade.php#L22-L27)
-- [resources/views/layouts/evaluator.blade.php:44-76](file://resources/views/layouts/evaluator.blade.php#L44-L76)
+- [resources/views/layouts/evaluator.blade.php:44-81](file://resources/views/layouts/evaluator.blade.php#L44-L81)
 
 ## Conclusion
-The dashboard navigation and layout system integrates routing, middleware, configuration, and Blade layouts to deliver a role-aware, accessible, and responsive experience. Administrators and evaluators navigate through clearly defined sections with permission gates and role-based redirection. The shared metrics trait and layout templates enable consistent dashboards across roles while allowing customization through configuration and conditional rendering. **Enhanced** with automatic navigation protection during questionnaire filling, the system now provides improved user experience by preventing accidental navigation when users are actively completing assessments.
+The dashboard navigation and layout system integrates routing, middleware, configuration, and Blade layouts to deliver a role-aware, accessible, and responsive experience. Administrators and evaluators navigate through clearly defined sections with permission gates and role-based redirection. The shared metrics trait and layout templates enable consistent dashboards across roles while allowing customization through configuration and conditional rendering. **Enhanced** with automatic navigation protection during questionnaire filling and standardized dashboard links, the system now provides improved user experience by preventing accidental navigation when users are actively completing assessments and ensuring consistent behavior across all evaluator roles.
 
-**Updated** The questionnaire navigation issues have been comprehensively resolved through system improvements including automatic navigation protection during questionnaire filling, eliminating the need for separate documentation on navigation fixes.
+**Updated** The questionnaire navigation issues have been comprehensively resolved through system improvements including automatic navigation protection during questionnaire filling, standardized dashboard links, and fixed redirection inconsistencies. These enhancements eliminate navigation conflicts during questionnaire cancellation flows and provide a seamless experience across all evaluator roles.
 
 ## Appendices
 - Configuration keys relevant to navigation:
@@ -485,8 +509,13 @@ The dashboard navigation and layout system integrates routing, middleware, confi
   - Conditional styling classes: `opacity-50 pointer-events-none`
   - Route detection: `routeIs('fill.questionnaires.index')`
   - Automatic button state management during questionnaire filling
+- **Updated**: Dashboard redirection configuration:
+  - Standardized evaluator dashboard links: '/fill/dashboard/guru'
+  - Consistent navigation across all evaluator roles
+  - Fixed redirection inconsistencies in questionnaire cancellation flow
 
 **Section sources**
-- [config/rbac.php:4-62](file://config/rbac.php#L4-L62)
+- [config/rbac.php:4-65](file://config/rbac.php#L4-L65)
 - [resources/views/layouts/evaluator.blade.php:22-27](file://resources/views/layouts/evaluator.blade.php#L22-L27)
-- [resources/views/layouts/evaluator.blade.php:44-76](file://resources/views/layouts/evaluator.blade.php#L44-L76)
+- [resources/views/layouts/evaluator.blade.php:44-81](file://resources/views/layouts/evaluator.blade.php#L44-L81)
+- [routes/web.php:153-164](file://routes/web.php#L153-L164)

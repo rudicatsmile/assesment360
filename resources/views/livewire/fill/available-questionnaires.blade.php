@@ -497,7 +497,10 @@
 
                 {{-- Footer --}}
                 <div class="border-t border-zinc-100 bg-zinc-50 px-6 py-4">
-                    <a href="{{ route('role.dashboard') }}" wire:navigate>
+                    {{-- <a href="{{ route('role.dashboard') }}" wire:navigate>
+                        <flux:button variant="primary" class="w-full">Kembali ke Dashboard</flux:button>
+                    </a> --}}
+                    <a href="/fill/dashboard/guru" wire:navigate>
                         <flux:button variant="primary" class="w-full">Kembali ke Dashboard</flux:button>
                     </a>
                 </div>

@@ -34,7 +34,7 @@
         <header
             class="mb-6 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
             x-data="{ dark: document.documentElement.classList.contains('dark') }">
-            <div class="flex items-center justify-between gap-3">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <div>
                     <p class="text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Dashboard Penilai</p>
                     <h1 class="text-lg font-semibold">{{ config('app.name', 'KepsekEval') }}</h1>
@@ -45,7 +45,7 @@
                         {{ $department ?: '-' }}
                     </p>
                 </div>
-                <div class="flex flex-wrap items-center justify-end gap-2">
+                <div class="flex flex-wrap items-center gap-2 sm:justify-end">
                     <span @class(['opacity-50 pointer-events-none' => $isFillingQuestionnaire])>
                         <a href="{{ route('fill.questionnaires.index') }}" wire:navigate>
                             <flux:button variant="ghost" icon="clipboard-document-list">Kuisioner Saya</flux:button>
