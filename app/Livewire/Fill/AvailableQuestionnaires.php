@@ -589,7 +589,7 @@ class AvailableQuestionnaires extends Component
      */
     public function cancelStart()
     {
-        return redirect()->route('role.dashboard');
+        return redirect()->to('/fill/dashboard/guru');
     }
 
     /**

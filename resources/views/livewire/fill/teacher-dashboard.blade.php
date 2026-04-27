@@ -1,7 +1,8 @@
 <div class="space-y-5">
     <div>
         <h2 class="text-2xl font-semibold text-zinc-900">Dashboard
-            {{ config('rbac.role_labels.' . config('rbac.dashboard_role_slugs.teacher'), 'Evaluator') }}</h2>
+            {{-- {{ config('rbac.role_labels.' . config('rbac.dashboard_role_slugs.teacher'), 'Evaluator') }} --}}
+        </h2>
         <p class="text-sm text-zinc-500">Kelola kuisioner aktif dan lihat riwayat pengisian Anda.</p>
     </div>
 

@@ -53,7 +53,7 @@
                     </span>
 
                     <span @class(['opacity-50 pointer-events-none' => $isFillingQuestionnaire])>
-                        <a href="{{ $dashboardRoute }}" wire:navigate>
+                        <a href="/fill/dashboard/guru" wire:navigate>
                             <flux:button variant="ghost" icon="clock">Riwayat Pengisian</flux:button>
                         </a>
                     </span>
