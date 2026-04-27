@@ -310,7 +310,7 @@
 
     {{-- Start Confirmation Popup --}}
     @if ($showStartConfirmation)
-        <div class="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4" x-data="{ show: false }"
+        <div class="fixed inset-0 z-[70] flex items-center justify-center bg-zinc-900 p-4" x-data="{ show: false }"
             x-init="$nextTick(() => show = true)" x-show="show" x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
             style="display:none;">
@@ -506,7 +506,7 @@
     @endif
 
     {{-- Step Navigation & Progress --}}
-    @if ($totalFillable > 0)
+    @if ($totalFillable > 0 && !$showStartConfirmation)
         <div class="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
             {{-- Questionnaire step dots --}}
             <div class="flex items-center gap-2 overflow-x-auto pb-1">
@@ -703,7 +703,7 @@
     @endif
 
     {{-- Navigation & Submit Bar --}}
-    @if ($totalFillable > 0 && !$timeExpired)
+    @if ($totalFillable > 0 && !$timeExpired && !$showStartConfirmation)
         <div class="sticky bottom-4 z-40 rounded-xl border border-zinc-200 bg-white p-4 shadow-lg">
             <div class="flex items-center justify-between gap-4">
                 {{-- Back Button --}}
